@@ -12,7 +12,7 @@ A low-poly browser game prototype about catching friendly gym buddies inside a l
 - Buddies have level, strength, endurance, focus, and energy stats that improve through training.
 - Visit the Fuel Vending machine to buy energy drinks with protein shakers or grab protein snacks for stamina and crew energy.
 - Walk up to highlighted gym stations to run short workout mini-games for stamina and protein shaker rewards.
-- Workout stations now focus on weighted strength work: flat bench, incline bench, squat rack, leg press, cable tower, and free weights.
+- Workout stations now focus on weighted strength work: bench variations, plate-loaded machines, squat machines, cable/pulldown stations, and free-weight benches.
 - Boss lifters occasionally enter Mega Gym. Challenge them with your crew for rewards, or train more if they win the set.
 
 The game is designed as a static Vite app and can be deployed to GitHub Pages with the included workflow.

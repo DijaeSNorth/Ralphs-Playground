@@ -23,13 +23,18 @@ export type WorkoutType =
   | 'squat-rack'
   | 'leg-press'
   | 'cable'
-  | 'free-weights';
+  | 'free-weights'
+  | 'machine-press'
+  | 'lat-pulldown'
+  | 'hack-squat'
+  | 'free-weight-bench';
 
 export type WorkoutStation = {
   id: string;
   name: string;
   type: WorkoutType;
   position: Vec2;
+  rotation?: number;
   radius: number;
   staminaReward: number;
   shakerReward: number;

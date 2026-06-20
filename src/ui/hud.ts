@@ -760,7 +760,7 @@ export class GameHud {
       station,
       score: 0,
       attempts: 0,
-      cursor: station.type === 'free-weights' ? 50 : 35,
+      cursor: this.isFreeWeightWorkout(station.type) ? 50 : 35,
       direction: 1,
       expected: this.getInitialExpectedAction(station.type),
       balance: 0,
@@ -808,12 +808,12 @@ export class GameHud {
     const workout = this.activeWorkout;
     let correct = false;
 
-    if (workout.station.type === 'bench' || workout.station.type === 'incline-bench') {
+    if (this.isPressWorkout(workout.station.type)) {
       correct = action === workout.expected && workout.cursor >= 28 && workout.cursor <= 82;
       workout.expected = workout.expected === 'lower' ? 'press' : 'lower';
     }
 
-    if (workout.station.type === 'squat-rack') {
+    if (this.isSquatWorkout(workout.station.type)) {
       correct =
         action === workout.expected &&
         (action === 'brace' || (workout.cursor >= 25 && workout.cursor <= 85));
@@ -825,12 +825,12 @@ export class GameHud {
       workout.expected = workout.expected === 'load' ? 'drive' : 'load';
     }
 
-    if (workout.station.type === 'cable') {
+    if (this.isCableWorkout(workout.station.type)) {
       correct = action === workout.expected;
       workout.expected = this.getNextCableAction(workout.expected);
     }
 
-    if (workout.station.type === 'free-weights') {
+    if (this.isFreeWeightWorkout(workout.station.type)) {
       workout.balance += action === 'left' ? -24 : 24;
       workout.balance *= 0.62;
       correct = Math.abs(workout.balance) < 34;
@@ -883,15 +883,31 @@ export class GameHud {
     this.workoutCursor.style.left = `${this.activeWorkout.cursor}%`;
   }
 
+  private isPressWorkout(type: WorkoutType): boolean {
+    return type === 'bench' || type === 'incline-bench' || type === 'machine-press';
+  }
+
+  private isSquatWorkout(type: WorkoutType): boolean {
+    return type === 'squat-rack' || type === 'hack-squat';
+  }
+
+  private isCableWorkout(type: WorkoutType): boolean {
+    return type === 'cable' || type === 'lat-pulldown';
+  }
+
+  private isFreeWeightWorkout(type: WorkoutType): boolean {
+    return type === 'free-weights' || type === 'free-weight-bench';
+  }
+
   private getWorkoutButtons(type: WorkoutType, expected: string): string {
-    if (type === 'bench' || type === 'incline-bench') {
+    if (this.isPressWorkout(type)) {
       return `
         <button type="button" data-workout-action="lower" class="${expected === 'lower' ? 'workout-button--next' : ''}">Lower</button>
         <button type="button" data-workout-action="press" class="${expected === 'press' ? 'workout-button--next' : ''}">Press</button>
       `;
     }
 
-    if (type === 'squat-rack') {
+    if (this.isSquatWorkout(type)) {
       return `
         <button type="button" data-workout-action="brace" class="${expected === 'brace' ? 'workout-button--next' : ''}">Brace</button>
         <button type="button" data-workout-action="descend" class="${expected === 'descend' ? 'workout-button--next' : ''}">Descend</button>
@@ -906,7 +922,7 @@ export class GameHud {
       `;
     }
 
-    if (type === 'cable') {
+    if (this.isCableWorkout(type)) {
       return `
         <button type="button" data-workout-action="high" class="${expected === 'high' ? 'workout-button--next' : ''}">High</button>
         <button type="button" data-workout-action="mid" class="${expected === 'mid' ? 'workout-button--next' : ''}">Mid</button>
@@ -921,11 +937,11 @@ export class GameHud {
   }
 
   private getInitialExpectedAction(type: WorkoutType): string {
-    if (type === 'bench' || type === 'incline-bench') {
+    if (this.isPressWorkout(type)) {
       return 'lower';
     }
 
-    if (type === 'squat-rack') {
+    if (this.isSquatWorkout(type)) {
       return 'brace';
     }
 
@@ -933,7 +949,7 @@ export class GameHud {
       return 'load';
     }
 
-    if (type === 'cable') {
+    if (this.isCableWorkout(type)) {
       return 'high';
     }
 
@@ -942,9 +958,8 @@ export class GameHud {
 
   private usesTimingMeter(type: WorkoutType): boolean {
     return (
-      type === 'bench' ||
-      type === 'incline-bench' ||
-      type === 'squat-rack' ||
+      this.isPressWorkout(type) ||
+      this.isSquatWorkout(type) ||
       type === 'leg-press'
     );
   }
@@ -982,8 +997,16 @@ export class GameHud {
       return 'Control the incline press through the gold zone.';
     }
 
+    if (type === 'machine-press') {
+      return 'Drive the press handles through the gold zone.';
+    }
+
     if (type === 'squat-rack') {
       return 'Brace, descend, and drive while the bar path stays clean.';
+    }
+
+    if (type === 'hack-squat') {
+      return 'Brace into the pads, descend, and drive the sled clean.';
     }
 
     if (type === 'leg-press') {
@@ -992,6 +1015,14 @@ export class GameHud {
 
     if (type === 'cable') {
       return 'Match the high, mid, low cable pattern.';
+    }
+
+    if (type === 'lat-pulldown') {
+      return 'Match the high, mid, low pull pattern.';
+    }
+
+    if (type === 'free-weight-bench') {
+      return 'Balance dumbbell reps left and right without tipping the meter.';
     }
 
     return 'Balance curls left and right without tipping the meter.';
@@ -1006,8 +1037,16 @@ export class GameHud {
       return 'Strong angle. Keep the press stacked.';
     }
 
+    if (type === 'machine-press') {
+      return 'Machine path locked. Keep pressing clean.';
+    }
+
     if (type === 'squat-rack') {
       return 'Clean depth. Drive out of the pocket.';
+    }
+
+    if (type === 'hack-squat') {
+      return 'Sled path clean. Keep the drive steady.';
     }
 
     if (type === 'leg-press') {
@@ -1016,6 +1055,14 @@ export class GameHud {
 
     if (type === 'cable') {
       return 'Pattern locked. Keep the cable smooth.';
+    }
+
+    if (type === 'lat-pulldown') {
+      return 'Pull pattern locked. Control the return.';
+    }
+
+    if (type === 'free-weight-bench') {
+      return 'Even dumbbell rep. Match the other side.';
     }
 
     return 'Balanced curl. Keep both sides even.';
@@ -1030,8 +1077,16 @@ export class GameHud {
       return 'Press drifted off angle.';
     }
 
+    if (type === 'machine-press') {
+      return 'Handles drifted. Reset the press.';
+    }
+
     if (type === 'squat-rack') {
       return 'Rep got loose. Re-brace.';
+    }
+
+    if (type === 'hack-squat') {
+      return 'Sled path got loose. Re-brace.';
     }
 
     if (type === 'leg-press') {
@@ -1040,6 +1095,14 @@ export class GameHud {
 
     if (type === 'cable') {
       return 'Cable sequence slipped.';
+    }
+
+    if (type === 'lat-pulldown') {
+      return 'Pull sequence slipped.';
+    }
+
+    if (type === 'free-weight-bench') {
+      return 'Dumbbells drifted. Counter with the other side.';
     }
 
     return 'Balance drifted. Counter with the other side.';
