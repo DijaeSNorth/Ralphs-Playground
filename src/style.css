@@ -1,0 +1,400 @@
+:root {
+  color-scheme: light;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ink: #172436;
+  --muted: #617083;
+  --line: rgba(23, 36, 54, 0.16);
+  --panel: rgba(255, 255, 255, 0.86);
+  --panel-strong: rgba(255, 255, 255, 0.96);
+  --green: #49b779;
+  --green-dark: #1d7f58;
+  --teal: #21a7a5;
+  --coral: #ff705c;
+  --gold: #f6c85f;
+  --shadow: 0 18px 40px rgba(23, 36, 54, 0.18);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  overflow: hidden;
+  background: #9ed9b0;
+  color: var(--ink);
+}
+
+button {
+  font: inherit;
+}
+
+.game-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 320px;
+  min-height: 520px;
+  isolation: isolate;
+}
+
+.game-canvas {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #9ed9b0;
+}
+
+.game-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.hud-cluster {
+  position: absolute;
+  top: 18px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.hud-cluster--left {
+  left: 18px;
+  flex-direction: column;
+  max-width: min(380px, calc(100vw - 36px));
+}
+
+.hud-cluster--right {
+  right: 18px;
+  width: 188px;
+  flex-direction: column;
+}
+
+.objective-chip,
+.target-chip,
+.stat-row,
+.stamina-wrap,
+.input-status,
+.control-hint,
+.toast,
+.repdex-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(12px);
+}
+
+.objective-chip,
+.target-chip {
+  padding: 10px 12px;
+  font-size: 0.86rem;
+  font-weight: 760;
+  line-height: 1.22;
+}
+
+.objective-chip {
+  max-width: 280px;
+  color: var(--ink);
+}
+
+.target-chip {
+  color: #ffffff;
+  background: rgba(23, 36, 54, 0.82);
+}
+
+.target-chip--ready {
+  background: var(--coral);
+}
+
+.stat-row,
+.stamina-wrap {
+  width: 100%;
+  padding: 9px 10px;
+  color: var(--ink);
+  background: var(--panel-strong);
+}
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.78rem;
+  font-weight: 720;
+}
+
+.stat-row strong {
+  min-width: 2ch;
+  color: var(--coral);
+  font-size: 1.08rem;
+  text-align: right;
+}
+
+.stamina-wrap {
+  display: grid;
+  gap: 7px;
+  font-size: 0.75rem;
+  font-weight: 760;
+}
+
+.stamina-track {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #dce5df;
+}
+
+.stamina-fill {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--green), var(--gold));
+  transition: width 120ms ease-out;
+}
+
+.repdex-panel {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  width: 220px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.panel-title {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 820;
+  text-transform: uppercase;
+}
+
+.dex-list {
+  display: grid;
+  gap: 5px;
+}
+
+.dex-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 27px;
+  padding: 6px 8px;
+  border: 1px solid rgba(23, 36, 54, 0.08);
+  border-radius: 6px;
+  color: rgba(23, 36, 54, 0.45);
+  background: rgba(255, 255, 255, 0.58);
+  font-size: 0.76rem;
+  font-weight: 720;
+}
+
+.dex-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dex-row strong {
+  color: inherit;
+}
+
+.dex-row--caught {
+  color: var(--ink);
+  background: rgba(73, 183, 121, 0.18);
+}
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 88px;
+  width: min(420px, calc(100vw - 36px));
+  padding: 12px 14px;
+  color: #ffffff;
+  background: rgba(23, 36, 54, 0.86);
+  font-size: 0.88rem;
+  font-weight: 760;
+  line-height: 1.28;
+  text-align: center;
+  opacity: 0;
+  transform: translate(-50%, 8px);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.toast--visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.input-status {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  padding: 8px 10px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 820;
+  text-transform: uppercase;
+}
+
+.control-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  padding: 8px 12px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.76);
+  font-size: 0.78rem;
+  font-weight: 780;
+  transform: translateX(-50%);
+}
+
+.touch-controls {
+  position: absolute;
+  inset: auto 16px 16px 16px;
+  display: none;
+  align-items: end;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.touch-pad {
+  position: relative;
+  width: 138px;
+  height: 138px;
+  pointer-events: auto;
+}
+
+.touch-key,
+.catch-button {
+  border: 1px solid rgba(23, 36, 54, 0.16);
+  border-radius: 8px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 12px 24px rgba(23, 36, 54, 0.16);
+  touch-action: none;
+}
+
+.touch-key {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+}
+
+.touch-key svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+.touch-key--up {
+  top: 0;
+  left: 47px;
+}
+
+.touch-key--left {
+  top: 47px;
+  left: 0;
+}
+
+.touch-key--right {
+  top: 47px;
+  right: 0;
+}
+
+.touch-key--down {
+  bottom: 0;
+  left: 47px;
+}
+
+.touch-key:active,
+.catch-button:active {
+  background: var(--gold);
+}
+
+.catch-button {
+  width: 92px;
+  height: 92px;
+  color: #ffffff;
+  background: var(--coral);
+  font-size: 0.86rem;
+  font-weight: 840;
+  pointer-events: auto;
+}
+
+@media (max-width: 820px) {
+  .hud-cluster--right {
+    top: 242px;
+    right: 12px;
+    bottom: auto;
+    width: 164px;
+  }
+
+  .hud-cluster--left {
+    top: 12px;
+    left: 12px;
+  }
+
+  .repdex-panel,
+  .input-status,
+  .control-hint {
+    display: none;
+  }
+
+  .touch-controls {
+    display: flex;
+  }
+
+  .toast {
+    bottom: 184px;
+  }
+}
+
+@media (max-width: 520px) {
+  .objective-chip {
+    max-width: 220px;
+  }
+
+  .hud-cluster--right {
+    width: 142px;
+  }
+
+  .stat-row,
+  .stamina-wrap {
+    padding: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stamina-fill,
+  .toast {
+    transition: none;
+  }
+}
