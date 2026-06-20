@@ -138,7 +138,9 @@ button {
 .toast,
 .repdex-panel,
 .crew-panel,
-.boss-panel {
+.boss-panel,
+.vending-prompt,
+.vending-panel {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -500,7 +502,26 @@ button {
   transform: translateX(-50%);
 }
 
+.vending-prompt {
+  position: absolute;
+  left: 50%;
+  bottom: 106px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(360px, calc(100vw - 36px));
+  padding: 8px 8px 8px 12px;
+  color: var(--ink);
+  background: var(--panel-strong);
+  pointer-events: auto;
+  transform: translateX(-50%);
+}
+
 .workout-prompt[hidden] {
+  display: none;
+}
+
+.vending-prompt[hidden] {
   display: none;
 }
 
@@ -513,7 +534,19 @@ button {
   font-weight: 820;
 }
 
+.vending-prompt span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+  font-weight: 820;
+}
+
 .workout-prompt button,
+.vending-prompt button,
+.vending-head button,
+.vending-option,
 .workout-head button,
 .workout-buttons button {
   border: 1px solid rgba(23, 36, 54, 0.14);
@@ -530,6 +563,91 @@ button {
   background: var(--teal);
   font-size: 0.78rem;
   font-weight: 840;
+}
+
+.vending-prompt button {
+  min-width: 64px;
+  min-height: 34px;
+  color: #ffffff;
+  background: var(--coral);
+  font-size: 0.78rem;
+  font-weight: 840;
+}
+
+.vending-panel {
+  position: absolute;
+  left: 50%;
+  bottom: 74px;
+  width: min(380px, calc(100vw - 36px));
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.94);
+  pointer-events: auto;
+  transform: translateX(-50%);
+}
+
+.vending-panel[hidden] {
+  display: none;
+}
+
+.vending-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vending-head h2 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 1rem;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vending-head button {
+  min-width: 62px;
+  min-height: 32px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 820;
+}
+
+.vending-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.vending-option {
+  min-height: 76px;
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  padding: 10px;
+  text-align: left;
+}
+
+.vending-option strong {
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 880;
+}
+
+.vending-option span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 780;
+  line-height: 1.25;
+}
+
+.vending-option:disabled {
+  opacity: 0.58;
+  cursor: default;
 }
 
 .workout-panel {
@@ -661,10 +779,18 @@ button {
 
 .game-root--creating .crew-panel,
 .game-root--creating .boss-panel,
+.game-root--creating .vending-prompt,
+.game-root--creating .vending-panel,
 .game-root--workout .touch-controls,
 .game-root--workout .control-hint,
 .game-root--workout .repdex-panel,
-.game-root--workout .crew-panel {
+.game-root--workout .crew-panel,
+.game-root--workout .vending-prompt,
+.game-root--vending .touch-controls,
+.game-root--vending .control-hint,
+.game-root--vending .repdex-panel,
+.game-root--vending .crew-panel,
+.game-root--vending .workout-prompt {
   display: none;
 }
 
@@ -922,7 +1048,16 @@ button {
     bottom: 156px;
   }
 
+  .vending-prompt {
+    bottom: 210px;
+  }
+
   .workout-panel {
+    bottom: 136px;
+    width: min(430px, calc(100vw - 24px));
+  }
+
+  .vending-panel {
     bottom: 136px;
     width: min(430px, calc(100vw - 24px));
   }
@@ -980,7 +1115,8 @@ button {
   }
 
   .workout-buttons button,
-  .workout-prompt button {
+  .workout-prompt button,
+  .vending-prompt button {
     font-size: 0.72rem;
   }
 
@@ -1029,6 +1165,14 @@ button {
 
   .crew-row {
     min-height: 78px;
+  }
+
+  .vending-options {
+    grid-template-columns: 1fr;
+  }
+
+  .vending-option {
+    min-height: 64px;
   }
 }
 

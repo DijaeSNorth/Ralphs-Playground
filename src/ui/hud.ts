@@ -10,6 +10,7 @@ import type {
   BossState,
   BuddyRosterEntry,
   PlayerAppearance,
+  VendingMachine,
   WorkoutStation,
   WorkoutType,
   WorldSnapshot
@@ -50,6 +51,14 @@ export class GameHud {
   private readonly inputStatus: HTMLDivElement;
   private readonly workoutPrompt: HTMLDivElement;
   private readonly workoutPromptName: HTMLSpanElement;
+  private readonly vendingPrompt: HTMLDivElement;
+  private readonly vendingPromptName: HTMLSpanElement;
+  private readonly vendingPanel: HTMLDivElement;
+  private readonly vendingTitle: HTMLHeadingElement;
+  private readonly vendingEnergyMeta: HTMLSpanElement;
+  private readonly vendingSnackMeta: HTMLSpanElement;
+  private readonly vendingEnergyButton: HTMLButtonElement;
+  private readonly vendingSnackButton: HTMLButtonElement;
   private readonly workoutPanel: HTMLDivElement;
   private readonly workoutTitle: HTMLHeadingElement;
   private readonly workoutInstruction: HTMLDivElement;
@@ -60,14 +69,20 @@ export class GameHud {
   private readonly appearanceListeners: Array<(appearance: PlayerAppearance) => void> = [];
   private readonly startListeners: Array<() => void> = [];
   private readonly workoutCompleteListeners: Array<(station: WorkoutStation) => void> = [];
+  private readonly vendingEnergyListeners: Array<() => void> = [];
+  private readonly vendingSnackListeners: Array<() => void> = [];
   private readonly rosterTrainListeners: Array<(rosterId: number) => void> = [];
   private readonly rosterSpotListeners: Array<(rosterId: number) => void> = [];
   private readonly bossChallengeListeners: Array<() => void> = [];
   private appearance: PlayerAppearance = { ...DEFAULT_PLAYER_APPEARANCE };
   private nearbyStation?: WorkoutStation;
+  private nearbyVending?: VendingMachine;
   private activeWorkout?: ActiveWorkout;
+  private activeVending?: VendingMachine;
   private suppressedWorkoutStationId?: string;
+  private suppressedVendingMachineId?: string;
   private workoutPromptCooldown = 0;
+  private vendingPromptCooldown = 0;
   private toastTimer = 0;
   private renderedDexMarkup = '';
   private renderedCrewMarkup = '';
@@ -125,6 +140,26 @@ export class GameHud {
           <span data-workout-prompt-name>Workout station</span>
           <button type="button" data-workout-start>Use</button>
         </div>
+        <div class="vending-prompt" data-vending-prompt hidden>
+          <span data-vending-prompt-name>Fuel Vending</span>
+          <button type="button" data-vending-open>Use</button>
+        </div>
+        <section class="vending-panel" data-vending-panel hidden aria-label="Vending machine">
+          <div class="vending-head">
+            <h2 data-vending-title>Fuel Vending</h2>
+            <button type="button" data-vending-close aria-label="Close vending">Close</button>
+          </div>
+          <div class="vending-options">
+            <button type="button" class="vending-option" data-vending-energy>
+              <strong>Energy Drink</strong>
+              <span data-vending-energy-meta>1 shaker -> +38 stamina</span>
+            </button>
+            <button type="button" class="vending-option" data-vending-snack>
+              <strong>Protein Snack</strong>
+              <span data-vending-snack-meta>Ready</span>
+            </button>
+          </div>
+        </section>
         <section class="workout-panel" data-workout-panel hidden aria-label="Workout mini game">
           <div class="workout-head">
             <h2 data-workout-title>Workout</h2>
@@ -218,6 +253,14 @@ export class GameHud {
     const characterCreator = root.querySelector<HTMLDivElement>('[data-character-creator]');
     const workoutPrompt = root.querySelector<HTMLDivElement>('[data-workout-prompt]');
     const workoutPromptName = root.querySelector<HTMLSpanElement>('[data-workout-prompt-name]');
+    const vendingPrompt = root.querySelector<HTMLDivElement>('[data-vending-prompt]');
+    const vendingPromptName = root.querySelector<HTMLSpanElement>('[data-vending-prompt-name]');
+    const vendingPanel = root.querySelector<HTMLDivElement>('[data-vending-panel]');
+    const vendingTitle = root.querySelector<HTMLHeadingElement>('[data-vending-title]');
+    const vendingEnergyMeta = root.querySelector<HTMLSpanElement>('[data-vending-energy-meta]');
+    const vendingSnackMeta = root.querySelector<HTMLSpanElement>('[data-vending-snack-meta]');
+    const vendingEnergyButton = root.querySelector<HTMLButtonElement>('[data-vending-energy]');
+    const vendingSnackButton = root.querySelector<HTMLButtonElement>('[data-vending-snack]');
     const workoutPanel = root.querySelector<HTMLDivElement>('[data-workout-panel]');
     const workoutTitle = root.querySelector<HTMLHeadingElement>('[data-workout-title]');
     const workoutInstruction = root.querySelector<HTMLDivElement>('[data-workout-instruction]');
@@ -246,6 +289,14 @@ export class GameHud {
       !characterCreator ||
       !workoutPrompt ||
       !workoutPromptName ||
+      !vendingPrompt ||
+      !vendingPromptName ||
+      !vendingPanel ||
+      !vendingTitle ||
+      !vendingEnergyMeta ||
+      !vendingSnackMeta ||
+      !vendingEnergyButton ||
+      !vendingSnackButton ||
       !workoutPanel ||
       !workoutTitle ||
       !workoutInstruction ||
@@ -276,6 +327,14 @@ export class GameHud {
     this.touchControls = touchControls;
     this.workoutPrompt = workoutPrompt;
     this.workoutPromptName = workoutPromptName;
+    this.vendingPrompt = vendingPrompt;
+    this.vendingPromptName = vendingPromptName;
+    this.vendingPanel = vendingPanel;
+    this.vendingTitle = vendingTitle;
+    this.vendingEnergyMeta = vendingEnergyMeta;
+    this.vendingSnackMeta = vendingSnackMeta;
+    this.vendingEnergyButton = vendingEnergyButton;
+    this.vendingSnackButton = vendingSnackButton;
     this.workoutPanel = workoutPanel;
     this.workoutTitle = workoutTitle;
     this.workoutInstruction = workoutInstruction;
@@ -285,6 +344,7 @@ export class GameHud {
     this.workoutButtons = workoutButtons;
     this.bindCharacterCreator();
     this.bindWorkoutUi();
+    this.bindVendingUi();
     this.bindCrewUi();
     this.bindBossUi();
     this.syncCreatorControls();
@@ -293,6 +353,7 @@ export class GameHud {
   update(snapshot: WorldSnapshot, actions: ActionState, deltaSeconds: number): void {
     this.updateActiveWorkout(deltaSeconds);
     this.workoutPromptCooldown = Math.max(0, this.workoutPromptCooldown - deltaSeconds);
+    this.vendingPromptCooldown = Math.max(0, this.vendingPromptCooldown - deltaSeconds);
     this.staminaFill.style.width = `${Math.max(0, Math.min(100, snapshot.player.stamina))}%`;
     this.shakersValue.textContent = String(snapshot.player.proteinShakers);
     this.capturedValue.textContent = String(snapshot.player.capturedTotal);
@@ -337,6 +398,7 @@ export class GameHud {
       this.renderedCrewMarkup = crewMarkup;
     }
     this.updateBossPanel(snapshot.activeBoss);
+    this.updateVendingPanel(snapshot);
 
     if (this.toastTimer > 0) {
       this.toastTimer -= deltaSeconds;
@@ -366,6 +428,14 @@ export class GameHud {
     this.workoutCompleteListeners.push(callback);
   }
 
+  onVendingEnergyDrink(callback: () => void): void {
+    this.vendingEnergyListeners.push(callback);
+  }
+
+  onVendingProteinSnack(callback: () => void): void {
+    this.vendingSnackListeners.push(callback);
+  }
+
   onRosterTrain(callback: (rosterId: number) => void): void {
     this.rosterTrainListeners.push(callback);
   }
@@ -382,12 +452,35 @@ export class GameHud {
     return Boolean(this.activeWorkout);
   }
 
+  isInteractionActive(): boolean {
+    return Boolean(this.activeWorkout || this.activeVending);
+  }
+
   tryStartNearbyWorkout(): boolean {
-    if (!this.nearbyStation || this.activeWorkout || this.root.classList.contains('game-root--creating')) {
+    if (
+      !this.nearbyStation ||
+      this.activeWorkout ||
+      this.activeVending ||
+      this.root.classList.contains('game-root--creating')
+    ) {
       return false;
     }
 
     this.startWorkout(this.nearbyStation);
+    return true;
+  }
+
+  tryStartNearbyVending(): boolean {
+    if (
+      !this.nearbyVending ||
+      this.activeWorkout ||
+      this.activeVending ||
+      this.root.classList.contains('game-root--creating')
+    ) {
+      return false;
+    }
+
+    this.startVending(this.nearbyVending);
     return true;
   }
 
@@ -406,6 +499,7 @@ export class GameHud {
 
     if (
       this.activeWorkout ||
+      this.activeVending ||
       this.root.classList.contains('game-root--creating') ||
       !station ||
       promptSuppressed
@@ -421,6 +515,39 @@ export class GameHud {
 
     this.workoutPromptName.textContent = station.name;
     this.workoutPrompt.hidden = false;
+  }
+
+  updateVendingMachine(machine?: VendingMachine): void {
+    this.nearbyVending = machine;
+
+    if (!machine) {
+      this.suppressedVendingMachineId = undefined;
+      this.vendingPromptCooldown = 0;
+    }
+
+    const promptSuppressed =
+      machine &&
+      this.suppressedVendingMachineId === machine.id &&
+      this.vendingPromptCooldown > 0;
+
+    if (
+      this.activeWorkout ||
+      this.activeVending ||
+      this.root.classList.contains('game-root--creating') ||
+      !machine ||
+      promptSuppressed
+    ) {
+      this.vendingPrompt.hidden = true;
+      return;
+    }
+
+    if (this.suppressedVendingMachineId !== machine.id) {
+      this.suppressedVendingMachineId = undefined;
+      this.vendingPromptCooldown = 0;
+    }
+
+    this.vendingPromptName.textContent = machine.name;
+    this.vendingPrompt.hidden = false;
   }
 
   closeCharacterCreator(): void {
@@ -476,6 +603,26 @@ export class GameHud {
       if (action) {
         this.handleWorkoutAction(action);
       }
+    });
+  }
+
+  private bindVendingUi(): void {
+    this.root.querySelector<HTMLButtonElement>('[data-vending-open]')?.addEventListener('click', () => {
+      if (this.nearbyVending) {
+        this.startVending(this.nearbyVending);
+      }
+    });
+
+    this.root.querySelector<HTMLButtonElement>('[data-vending-close]')?.addEventListener('click', () => {
+      this.closeVending();
+    });
+
+    this.vendingEnergyButton.addEventListener('click', () => {
+      this.vendingEnergyListeners.forEach((callback) => callback());
+    });
+
+    this.vendingSnackButton.addEventListener('click', () => {
+      this.vendingSnackListeners.forEach((callback) => callback());
     });
   }
 
@@ -559,6 +706,53 @@ export class GameHud {
     this.bossStats.textContent = `S${boss.strength} E${boss.endurance} F${boss.focus}`;
     this.bossTimer.textContent = `${Math.ceil(boss.timer)}s`;
     this.bossPanel.hidden = false;
+  }
+
+  private startVending(machine: VendingMachine): void {
+    this.activeVending = machine;
+    this.root.classList.add('game-root--vending');
+    this.workoutPrompt.hidden = true;
+    this.vendingPrompt.hidden = true;
+    this.vendingTitle.textContent = machine.name;
+    this.vendingPanel.hidden = false;
+  }
+
+  private closeVending(): void {
+    if (this.activeVending) {
+      this.suppressedVendingMachineId = this.activeVending.id;
+      this.vendingPromptCooldown = 1.8;
+    }
+
+    this.activeVending = undefined;
+    this.root.classList.remove('game-root--vending');
+    this.vendingPanel.hidden = true;
+  }
+
+  private updateVendingPanel(snapshot: WorldSnapshot): void {
+    if (!this.activeVending) {
+      return;
+    }
+
+    const machine = this.activeVending;
+    const snackCooldown = snapshot.vending.snackCooldown;
+    const lacksShaker = snapshot.player.proteinShakers < machine.energyDrinkCost;
+    const staminaFull = snapshot.player.stamina >= 99.5;
+
+    this.vendingEnergyButton.disabled = lacksShaker || staminaFull;
+    this.vendingSnackButton.disabled = snackCooldown > 0;
+
+    if (lacksShaker) {
+      this.vendingEnergyMeta.textContent = `Need ${machine.energyDrinkCost} shaker`;
+    } else if (staminaFull) {
+      this.vendingEnergyMeta.textContent = 'Stamina full';
+    } else {
+      this.vendingEnergyMeta.textContent = `${machine.energyDrinkCost} shaker -> +${machine.energyDrinkStamina} stamina`;
+    }
+
+    this.vendingSnackMeta.textContent =
+      snackCooldown > 0
+        ? `Restocking ${Math.ceil(snackCooldown)}s`
+        : `+${machine.snackStamina} stamina, +${machine.snackCrewEnergy} crew energy`;
   }
 
   private startWorkout(station: WorkoutStation): void {

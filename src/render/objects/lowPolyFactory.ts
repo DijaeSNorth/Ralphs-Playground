@@ -9,6 +9,7 @@ import type {
   BuddyDefinition,
   MuscleBuild,
   PlayerAppearance,
+  VendingMachine,
   WorkoutStation
 } from '../../game/types';
 
@@ -509,6 +510,59 @@ export function createWorkoutEquipment(stations: WorkoutStation[]): THREE.Group 
     }
 
     group.add(stationGroup);
+  }
+
+  return group;
+}
+
+function createVendingMachine(machine: VendingMachine): THREE.Group {
+  const group = new THREE.Group();
+  group.userData.cullCenter = machine.position;
+  group.userData.renderDistance = 25;
+  group.position.set(machine.position.x, 0, machine.position.z);
+  group.rotation.y = -Math.PI / 2;
+
+  const marker = new THREE.Mesh(new THREE.RingGeometry(1.12, 1.3, 24), basicMaterial(0x21a7a5, 0.48));
+  marker.rotation.x = -Math.PI / 2;
+  marker.position.y = 0.2;
+
+  const base = box(1.24, 2.3, 0.72, 0x263649, 0, 1.16, 0);
+  const topSign = box(1.14, 0.28, 0.78, 0xff705c, 0, 2.28, 0);
+  const sideGlow = box(0.12, 1.8, 0.08, 0xf6c85f, -0.52, 1.16, -0.4);
+  const screen = box(0.72, 1.22, 0.06, 0x9ddfe8, -0.17, 1.36, -0.39);
+  const snackDoor = box(0.74, 0.28, 0.08, 0x172436, -0.17, 0.5, -0.41);
+  const payPanel = box(0.22, 0.84, 0.08, 0xf9f7ef, 0.45, 1.35, -0.41);
+  const slot = box(0.14, 0.05, 0.03, 0x172436, 0.45, 1.66, -0.46);
+  const buttonA = cylinder(0.045, 0.045, 0.04, 0x49b779, 8);
+  buttonA.rotation.x = Math.PI / 2;
+  buttonA.position.set(0.45, 1.38, -0.47);
+  const buttonB = buttonA.clone();
+  buttonB.material = standardMaterial(0xff705c);
+  buttonB.position.y = 1.18;
+
+  for (let row = 0; row < 3; row += 1) {
+    for (let col = 0; col < 3; col += 1) {
+      const can = cylinder(0.055, 0.055, 0.22, col % 2 === 0 ? 0x21a7a5 : 0xf6c85f, 6);
+      can.rotation.z = Math.PI / 2;
+      can.position.set(-0.42 + col * 0.22, 1.7 - row * 0.3, -0.45);
+      group.add(can);
+    }
+  }
+
+  for (let col = 0; col < 3; col += 1) {
+    const bar = box(0.16, 0.08, 0.06, col === 1 ? 0xff705c : 0x49b779, -0.4 + col * 0.23, 0.83, -0.45);
+    group.add(bar);
+  }
+
+  group.add(marker, base, topSign, sideGlow, screen, snackDoor, payPanel, slot, buttonA, buttonB);
+  return markShadows(group) as THREE.Group;
+}
+
+export function createVendingMachines(machines: VendingMachine[]): THREE.Group {
+  const group = new THREE.Group();
+
+  for (const machine of machines) {
+    group.add(createVendingMachine(machine));
   }
 
   return group;

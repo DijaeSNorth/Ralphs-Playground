@@ -1,5 +1,6 @@
 import { BUDDY_DEFINITIONS, getBuddyDefinition } from '../content/buddies';
 import { BOSS_DEFINITIONS, getBossDefinition } from '../content/bosses';
+import { VENDING_MACHINES } from '../content/vending';
 import type {
   ActionState,
   BossState,
@@ -99,6 +100,7 @@ export class GymBuddyWorld {
   private activeBoss?: BossState;
   private catchCooldown = 0;
   private shakerRechargeTimer = 0;
+  private vendingSnackCooldown = 0;
   private bossSpawnTimer = 18;
 
   constructor() {
@@ -120,6 +122,7 @@ export class GymBuddyWorld {
     this.activeBoss = undefined;
     this.catchCooldown = 0;
     this.shakerRechargeTimer = 0;
+    this.vendingSnackCooldown = 0;
     this.bossSpawnTimer = 18;
 
     for (let index = 0; index < ACTIVE_BUDDIES; index += 1) {
@@ -150,6 +153,7 @@ export class GymBuddyWorld {
     this.updateRoster(dt);
     this.updateBoss(dt);
     this.rechargeProteinShakers(dt);
+    this.updateVending(dt);
 
     if (actions.catchPressed) {
       this.tryCapture();
@@ -170,6 +174,73 @@ export class GymBuddyWorld {
     this.events.push({
       type: 'workout',
       message: `${station.name} complete. +${station.staminaReward} stamina, +${station.shakerReward} shaker.`
+    });
+  }
+
+  buyEnergyDrink(): void {
+    const machine = VENDING_MACHINES[0];
+
+    if (this.player.stamina >= MAX_STAMINA) {
+      this.events.push({
+        type: 'vending',
+        message: 'Stamina is already topped off.'
+      });
+      return;
+    }
+
+    if (this.player.proteinShakers < machine.energyDrinkCost) {
+      this.events.push({
+        type: 'vending',
+        message: `Need ${machine.energyDrinkCost} shaker to buy an energy drink.`
+      });
+      return;
+    }
+
+    const previousStamina = this.player.stamina;
+    this.player.proteinShakers -= machine.energyDrinkCost;
+    this.player.stamina = clamp(this.player.stamina + machine.energyDrinkStamina, 0, MAX_STAMINA);
+    this.events.push({
+      type: 'vending',
+      message: `Energy drink purchased. +${Math.round(this.player.stamina - previousStamina)} stamina.`
+    });
+  }
+
+  grabProteinSnack(): void {
+    const machine = VENDING_MACHINES[0];
+
+    if (this.vendingSnackCooldown > 0) {
+      this.events.push({
+        type: 'vending',
+        message: `Protein snacks restock in ${Math.ceil(this.vendingSnackCooldown)}s.`
+      });
+      return;
+    }
+
+    const previousStamina = this.player.stamina;
+    let crewEnergyRestored = 0;
+    this.player.stamina = clamp(this.player.stamina + machine.snackStamina, 0, MAX_STAMINA);
+
+    for (const buddy of this.roster) {
+      const previousEnergy = buddy.energy;
+      buddy.energy = clamp(buddy.energy + machine.snackCrewEnergy, 0, 100);
+      crewEnergyRestored += buddy.energy - previousEnergy;
+    }
+
+    if (this.player.stamina === previousStamina && crewEnergyRestored === 0) {
+      this.events.push({
+        type: 'vending',
+        message: 'Everyone is stocked. Save the snacks for later.'
+      });
+      return;
+    }
+
+    this.vendingSnackCooldown = machine.snackCooldown;
+    this.events.push({
+      type: 'vending',
+      message:
+        this.roster.length > 0
+          ? 'Protein snacks grabbed. Crew energy restored.'
+          : `Protein snack grabbed. +${Math.round(this.player.stamina - previousStamina)} stamina.`
     });
   }
 
@@ -307,6 +378,9 @@ export class GymBuddyWorld {
       })),
       roster: this.roster.map((entry) => ({ ...entry })),
       maxRosterSize: MAX_ROSTER_SIZE,
+      vending: {
+        snackCooldown: this.vendingSnackCooldown
+      },
       repDex,
       activeBoss: this.activeBoss ? this.copyBoss(this.activeBoss) : undefined,
       nearestBuddy: nearest
@@ -421,6 +495,10 @@ export class GymBuddyWorld {
       this.player.proteinShakers += 1;
       this.shakerRechargeTimer = 0;
     }
+  }
+
+  private updateVending(dt: number): void {
+    this.vendingSnackCooldown = Math.max(0, this.vendingSnackCooldown - dt);
   }
 
   private updateRoster(dt: number): void {

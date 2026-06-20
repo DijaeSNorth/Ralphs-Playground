@@ -35,6 +35,18 @@ export type WorkoutStation = {
   shakerReward: number;
 };
 
+export type VendingMachine = {
+  id: string;
+  name: string;
+  position: Vec2;
+  radius: number;
+  energyDrinkCost: number;
+  energyDrinkStamina: number;
+  snackStamina: number;
+  snackCrewEnergy: number;
+  snackCooldown: number;
+};
+
 export type BuddyRosterStatus = 'ready' | 'training' | 'spotting';
 
 export type BuddyDefinition = {
@@ -131,6 +143,10 @@ export type WorldEvent =
       message: string;
     }
   | {
+      type: 'vending';
+      message: string;
+    }
+  | {
       type: 'boss';
       boss?: BossState;
       message: string;
@@ -157,6 +173,9 @@ export type WorldSnapshot = {
   buddies: BuddyState[];
   roster: BuddyRosterEntry[];
   maxRosterSize: number;
+  vending: {
+    snackCooldown: number;
+  };
   repDex: RepDexEntry[];
   activeBoss?: BossState;
   nearestBuddy?: {

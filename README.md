@@ -10,6 +10,7 @@ A low-poly browser game prototype about catching friendly gym buddies inside a l
 - Use the startup creator to choose hair, skin tone, and muscle build before entering the gym.
 - Catch up to 4 gym buddies, then use the Crew panel to send them to workouts or spot their sets.
 - Buddies have level, strength, endurance, focus, and energy stats that improve through training.
+- Visit the Fuel Vending machine to buy energy drinks with protein shakers or grab protein snacks for stamina and crew energy.
 - Walk up to highlighted gym stations to run short workout mini-games for stamina and protein shaker rewards.
 - Workout stations now focus on weighted strength work: flat bench, incline bench, squat rack, leg press, cable tower, and free weights.
 - Boss lifters occasionally enter Mega Gym. Challenge them with your crew for rewards, or train more if they win the set.

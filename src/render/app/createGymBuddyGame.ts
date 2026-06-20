@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { getNearestWorkoutStation, WORKOUT_STATIONS } from '../../game/content/equipment';
+import { getNearestVendingMachine, VENDING_MACHINES } from '../../game/content/vending';
 import { InputController } from '../../game/input/actions';
 import { GymBuddyWorld } from '../../game/simulation/world';
 import type { ActionState, PlayerAppearance, Vec2, WorldEvent, WorldSnapshot } from '../../game/types';
@@ -12,6 +13,7 @@ import {
   createGymProps,
   createProteinShakerProjectile,
   createPlayerMesh,
+  createVendingMachines,
   createWorkoutEquipment
 } from '../objects/lowPolyFactory';
 import { getBuddyDefinition } from '../../game/content/buddies';
@@ -91,8 +93,16 @@ class GymBuddyRenderer {
     this.scene.add(this.clockShadowTarget);
     this.addLights();
     const workoutEquipment = createWorkoutEquipment(WORKOUT_STATIONS);
+    const vendingMachines = createVendingMachines(VENDING_MACHINES);
     this.registerCullables(workoutEquipment);
-    this.scene.add(createArena(initialSnapshot.arenaRadius), createGymProps(), workoutEquipment, this.player);
+    this.registerCullables(vendingMachines);
+    this.scene.add(
+      createArena(initialSnapshot.arenaRadius),
+      createGymProps(),
+      workoutEquipment,
+      vendingMachines,
+      this.player
+    );
 
     const resizeObserver = new ResizeObserver(() => this.resize());
     resizeObserver.observe(this.container);
@@ -371,6 +381,12 @@ export function createGymBuddyGame(root: HTMLElement): void {
   hud.onWorkoutComplete((station) => {
     world.completeWorkout(station);
   });
+  hud.onVendingEnergyDrink(() => {
+    world.buyEnergyDrink();
+  });
+  hud.onVendingProteinSnack(() => {
+    world.grabProteinSnack();
+  });
   hud.onRosterTrain((rosterId) => {
     world.sendBuddyToWorkout(rosterId);
   });
@@ -389,23 +405,27 @@ export function createGymBuddyGame(root: HTMLElement): void {
     lastTime = now;
 
     const inputActions = input.read();
-    if (gameStarted && !hud.isWorkoutActive() && inputActions.interactPressed) {
-      hud.tryStartNearbyWorkout();
+    if (gameStarted && !hud.isInteractionActive() && inputActions.interactPressed) {
+      if (!hud.tryStartNearbyVending()) {
+        hud.tryStartNearbyWorkout();
+      }
     }
 
-    const canSimulate = gameStarted && !hud.isWorkoutActive();
+    const canSimulate = gameStarted && !hud.isInteractionActive();
     const actions = canSimulate ? inputActions : createPausedActions(inputActions);
     world.update(canSimulate ? deltaSeconds : 0, actions);
     const events = world.drainEvents();
     const snapshot = world.getSnapshot();
     const nearbyStation = gameStarted ? getNearestWorkoutStation(snapshot.player.position) : undefined;
+    const nearbyVending = gameStarted ? getNearestVendingMachine(snapshot.player.position) : undefined;
 
     for (const event of events) {
       hud.pushMessage(event.message);
     }
 
     renderer.update(snapshot, events, deltaSeconds);
-    hud.updateWorkoutStation(nearbyStation?.station);
+    hud.updateVendingMachine(nearbyVending?.machine);
+    hud.updateWorkoutStation(nearbyVending ? undefined : nearbyStation?.station);
     hud.update(snapshot, inputActions, deltaSeconds);
     requestAnimationFrame(frame);
   }
