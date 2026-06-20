@@ -5,6 +5,7 @@ type MoveDirection = 'up' | 'down' | 'left' | 'right';
 const DEAD_ZONE = 0.18;
 const TOUCH_DEAD_ZONE = 0.08;
 const TOUCH_STICK_RADIUS = 54;
+const DESKTOP_INPUT_LABEL = 'Keyboard + Mouse';
 
 function applyDeadZone(value: number): number {
   return Math.abs(value) < DEAD_ZONE ? 0 : value;
@@ -18,6 +19,10 @@ function clampAxis(value: number): number {
   return Math.max(-1, Math.min(1, value));
 }
 
+function hasMoveInput(x: number, z: number): boolean {
+  return Math.hypot(x, z) > 0.01;
+}
+
 export class InputController {
   private readonly keys = new Set<string>();
   private readonly virtualDirections = new Set<MoveDirection>();
@@ -29,7 +34,7 @@ export class InputController {
   private previousGamepadCatch = false;
   private previousGamepadInteract = false;
   private previousGamepadReset = false;
-  private lastInputLabel = 'Keyboard';
+  private lastInputLabel = DESKTOP_INPUT_LABEL;
 
   constructor() {
     window.addEventListener('keydown', (event) => {
@@ -37,16 +42,31 @@ export class InputController {
 
       if (event.code === 'Space' && !event.repeat) {
         this.catchQueued = true;
+        this.lastInputLabel = DESKTOP_INPUT_LABEL;
         event.preventDefault();
       }
 
       if (event.code === 'KeyE' && !event.repeat) {
         this.interactQueued = true;
+        this.lastInputLabel = DESKTOP_INPUT_LABEL;
         event.preventDefault();
       }
 
       if (event.code === 'KeyR' && !event.repeat) {
         this.resetQueued = true;
+        this.lastInputLabel = DESKTOP_INPUT_LABEL;
+      }
+
+      if (
+        event.code === 'KeyW' ||
+        event.code === 'KeyA' ||
+        event.code === 'KeyS' ||
+        event.code === 'KeyD' ||
+        event.code === 'ShiftLeft' ||
+        event.code === 'ShiftRight' ||
+        event.code.startsWith('Arrow')
+      ) {
+        this.lastInputLabel = DESKTOP_INPUT_LABEL;
       }
 
       if (event.code.startsWith('Arrow')) {
@@ -65,8 +85,34 @@ export class InputController {
       this.virtualSprintHeld = false;
     });
 
-    window.addEventListener('gamepadconnected', (event) => {
-      this.lastInputLabel = event.gamepad.id || 'Gamepad';
+    window.addEventListener('gamepadconnected', () => {
+      this.previousGamepadCatch = false;
+      this.previousGamepadInteract = false;
+      this.previousGamepadReset = false;
+    });
+  }
+
+  bindMouseControls(surface: HTMLElement): void {
+    surface.addEventListener('pointerdown', (event) => {
+      if (event.pointerType !== 'mouse') {
+        return;
+      }
+
+      if (event.button === 0) {
+        this.catchQueued = true;
+        this.lastInputLabel = DESKTOP_INPUT_LABEL;
+        event.preventDefault();
+      }
+
+      if (event.button === 2) {
+        this.interactQueued = true;
+        this.lastInputLabel = DESKTOP_INPUT_LABEL;
+        event.preventDefault();
+      }
+    });
+
+    surface.addEventListener('contextmenu', (event) => {
+      event.preventDefault();
     });
   }
 
@@ -177,32 +223,55 @@ export class InputController {
   }
 
   read(): ActionState {
-    let moveX = 0;
-    let moveZ = 0;
+    let keyboardX = 0;
+    let keyboardZ = 0;
 
-    if (this.keys.has('KeyA') || this.keys.has('ArrowLeft') || this.virtualDirections.has('left')) {
-      moveX -= 1;
+    if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) {
+      keyboardX -= 1;
     }
 
-    if (this.keys.has('KeyD') || this.keys.has('ArrowRight') || this.virtualDirections.has('right')) {
-      moveX += 1;
+    if (this.keys.has('KeyD') || this.keys.has('ArrowRight')) {
+      keyboardX += 1;
     }
 
-    if (this.keys.has('KeyW') || this.keys.has('ArrowUp') || this.virtualDirections.has('up')) {
-      moveZ -= 1;
+    if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) {
+      keyboardZ -= 1;
     }
 
-    if (this.keys.has('KeyS') || this.keys.has('ArrowDown') || this.virtualDirections.has('down')) {
-      moveZ += 1;
+    if (this.keys.has('KeyS') || this.keys.has('ArrowDown')) {
+      keyboardZ += 1;
+    }
+
+    let touchX = 0;
+    let touchZ = 0;
+
+    if (this.virtualDirections.has('left')) {
+      touchX -= 1;
+    }
+
+    if (this.virtualDirections.has('right')) {
+      touchX += 1;
+    }
+
+    if (this.virtualDirections.has('up')) {
+      touchZ -= 1;
+    }
+
+    if (this.virtualDirections.has('down')) {
+      touchZ += 1;
     }
 
     if (this.virtualAxis.x !== 0 || this.virtualAxis.z !== 0) {
-      moveX = this.virtualAxis.x;
-      moveZ = this.virtualAxis.z;
+      touchX = this.virtualAxis.x;
+      touchZ = this.virtualAxis.z;
     }
 
+    const keyboardMoving = hasMoveInput(keyboardX, keyboardZ);
+    const touchMoving = hasMoveInput(touchX, touchZ);
+    let moveX = touchMoving ? touchX : keyboardX;
+    let moveZ = touchMoving ? touchZ : keyboardZ;
     const gamepad = this.getPrimaryGamepad();
-    let gamepadConnected = false;
+    const gamepadConnected = Boolean(gamepad);
     let gamepadCatch = false;
     let gamepadInteract = false;
     let gamepadReset = false;
@@ -210,37 +279,50 @@ export class InputController {
       this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') || this.virtualSprintHeld;
 
     if (gamepad) {
-      gamepadConnected = true;
-      this.lastInputLabel = gamepad.id || 'Gamepad';
+      let gamepadMoveX = applyDeadZone(gamepad.axes[0] ?? 0);
+      let gamepadMoveZ = applyDeadZone(gamepad.axes[1] ?? 0);
 
-      const axisX = applyDeadZone(gamepad.axes[0] ?? 0);
-      const axisZ = applyDeadZone(gamepad.axes[1] ?? 0);
-
-      if (axisX !== 0 || axisZ !== 0) {
-        moveX = axisX;
-        moveZ = axisZ;
+      if (!hasMoveInput(gamepadMoveX, gamepadMoveZ)) {
+        gamepadMoveX = 0;
+        gamepadMoveZ = 0;
       }
 
       if (gamepad.buttons[14]?.pressed) {
-        moveX -= 1;
+        gamepadMoveX -= 1;
       }
 
       if (gamepad.buttons[15]?.pressed) {
-        moveX += 1;
+        gamepadMoveX += 1;
       }
 
       if (gamepad.buttons[12]?.pressed) {
-        moveZ -= 1;
+        gamepadMoveZ -= 1;
       }
 
       if (gamepad.buttons[13]?.pressed) {
-        moveZ += 1;
+        gamepadMoveZ += 1;
       }
 
-      sprintHeld ||= (gamepad.buttons[7]?.value ?? 0) > 0.35 || gamepad.buttons[5]?.pressed === true;
+      const gamepadMoving = hasMoveInput(gamepadMoveX, gamepadMoveZ);
+      const gamepadSprint = (gamepad.buttons[7]?.value ?? 0) > 0.35 || gamepad.buttons[5]?.pressed === true;
       gamepadCatch = gamepad.buttons[0]?.pressed === true || (gamepad.buttons[6]?.value ?? 0) > 0.5;
       gamepadInteract = gamepad.buttons[2]?.pressed === true;
       gamepadReset = gamepad.buttons[8]?.pressed === true;
+
+      if (gamepadMoving && !keyboardMoving && !touchMoving) {
+        moveX = gamepadMoveX;
+        moveZ = gamepadMoveZ;
+        this.lastInputLabel = gamepad.id || 'Gamepad';
+      }
+
+      if (gamepadSprint && !keyboardMoving && !touchMoving) {
+        sprintHeld = true;
+        this.lastInputLabel = gamepad.id || 'Gamepad';
+      }
+
+      if (gamepadCatch || gamepadInteract || gamepadReset) {
+        this.lastInputLabel = gamepad.id || 'Gamepad';
+      }
     }
 
     const catchPressed = this.catchQueued || (gamepadCatch && !this.previousGamepadCatch);

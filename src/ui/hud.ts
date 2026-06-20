@@ -152,8 +152,8 @@ export class GameHud {
           <button type="button" data-boss-challenge>Challenge</button>
         </section>
         <div class="toast" data-toast></div>
-        <div class="input-status" data-input-status>Keyboard</div>
-        <div class="control-hint">Move / Catch / Sprint</div>
+        <div class="input-status" data-input-status>Keyboard + Mouse</div>
+        <div class="control-hint">WASD Move / Left Click Catch / Right Click Use</div>
         <div class="workout-prompt" data-workout-prompt hidden>
           <span data-workout-prompt-name>Workout station</span>
           <button type="button" data-workout-start>Use</button>
@@ -396,7 +396,7 @@ export class GameHud {
     this.renderedInputStatus = this.setText(
       this.inputStatus,
       this.renderedInputStatus,
-      actions.gamepadConnected ? 'Gamepad' : actions.inputLabel
+      actions.inputLabel
     );
 
     let targetText = 'No target';

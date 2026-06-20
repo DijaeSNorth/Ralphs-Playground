@@ -476,11 +476,14 @@ button {
   position: absolute;
   left: 50%;
   bottom: 18px;
+  max-width: min(520px, calc(100vw - 36px));
   padding: 8px 12px;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.76);
   font-size: 0.78rem;
   font-weight: 780;
+  line-height: 1.2;
+  text-align: center;
   transform: translateX(-50%);
 }
 

@@ -400,6 +400,7 @@ export function createGymBuddyGame(root: HTMLElement): void {
   let gameStarted = false;
 
   input.bindTouchControls(hud.touchControls);
+  input.bindMouseControls(hud.canvasMount);
   hud.onAppearanceChange((appearance) => {
     renderer.updatePlayerAppearance(appearance);
   });
