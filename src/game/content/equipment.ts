@@ -2,31 +2,40 @@ import type { Vec2, WorkoutStation } from '../types';
 
 export const WORKOUT_STATIONS: WorkoutStation[] = [
   {
-    id: 'pace-treadmill',
-    name: 'Pace Treadmill',
-    type: 'treadmill',
-    position: { x: -16.5, z: -15.2 },
-    radius: 3.2,
-    staminaReward: 18,
-    shakerReward: 1
-  },
-  {
-    id: 'rowerg',
-    name: 'RowErg',
-    type: 'rower',
-    position: { x: -10.8, z: 15.8 },
-    radius: 3.0,
-    staminaReward: 22,
-    shakerReward: 1
-  },
-  {
-    id: 'bench-press',
-    name: 'Bench Press',
+    id: 'flat-bench-press',
+    name: 'Flat Bench Press',
     type: 'bench',
     position: { x: 15.4, z: -12.4 },
     radius: 3.2,
     staminaReward: 16,
     shakerReward: 2
+  },
+  {
+    id: 'incline-bench-press',
+    name: 'Incline Bench Press',
+    type: 'incline-bench',
+    position: { x: 10.8, z: -15.9 },
+    radius: 3.2,
+    staminaReward: 18,
+    shakerReward: 2
+  },
+  {
+    id: 'power-squat-rack',
+    name: 'Power Squat Rack',
+    type: 'squat-rack',
+    position: { x: -13.8, z: -10.8 },
+    radius: 3.4,
+    staminaReward: 24,
+    shakerReward: 1
+  },
+  {
+    id: 'angled-leg-press',
+    name: 'Angled Leg Press',
+    type: 'leg-press',
+    position: { x: -10.8, z: 15.8 },
+    radius: 3.2,
+    staminaReward: 22,
+    shakerReward: 1
   },
   {
     id: 'cable-tower',

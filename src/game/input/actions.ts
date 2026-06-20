@@ -16,8 +16,10 @@ export class InputController {
   private readonly keys = new Set<string>();
   private readonly virtualDirections = new Set<MoveDirection>();
   private catchQueued = false;
+  private interactQueued = false;
   private resetQueued = false;
   private previousGamepadCatch = false;
+  private previousGamepadInteract = false;
   private previousGamepadReset = false;
   private lastInputLabel = 'Keyboard';
 
@@ -25,13 +27,21 @@ export class InputController {
     window.addEventListener('keydown', (event) => {
       this.keys.add(event.code);
 
-      if (event.code === 'Space' || event.code === 'KeyE') {
+      if ((event.code === 'Space' || event.code === 'KeyE') && !event.repeat) {
         this.catchQueued = true;
         event.preventDefault();
       }
 
-      if (event.code === 'KeyR') {
+      if (event.code === 'KeyE' && !event.repeat) {
+        this.interactQueued = true;
+      }
+
+      if (event.code === 'KeyR' && !event.repeat) {
         this.resetQueued = true;
+      }
+
+      if (event.code.startsWith('Arrow')) {
+        event.preventDefault();
       }
     });
 
@@ -54,11 +64,13 @@ export class InputController {
       const direction = button.dataset.move as MoveDirection;
 
       const activate = (event: PointerEvent) => {
+        event.preventDefault();
         this.virtualDirections.add(direction);
         button.setPointerCapture(event.pointerId);
       };
 
       const release = (event: PointerEvent) => {
+        event.preventDefault();
         this.virtualDirections.delete(direction);
 
         if (button.hasPointerCapture(event.pointerId)) {
@@ -73,7 +85,8 @@ export class InputController {
     });
 
     root.querySelectorAll<HTMLButtonElement>('[data-catch]').forEach((button) => {
-      button.addEventListener('pointerdown', () => {
+      button.addEventListener('pointerdown', (event) => {
+        event.preventDefault();
         this.catchQueued = true;
       });
     });
@@ -102,6 +115,7 @@ export class InputController {
     const gamepad = this.getPrimaryGamepad();
     let gamepadConnected = false;
     let gamepadCatch = false;
+    let gamepadInteract = false;
     let gamepadReset = false;
     let sprintHeld = this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
 
@@ -135,15 +149,20 @@ export class InputController {
 
       sprintHeld ||= (gamepad.buttons[7]?.value ?? 0) > 0.35 || gamepad.buttons[5]?.pressed === true;
       gamepadCatch = gamepad.buttons[0]?.pressed === true || (gamepad.buttons[6]?.value ?? 0) > 0.5;
+      gamepadInteract = gamepad.buttons[2]?.pressed === true;
       gamepadReset = gamepad.buttons[8]?.pressed === true;
     }
 
     const catchPressed = this.catchQueued || (gamepadCatch && !this.previousGamepadCatch);
+    const interactPressed =
+      this.interactQueued || (gamepadInteract && !this.previousGamepadInteract);
     const resetPressed = this.resetQueued || (gamepadReset && !this.previousGamepadReset);
 
     this.catchQueued = false;
+    this.interactQueued = false;
     this.resetQueued = false;
     this.previousGamepadCatch = gamepadCatch;
+    this.previousGamepadInteract = gamepadInteract;
     this.previousGamepadReset = gamepadReset;
 
     const magnitude = Math.hypot(moveX, moveZ);
@@ -157,6 +176,7 @@ export class InputController {
       moveX: clampAxis(moveX),
       moveZ: clampAxis(moveZ),
       catchPressed,
+      interactPressed,
       sprintHeld,
       resetPressed,
       inputLabel: gamepadConnected ? 'Gamepad' : this.lastInputLabel,

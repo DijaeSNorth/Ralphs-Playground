@@ -310,6 +310,15 @@ export class GameHud {
     return Boolean(this.activeWorkout);
   }
 
+  tryStartNearbyWorkout(): boolean {
+    if (!this.nearbyStation || this.activeWorkout || this.root.classList.contains('game-root--creating')) {
+      return false;
+    }
+
+    this.startWorkout(this.nearbyStation);
+    return true;
+  }
+
   updateWorkoutStation(station?: WorkoutStation): void {
     this.nearbyStation = station;
 
@@ -426,8 +435,8 @@ export class GameHud {
       return;
     }
 
-    if (this.activeWorkout.station.type === 'rower' || this.activeWorkout.station.type === 'bench') {
-      this.activeWorkout.cursor += this.activeWorkout.direction * deltaSeconds * 95;
+    if (this.usesTimingMeter(this.activeWorkout.station.type)) {
+      this.activeWorkout.cursor += this.activeWorkout.direction * deltaSeconds * 62;
 
       if (this.activeWorkout.cursor >= 100) {
         this.activeWorkout.cursor = 100;
@@ -451,18 +460,21 @@ export class GameHud {
     const workout = this.activeWorkout;
     let correct = false;
 
-    if (workout.station.type === 'treadmill') {
-      correct = action === workout.expected;
-      workout.expected = workout.expected === 'left' ? 'right' : 'left';
-    }
-
-    if (workout.station.type === 'rower') {
-      correct = action === 'pull' && workout.cursor >= 42 && workout.cursor <= 65;
-    }
-
-    if (workout.station.type === 'bench') {
-      correct = action === workout.expected && workout.cursor >= 34 && workout.cursor <= 72;
+    if (workout.station.type === 'bench' || workout.station.type === 'incline-bench') {
+      correct = action === workout.expected && workout.cursor >= 28 && workout.cursor <= 82;
       workout.expected = workout.expected === 'lower' ? 'press' : 'lower';
+    }
+
+    if (workout.station.type === 'squat-rack') {
+      correct =
+        action === workout.expected &&
+        (action === 'brace' || (workout.cursor >= 25 && workout.cursor <= 85));
+      workout.expected = this.getNextSquatAction(workout.expected);
+    }
+
+    if (workout.station.type === 'leg-press') {
+      correct = action === workout.expected && workout.cursor >= 30 && workout.cursor <= 84;
+      workout.expected = workout.expected === 'load' ? 'drive' : 'load';
     }
 
     if (workout.station.type === 'cable') {
@@ -524,21 +536,25 @@ export class GameHud {
   }
 
   private getWorkoutButtons(type: WorkoutType, expected: string): string {
-    if (type === 'treadmill') {
-      return `
-        <button type="button" data-workout-action="left" class="${expected === 'left' ? 'workout-button--next' : ''}">Left Step</button>
-        <button type="button" data-workout-action="right" class="${expected === 'right' ? 'workout-button--next' : ''}">Right Step</button>
-      `;
-    }
-
-    if (type === 'rower') {
-      return '<button type="button" data-workout-action="pull">Pull</button>';
-    }
-
-    if (type === 'bench') {
+    if (type === 'bench' || type === 'incline-bench') {
       return `
         <button type="button" data-workout-action="lower" class="${expected === 'lower' ? 'workout-button--next' : ''}">Lower</button>
         <button type="button" data-workout-action="press" class="${expected === 'press' ? 'workout-button--next' : ''}">Press</button>
+      `;
+    }
+
+    if (type === 'squat-rack') {
+      return `
+        <button type="button" data-workout-action="brace" class="${expected === 'brace' ? 'workout-button--next' : ''}">Brace</button>
+        <button type="button" data-workout-action="descend" class="${expected === 'descend' ? 'workout-button--next' : ''}">Descend</button>
+        <button type="button" data-workout-action="drive" class="${expected === 'drive' ? 'workout-button--next' : ''}">Drive</button>
+      `;
+    }
+
+    if (type === 'leg-press') {
+      return `
+        <button type="button" data-workout-action="load" class="${expected === 'load' ? 'workout-button--next' : ''}">Load</button>
+        <button type="button" data-workout-action="drive" class="${expected === 'drive' ? 'workout-button--next' : ''}">Drive</button>
       `;
     }
 
@@ -557,8 +573,16 @@ export class GameHud {
   }
 
   private getInitialExpectedAction(type: WorkoutType): string {
-    if (type === 'bench') {
+    if (type === 'bench' || type === 'incline-bench') {
       return 'lower';
+    }
+
+    if (type === 'squat-rack') {
+      return 'brace';
+    }
+
+    if (type === 'leg-press') {
+      return 'load';
     }
 
     if (type === 'cable') {
@@ -566,6 +590,27 @@ export class GameHud {
     }
 
     return 'left';
+  }
+
+  private usesTimingMeter(type: WorkoutType): boolean {
+    return (
+      type === 'bench' ||
+      type === 'incline-bench' ||
+      type === 'squat-rack' ||
+      type === 'leg-press'
+    );
+  }
+
+  private getNextSquatAction(current: string): string {
+    if (current === 'brace') {
+      return 'descend';
+    }
+
+    if (current === 'descend') {
+      return 'drive';
+    }
+
+    return 'brace';
   }
 
   private getNextCableAction(current: string): string {
@@ -581,16 +626,20 @@ export class GameHud {
   }
 
   private getWorkoutInstruction(type: WorkoutType): string {
-    if (type === 'treadmill') {
-      return 'Alternate left and right strides to build pace.';
-    }
-
-    if (type === 'rower') {
-      return 'Hit Pull while the cursor crosses the gold zone.';
-    }
-
     if (type === 'bench') {
       return 'Lower and press while the bar stays in the gold zone.';
+    }
+
+    if (type === 'incline-bench') {
+      return 'Control the incline press through the gold zone.';
+    }
+
+    if (type === 'squat-rack') {
+      return 'Brace, descend, and drive while the bar path stays clean.';
+    }
+
+    if (type === 'leg-press') {
+      return 'Load and drive the sled through the gold zone.';
     }
 
     if (type === 'cable') {
@@ -601,16 +650,20 @@ export class GameHud {
   }
 
   private getSuccessMessage(type: WorkoutType): string {
-    if (type === 'treadmill') {
-      return 'Clean stride. Keep the cadence.';
-    }
-
-    if (type === 'rower') {
-      return 'Strong pull. Time the next drive.';
-    }
-
     if (type === 'bench') {
       return 'Solid rep. Control the bar path.';
+    }
+
+    if (type === 'incline-bench') {
+      return 'Strong angle. Keep the press stacked.';
+    }
+
+    if (type === 'squat-rack') {
+      return 'Clean depth. Drive out of the pocket.';
+    }
+
+    if (type === 'leg-press') {
+      return 'Sled moving smooth. Reset the load.';
     }
 
     if (type === 'cable') {
@@ -621,16 +674,20 @@ export class GameHud {
   }
 
   private getMissMessage(type: WorkoutType): string {
-    if (type === 'treadmill') {
-      return 'Wrong foot. Reset the rhythm.';
-    }
-
-    if (type === 'rower') {
-      return 'Pull missed the power zone.';
-    }
-
     if (type === 'bench') {
       return 'Bar path drifted. Reset the rep.';
+    }
+
+    if (type === 'incline-bench') {
+      return 'Press drifted off angle.';
+    }
+
+    if (type === 'squat-rack') {
+      return 'Rep got loose. Re-brace.';
+    }
+
+    if (type === 'leg-press') {
+      return 'Sled missed the drive window.';
     }
 
     if (type === 'cable') {

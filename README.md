@@ -9,7 +9,7 @@ A low-poly browser game prototype about catching friendly gym buddies inside a l
 - Hold `Shift` or gamepad right trigger to sprint while stamina lasts.
 - Use the startup creator to choose hair, skin tone, and muscle build before entering the gym.
 - Walk up to highlighted gym stations to run short workout mini-games for stamina and protein shaker rewards.
-- Workout stations include a treadmill, rower, bench press, cable tower, and free weights rack.
+- Workout stations now focus on weighted strength work: flat bench, incline bench, squat rack, leg press, cable tower, and free weights.
 
 The game is designed as a static Vite app and can be deployed to GitHub Pages with the included workflow.
 

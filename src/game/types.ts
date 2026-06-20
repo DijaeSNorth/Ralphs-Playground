@@ -17,7 +17,13 @@ export type PlayerAppearance = {
   muscleBuild: MuscleBuild;
 };
 
-export type WorkoutType = 'treadmill' | 'rower' | 'bench' | 'cable' | 'free-weights';
+export type WorkoutType =
+  | 'bench'
+  | 'incline-bench'
+  | 'squat-rack'
+  | 'leg-press'
+  | 'cable'
+  | 'free-weights';
 
 export type WorkoutStation = {
   id: string;
@@ -87,6 +93,7 @@ export type ActionState = {
   moveX: number;
   moveZ: number;
   catchPressed: boolean;
+  interactPressed: boolean;
   sprintHeld: boolean;
   resetPressed: boolean;
   inputLabel: string;
