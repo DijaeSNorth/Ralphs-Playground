@@ -17,6 +17,18 @@ export type PlayerAppearance = {
   muscleBuild: MuscleBuild;
 };
 
+export type WorkoutType = 'treadmill' | 'rower' | 'bench' | 'cable' | 'free-weights';
+
+export type WorkoutStation = {
+  id: string;
+  name: string;
+  type: WorkoutType;
+  position: Vec2;
+  radius: number;
+  staminaReward: number;
+  shakerReward: number;
+};
+
 export type BuddyDefinition = {
   id: string;
   name: string;
@@ -64,6 +76,10 @@ export type WorldEvent =
   | {
       type: 'spawn';
       buddy: BuddyState;
+      message: string;
+    }
+  | {
+      type: 'workout';
       message: string;
     };
 

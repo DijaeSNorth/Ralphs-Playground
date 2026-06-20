@@ -5,7 +5,20 @@ import {
   MUSCLE_BUILD_OPTIONS,
   SKIN_TONE_OPTIONS
 } from '../game/content/playerAppearance';
-import type { ActionState, PlayerAppearance, WorldSnapshot } from '../game/types';
+import type { ActionState, PlayerAppearance, WorkoutStation, WorkoutType, WorldSnapshot } from '../game/types';
+
+type ActiveWorkout = {
+  station: WorkoutStation;
+  score: number;
+  attempts: number;
+  cursor: number;
+  direction: 1 | -1;
+  expected: string;
+  balance: number;
+  message: string;
+};
+
+const WORKOUT_GOAL = 5;
 
 export class GameHud {
   readonly canvasMount: HTMLDivElement;
@@ -21,9 +34,23 @@ export class GameHud {
   private readonly dexList: HTMLDivElement;
   private readonly toast: HTMLDivElement;
   private readonly inputStatus: HTMLDivElement;
+  private readonly workoutPrompt: HTMLDivElement;
+  private readonly workoutPromptName: HTMLSpanElement;
+  private readonly workoutPanel: HTMLDivElement;
+  private readonly workoutTitle: HTMLHeadingElement;
+  private readonly workoutInstruction: HTMLDivElement;
+  private readonly workoutMeterFill: HTMLDivElement;
+  private readonly workoutCursor: HTMLDivElement;
+  private readonly workoutScore: HTMLDivElement;
+  private readonly workoutButtons: HTMLDivElement;
   private readonly appearanceListeners: Array<(appearance: PlayerAppearance) => void> = [];
   private readonly startListeners: Array<() => void> = [];
+  private readonly workoutCompleteListeners: Array<(station: WorkoutStation) => void> = [];
   private appearance: PlayerAppearance = { ...DEFAULT_PLAYER_APPEARANCE };
+  private nearbyStation?: WorkoutStation;
+  private activeWorkout?: ActiveWorkout;
+  private suppressedWorkoutStationId?: string;
+  private workoutPromptCooldown = 0;
   private toastTimer = 0;
 
   constructor(root: HTMLElement) {
@@ -59,6 +86,24 @@ export class GameHud {
         <div class="toast" data-toast></div>
         <div class="input-status" data-input-status>Keyboard</div>
         <div class="control-hint">Move / Catch / Sprint</div>
+        <div class="workout-prompt" data-workout-prompt hidden>
+          <span data-workout-prompt-name>Workout station</span>
+          <button type="button" data-workout-start>Use</button>
+        </div>
+        <section class="workout-panel" data-workout-panel hidden aria-label="Workout mini game">
+          <div class="workout-head">
+            <h2 data-workout-title>Workout</h2>
+            <button type="button" data-workout-close aria-label="Close workout">Close</button>
+          </div>
+          <div class="workout-instruction" data-workout-instruction></div>
+          <div class="workout-meter" aria-hidden="true">
+            <div class="workout-meter-fill" data-workout-meter-fill></div>
+            <div class="workout-cursor" data-workout-cursor></div>
+            <div class="workout-zone"></div>
+          </div>
+          <div class="workout-score" data-workout-score>0 / 5</div>
+          <div class="workout-buttons" data-workout-buttons></div>
+        </section>
         <section class="character-creator" data-character-creator aria-label="Character creation">
           <div class="creator-panel">
             <div class="creator-head">
@@ -137,6 +182,15 @@ export class GameHud {
     const inputStatus = root.querySelector<HTMLDivElement>('[data-input-status]');
     const touchControls = root.querySelector<HTMLDivElement>('[data-touch-controls]');
     const characterCreator = root.querySelector<HTMLDivElement>('[data-character-creator]');
+    const workoutPrompt = root.querySelector<HTMLDivElement>('[data-workout-prompt]');
+    const workoutPromptName = root.querySelector<HTMLSpanElement>('[data-workout-prompt-name]');
+    const workoutPanel = root.querySelector<HTMLDivElement>('[data-workout-panel]');
+    const workoutTitle = root.querySelector<HTMLHeadingElement>('[data-workout-title]');
+    const workoutInstruction = root.querySelector<HTMLDivElement>('[data-workout-instruction]');
+    const workoutMeterFill = root.querySelector<HTMLDivElement>('[data-workout-meter-fill]');
+    const workoutCursor = root.querySelector<HTMLDivElement>('[data-workout-cursor]');
+    const workoutScore = root.querySelector<HTMLDivElement>('[data-workout-score]');
+    const workoutButtons = root.querySelector<HTMLDivElement>('[data-workout-buttons]');
 
     if (
       !canvasMount ||
@@ -149,7 +203,16 @@ export class GameHud {
       !toast ||
       !inputStatus ||
       !touchControls ||
-      !characterCreator
+      !characterCreator ||
+      !workoutPrompt ||
+      !workoutPromptName ||
+      !workoutPanel ||
+      !workoutTitle ||
+      !workoutInstruction ||
+      !workoutMeterFill ||
+      !workoutCursor ||
+      !workoutScore ||
+      !workoutButtons
     ) {
       throw new Error('HUD failed to initialize');
     }
@@ -165,11 +228,23 @@ export class GameHud {
     this.toast = toast;
     this.inputStatus = inputStatus;
     this.touchControls = touchControls;
+    this.workoutPrompt = workoutPrompt;
+    this.workoutPromptName = workoutPromptName;
+    this.workoutPanel = workoutPanel;
+    this.workoutTitle = workoutTitle;
+    this.workoutInstruction = workoutInstruction;
+    this.workoutMeterFill = workoutMeterFill;
+    this.workoutCursor = workoutCursor;
+    this.workoutScore = workoutScore;
+    this.workoutButtons = workoutButtons;
     this.bindCharacterCreator();
+    this.bindWorkoutUi();
     this.syncCreatorControls();
   }
 
   update(snapshot: WorldSnapshot, actions: ActionState, deltaSeconds: number): void {
+    this.updateActiveWorkout(deltaSeconds);
+    this.workoutPromptCooldown = Math.max(0, this.workoutPromptCooldown - deltaSeconds);
     this.staminaFill.style.width = `${Math.max(0, Math.min(100, snapshot.player.stamina))}%`;
     this.shakersValue.textContent = String(snapshot.player.proteinShakers);
     this.capturedValue.textContent = String(snapshot.player.capturedTotal);
@@ -227,6 +302,46 @@ export class GameHud {
     this.startListeners.push(callback);
   }
 
+  onWorkoutComplete(callback: (station: WorkoutStation) => void): void {
+    this.workoutCompleteListeners.push(callback);
+  }
+
+  isWorkoutActive(): boolean {
+    return Boolean(this.activeWorkout);
+  }
+
+  updateWorkoutStation(station?: WorkoutStation): void {
+    this.nearbyStation = station;
+
+    if (!station) {
+      this.suppressedWorkoutStationId = undefined;
+      this.workoutPromptCooldown = 0;
+    }
+
+    const promptSuppressed =
+      station &&
+      this.suppressedWorkoutStationId === station.id &&
+      this.workoutPromptCooldown > 0;
+
+    if (
+      this.activeWorkout ||
+      this.root.classList.contains('game-root--creating') ||
+      !station ||
+      promptSuppressed
+    ) {
+      this.workoutPrompt.hidden = true;
+      return;
+    }
+
+    if (this.suppressedWorkoutStationId !== station.id) {
+      this.suppressedWorkoutStationId = undefined;
+      this.workoutPromptCooldown = 0;
+    }
+
+    this.workoutPromptName.textContent = station.name;
+    this.workoutPrompt.hidden = false;
+  }
+
   closeCharacterCreator(): void {
     this.root.classList.remove('game-root--creating');
     this.characterCreator.hidden = true;
@@ -255,6 +370,274 @@ export class GameHud {
       this.closeCharacterCreator();
       this.startListeners.forEach((callback) => callback());
     });
+  }
+
+  private bindWorkoutUi(): void {
+    this.root.querySelector<HTMLButtonElement>('[data-workout-start]')?.addEventListener('click', () => {
+      if (this.nearbyStation) {
+        this.startWorkout(this.nearbyStation);
+      }
+    });
+
+    this.root.querySelector<HTMLButtonElement>('[data-workout-close]')?.addEventListener('click', () => {
+      this.closeWorkout();
+    });
+
+    this.workoutButtons.addEventListener('click', (event) => {
+      const target = event.target;
+
+      if (!(target instanceof HTMLButtonElement)) {
+        return;
+      }
+
+      const action = target.dataset.workoutAction;
+
+      if (action) {
+        this.handleWorkoutAction(action);
+      }
+    });
+  }
+
+  private startWorkout(station: WorkoutStation): void {
+    this.activeWorkout = {
+      station,
+      score: 0,
+      attempts: 0,
+      cursor: station.type === 'free-weights' ? 50 : 35,
+      direction: 1,
+      expected: this.getInitialExpectedAction(station.type),
+      balance: 0,
+      message: this.getWorkoutInstruction(station.type)
+    };
+    this.root.classList.add('game-root--workout');
+    this.workoutPrompt.hidden = true;
+    this.workoutPanel.hidden = false;
+    this.renderWorkout();
+  }
+
+  private closeWorkout(): void {
+    this.activeWorkout = undefined;
+    this.root.classList.remove('game-root--workout');
+    this.workoutPanel.hidden = true;
+  }
+
+  private updateActiveWorkout(deltaSeconds: number): void {
+    if (!this.activeWorkout) {
+      return;
+    }
+
+    if (this.activeWorkout.station.type === 'rower' || this.activeWorkout.station.type === 'bench') {
+      this.activeWorkout.cursor += this.activeWorkout.direction * deltaSeconds * 95;
+
+      if (this.activeWorkout.cursor >= 100) {
+        this.activeWorkout.cursor = 100;
+        this.activeWorkout.direction = -1;
+      }
+
+      if (this.activeWorkout.cursor <= 0) {
+        this.activeWorkout.cursor = 0;
+        this.activeWorkout.direction = 1;
+      }
+
+      this.renderWorkoutMeter();
+    }
+  }
+
+  private handleWorkoutAction(action: string): void {
+    if (!this.activeWorkout) {
+      return;
+    }
+
+    const workout = this.activeWorkout;
+    let correct = false;
+
+    if (workout.station.type === 'treadmill') {
+      correct = action === workout.expected;
+      workout.expected = workout.expected === 'left' ? 'right' : 'left';
+    }
+
+    if (workout.station.type === 'rower') {
+      correct = action === 'pull' && workout.cursor >= 42 && workout.cursor <= 65;
+    }
+
+    if (workout.station.type === 'bench') {
+      correct = action === workout.expected && workout.cursor >= 34 && workout.cursor <= 72;
+      workout.expected = workout.expected === 'lower' ? 'press' : 'lower';
+    }
+
+    if (workout.station.type === 'cable') {
+      correct = action === workout.expected;
+      workout.expected = this.getNextCableAction(workout.expected);
+    }
+
+    if (workout.station.type === 'free-weights') {
+      workout.balance += action === 'left' ? -24 : 24;
+      workout.balance *= 0.62;
+      correct = Math.abs(workout.balance) < 34;
+      workout.expected = action === 'left' ? 'right' : 'left';
+      workout.cursor = Math.max(0, Math.min(100, 50 + workout.balance));
+    }
+
+    workout.attempts += 1;
+
+    if (correct) {
+      workout.score += 1;
+      workout.message = this.getSuccessMessage(workout.station.type);
+    } else {
+      workout.score = Math.max(0, workout.score - 1);
+      workout.message = this.getMissMessage(workout.station.type);
+    }
+
+    if (workout.score >= WORKOUT_GOAL) {
+      const completedStation = workout.station;
+      this.closeWorkout();
+      this.suppressedWorkoutStationId = completedStation.id;
+      this.workoutPromptCooldown = 2.45;
+      this.workoutCompleteListeners.forEach((callback) => callback(completedStation));
+      return;
+    }
+
+    this.renderWorkout();
+  }
+
+  private renderWorkout(): void {
+    if (!this.activeWorkout) {
+      return;
+    }
+
+    const workout = this.activeWorkout;
+    this.workoutTitle.textContent = workout.station.name;
+    this.workoutInstruction.textContent = workout.message;
+    this.workoutScore.textContent = `${workout.score} / ${WORKOUT_GOAL}`;
+    this.workoutButtons.innerHTML = this.getWorkoutButtons(workout.station.type, workout.expected);
+    this.renderWorkoutMeter();
+  }
+
+  private renderWorkoutMeter(): void {
+    if (!this.activeWorkout) {
+      return;
+    }
+
+    const progress = (this.activeWorkout.score / WORKOUT_GOAL) * 100;
+    this.workoutMeterFill.style.width = `${progress}%`;
+    this.workoutCursor.style.left = `${this.activeWorkout.cursor}%`;
+  }
+
+  private getWorkoutButtons(type: WorkoutType, expected: string): string {
+    if (type === 'treadmill') {
+      return `
+        <button type="button" data-workout-action="left" class="${expected === 'left' ? 'workout-button--next' : ''}">Left Step</button>
+        <button type="button" data-workout-action="right" class="${expected === 'right' ? 'workout-button--next' : ''}">Right Step</button>
+      `;
+    }
+
+    if (type === 'rower') {
+      return '<button type="button" data-workout-action="pull">Pull</button>';
+    }
+
+    if (type === 'bench') {
+      return `
+        <button type="button" data-workout-action="lower" class="${expected === 'lower' ? 'workout-button--next' : ''}">Lower</button>
+        <button type="button" data-workout-action="press" class="${expected === 'press' ? 'workout-button--next' : ''}">Press</button>
+      `;
+    }
+
+    if (type === 'cable') {
+      return `
+        <button type="button" data-workout-action="high" class="${expected === 'high' ? 'workout-button--next' : ''}">High</button>
+        <button type="button" data-workout-action="mid" class="${expected === 'mid' ? 'workout-button--next' : ''}">Mid</button>
+        <button type="button" data-workout-action="low" class="${expected === 'low' ? 'workout-button--next' : ''}">Low</button>
+      `;
+    }
+
+    return `
+      <button type="button" data-workout-action="left" class="${expected === 'left' ? 'workout-button--next' : ''}">Left Curl</button>
+      <button type="button" data-workout-action="right" class="${expected === 'right' ? 'workout-button--next' : ''}">Right Curl</button>
+    `;
+  }
+
+  private getInitialExpectedAction(type: WorkoutType): string {
+    if (type === 'bench') {
+      return 'lower';
+    }
+
+    if (type === 'cable') {
+      return 'high';
+    }
+
+    return 'left';
+  }
+
+  private getNextCableAction(current: string): string {
+    if (current === 'high') {
+      return 'mid';
+    }
+
+    if (current === 'mid') {
+      return 'low';
+    }
+
+    return 'high';
+  }
+
+  private getWorkoutInstruction(type: WorkoutType): string {
+    if (type === 'treadmill') {
+      return 'Alternate left and right strides to build pace.';
+    }
+
+    if (type === 'rower') {
+      return 'Hit Pull while the cursor crosses the gold zone.';
+    }
+
+    if (type === 'bench') {
+      return 'Lower and press while the bar stays in the gold zone.';
+    }
+
+    if (type === 'cable') {
+      return 'Match the high, mid, low cable pattern.';
+    }
+
+    return 'Balance curls left and right without tipping the meter.';
+  }
+
+  private getSuccessMessage(type: WorkoutType): string {
+    if (type === 'treadmill') {
+      return 'Clean stride. Keep the cadence.';
+    }
+
+    if (type === 'rower') {
+      return 'Strong pull. Time the next drive.';
+    }
+
+    if (type === 'bench') {
+      return 'Solid rep. Control the bar path.';
+    }
+
+    if (type === 'cable') {
+      return 'Pattern locked. Keep the cable smooth.';
+    }
+
+    return 'Balanced curl. Keep both sides even.';
+  }
+
+  private getMissMessage(type: WorkoutType): string {
+    if (type === 'treadmill') {
+      return 'Wrong foot. Reset the rhythm.';
+    }
+
+    if (type === 'rower') {
+      return 'Pull missed the power zone.';
+    }
+
+    if (type === 'bench') {
+      return 'Bar path drifted. Reset the rep.';
+    }
+
+    if (type === 'cable') {
+      return 'Cable sequence slipped.';
+    }
+
+    return 'Balance drifted. Counter with the other side.';
   }
 
   private setAppearance(appearance: Partial<PlayerAppearance>): void {

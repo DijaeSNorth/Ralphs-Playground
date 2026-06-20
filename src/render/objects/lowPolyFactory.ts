@@ -4,7 +4,7 @@ import {
   getHairOption,
   getSkinToneOption
 } from '../../game/content/playerAppearance';
-import type { BuddyDefinition, MuscleBuild, PlayerAppearance } from '../../game/types';
+import type { BuddyDefinition, MuscleBuild, PlayerAppearance, WorkoutStation } from '../../game/types';
 
 function standardMaterial(color: number, roughness = 0.78): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
@@ -242,6 +242,193 @@ export function createGymProps(): THREE.Group {
     const platform = box(4.1, 0.12, 2.4, 0x8b6542, spot.x, 0.1, spot.z);
     const pad = box(2.3, 0.14, 1.8, 0x59667a, spot.x, 0.22, spot.z);
     group.add(platform, pad);
+  }
+
+  return group;
+}
+
+function addStationMarker(group: THREE.Group, station: WorkoutStation, color = 0xf6c85f): void {
+  const marker = new THREE.Mesh(
+    new THREE.RingGeometry(1.15, 1.3, 24),
+    new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.5,
+      depthWrite: false
+    })
+  );
+  marker.rotation.x = -Math.PI / 2;
+  marker.position.set(station.position.x, 0.2, station.position.z);
+  group.add(marker);
+}
+
+function createTreadmillStation(station: WorkoutStation): THREE.Group {
+  const group = new THREE.Group();
+  const base = box(3.2, 0.18, 1.35, 0x2f3d4c, 0, 0.18, 0);
+  const belt = box(2.55, 0.08, 0.82, 0x172436, 0, 0.34, 0.05);
+  const front = box(0.22, 0.55, 1.2, 0x34445a, 1.46, 0.6, 0);
+  const consolePost = cylinder(0.05, 0.05, 1.0, 0x34445a, 8);
+  consolePost.position.set(1.28, 1.05, 0);
+  const console = box(0.7, 0.42, 0.12, 0x21a7a5, 1.3, 1.55, 0);
+  console.rotation.z = -0.2;
+  const leftRail = cylinder(0.035, 0.035, 1.65, 0xf9f7ef, 8);
+  leftRail.rotation.z = Math.PI / 2;
+  leftRail.position.set(0.58, 1.0, -0.62);
+  const rightRail = leftRail.clone();
+  rightRail.position.z = 0.62;
+  group.add(base, belt, front, consolePost, console, leftRail, rightRail);
+  group.position.set(station.position.x, 0, station.position.z);
+  group.rotation.y = 0.12;
+  return markShadows(group) as THREE.Group;
+}
+
+function createRowerStation(station: WorkoutStation): THREE.Group {
+  const group = new THREE.Group();
+  const rail = box(3.2, 0.12, 0.16, 0x34445a, 0, 0.26, 0);
+  const seat = box(0.5, 0.16, 0.44, 0x1f2d3a, -0.25, 0.46, 0);
+  const flywheel = new THREE.Mesh(new THREE.CylinderGeometry(0.48, 0.48, 0.18, 10), standardMaterial(0x59667a));
+  flywheel.rotation.z = Math.PI / 2;
+  flywheel.position.set(1.62, 0.55, 0);
+  const footA = box(0.5, 0.08, 0.26, 0xff705c, 0.85, 0.4, -0.18);
+  const footB = footA.clone();
+  footB.position.z = 0.18;
+  const handle = box(0.55, 0.07, 0.08, 0xf9f7ef, 0.48, 0.72, 0);
+  const chain = cylinder(0.018, 0.018, 1.1, 0xf6c85f, 6);
+  chain.rotation.z = Math.PI / 2;
+  chain.position.set(0.98, 0.72, 0);
+  group.add(rail, seat, flywheel, footA, footB, handle, chain);
+  group.position.set(station.position.x, 0, station.position.z);
+  group.rotation.y = -0.35;
+  return markShadows(group) as THREE.Group;
+}
+
+function createBenchStation(station: WorkoutStation): THREE.Group {
+  const group = new THREE.Group();
+  const platform = box(3.4, 0.1, 2.1, 0x8b6542, 0, 0.12, 0);
+  const pad = box(1.75, 0.16, 0.52, 0x1b2f43, -0.2, 0.48, 0);
+  pad.rotation.z = -0.12;
+  const postA = cylinder(0.07, 0.07, 1.75, 0x34445a, 8);
+  postA.position.set(0.7, 1.02, -0.55);
+  const postB = postA.clone();
+  postB.position.z = 0.55;
+  const bar = cylinder(0.04, 0.04, 1.8, 0xf9f7ef, 8);
+  bar.rotation.x = Math.PI / 2;
+  bar.position.set(0.7, 1.88, 0);
+  const plateA = cylinder(0.22, 0.22, 0.12, 0x303b4d, 10);
+  plateA.rotation.x = Math.PI / 2;
+  plateA.position.set(0.7, 1.88, -1.02);
+  const plateB = plateA.clone();
+  plateB.position.z = 1.02;
+  group.add(platform, pad, postA, postB, bar, plateA, plateB);
+  group.position.set(station.position.x, 0, station.position.z);
+  group.rotation.y = -0.7;
+  return markShadows(group) as THREE.Group;
+}
+
+function createCableTowerStation(station: WorkoutStation): THREE.Group {
+  const group = new THREE.Group();
+  const base = box(2.4, 0.16, 1.4, 0x303b4d, 0, 0.14, 0);
+  const towerA = box(0.18, 3.1, 0.18, 0x34445a, -0.75, 1.65, 0);
+  const towerB = towerA.clone();
+  towerB.position.x = 0.75;
+  const top = box(1.75, 0.18, 0.2, 0x34445a, 0, 3.08, 0);
+  const stack = new THREE.Group();
+  for (let i = 0; i < 6; i += 1) {
+    stack.add(box(0.52, 0.08, 0.52, 0x59667a, 0, 0.45 + i * 0.1, -0.38));
+  }
+  const pulleyA = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.025, 6, 12), standardMaterial(0xf6c85f));
+  pulleyA.position.set(-0.75, 2.85, 0.15);
+  const pulleyB = pulleyA.clone();
+  pulleyB.position.x = 0.75;
+  const handleA = box(0.08, 0.42, 0.08, 0xff705c, -0.9, 1.45, 0.36);
+  const handleB = handleA.clone();
+  handleB.position.x = 0.9;
+  group.add(base, towerA, towerB, top, stack, pulleyA, pulleyB, handleA, handleB);
+  group.position.set(station.position.x, 0, station.position.z);
+  group.rotation.y = 0.6;
+  return markShadows(group) as THREE.Group;
+}
+
+function createFreeWeightsStation(station: WorkoutStation): THREE.Group {
+  const group = new THREE.Group();
+  const rackBack = box(3.0, 1.25, 0.18, 0x34445a, 0, 0.86, -0.45);
+  const rackShelfA = box(3.2, 0.12, 0.42, 0x303b4d, 0, 0.64, -0.12);
+  const rackShelfB = rackShelfA.clone();
+  rackShelfB.position.y = 1.08;
+  group.add(rackBack, rackShelfA, rackShelfB);
+
+  for (let i = 0; i < 6; i += 1) {
+    const x = -1.25 + i * 0.5;
+    const dumbbell = new THREE.Group();
+    const grip = cylinder(0.035, 0.035, 0.32, 0xf9f7ef, 8);
+    grip.rotation.z = Math.PI / 2;
+    const headA = cylinder(0.1 + i * 0.012, 0.1 + i * 0.012, 0.08, 0x59667a, 6);
+    headA.rotation.z = Math.PI / 2;
+    headA.position.x = -0.22;
+    const headB = headA.clone();
+    headB.position.x = 0.22;
+    dumbbell.add(grip, headA, headB);
+    dumbbell.position.set(x, i % 2 === 0 ? 1.17 : 0.72, -0.04);
+    dumbbell.rotation.y = 0.2;
+    group.add(dumbbell);
+  }
+
+  for (let i = 0; i < 4; i += 1) {
+    const bell = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.24 + i * 0.03, 0), standardMaterial(0x2f3d4c));
+    body.scale.set(1, 0.86, 1);
+    body.position.y = 0.28;
+    const handle = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.035, 6, 8, Math.PI), standardMaterial(0xf6c85f));
+    handle.position.y = 0.56;
+    handle.rotation.z = Math.PI;
+    bell.add(body, handle);
+    bell.position.set(-1.15 + i * 0.75, 0, 0.8);
+    group.add(bell);
+  }
+
+  const plateTree = new THREE.Group();
+  const post = cylinder(0.06, 0.06, 1.4, 0x34445a, 8);
+  post.position.y = 0.72;
+  plateTree.add(post);
+  for (let i = 0; i < 5; i += 1) {
+    const plate = new THREE.Mesh(new THREE.TorusGeometry(0.2 + i * 0.02, 0.035, 6, 12), standardMaterial(0x59667a));
+    plate.position.set(0, 0.22 + i * 0.18, 0);
+    plate.rotation.x = Math.PI / 2;
+    plateTree.add(plate);
+  }
+  plateTree.position.set(1.55, 0, 0.72);
+  group.add(plateTree);
+
+  group.position.set(station.position.x, 0, station.position.z);
+  group.rotation.y = 0.45;
+  return markShadows(group) as THREE.Group;
+}
+
+export function createWorkoutEquipment(stations: WorkoutStation[]): THREE.Group {
+  const group = new THREE.Group();
+
+  for (const station of stations) {
+    addStationMarker(group, station);
+
+    if (station.type === 'treadmill') {
+      group.add(createTreadmillStation(station));
+    }
+
+    if (station.type === 'rower') {
+      group.add(createRowerStation(station));
+    }
+
+    if (station.type === 'bench') {
+      group.add(createBenchStation(station));
+    }
+
+    if (station.type === 'cable') {
+      group.add(createCableTowerStation(station));
+    }
+
+    if (station.type === 'free-weights') {
+      group.add(createFreeWeightsStation(station));
+    }
   }
 
   return group;

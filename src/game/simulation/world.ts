@@ -1,5 +1,13 @@
 import { BUDDY_DEFINITIONS, getBuddyDefinition } from '../content/buddies';
-import type { ActionState, BuddyState, RepDexEntry, Vec2, WorldEvent, WorldSnapshot } from '../types';
+import type {
+  ActionState,
+  BuddyState,
+  RepDexEntry,
+  Vec2,
+  WorkoutStation,
+  WorldEvent,
+  WorldSnapshot
+} from '../types';
 
 const ARENA_RADIUS = 18;
 const CAPTURE_RANGE = 2.85;
@@ -128,6 +136,19 @@ export class GymBuddyWorld {
 
   drainEvents(): WorldEvent[] {
     return this.events.splice(0, this.events.length);
+  }
+
+  completeWorkout(station: WorkoutStation): void {
+    this.player.stamina = clamp(this.player.stamina + station.staminaReward, 0, MAX_STAMINA);
+    this.player.proteinShakers = clamp(
+      this.player.proteinShakers + station.shakerReward,
+      0,
+      MAX_PROTEIN_SHAKERS
+    );
+    this.events.push({
+      type: 'workout',
+      message: `${station.name} complete. +${station.staminaReward} stamina, +${station.shakerReward} shaker.`
+    });
   }
 
   getSnapshot(): WorldSnapshot {

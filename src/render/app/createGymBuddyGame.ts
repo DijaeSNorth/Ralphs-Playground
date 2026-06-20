@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getNearestWorkoutStation, WORKOUT_STATIONS } from '../../game/content/equipment';
 import { InputController } from '../../game/input/actions';
 import { GymBuddyWorld } from '../../game/simulation/world';
 import type { ActionState, PlayerAppearance, Vec2, WorldEvent, WorldSnapshot } from '../../game/types';
@@ -9,7 +10,8 @@ import {
   createCaptureRing,
   createGymProps,
   createProteinShakerProjectile,
-  createPlayerMesh
+  createPlayerMesh,
+  createWorkoutEquipment
 } from '../objects/lowPolyFactory';
 import { getBuddyDefinition } from '../../game/content/buddies';
 
@@ -63,7 +65,12 @@ class GymBuddyRenderer {
     this.camera.position.set(0, 11, 14);
     this.scene.add(this.clockShadowTarget);
     this.addLights();
-    this.scene.add(createArena(initialSnapshot.arenaRadius), createGymProps(), this.player);
+    this.scene.add(
+      createArena(initialSnapshot.arenaRadius),
+      createGymProps(),
+      createWorkoutEquipment(WORKOUT_STATIONS),
+      this.player
+    );
 
     const resizeObserver = new ResizeObserver(() => this.resize());
     resizeObserver.observe(this.container);
@@ -291,6 +298,9 @@ export function createGymBuddyGame(root: HTMLElement): void {
     gameStarted = true;
     hud.pushMessage('Mega Gym is open.');
   });
+  hud.onWorkoutComplete((station) => {
+    world.completeWorkout(station);
+  });
   renderer.updatePlayerAppearance(hud.getAppearance());
 
   let lastTime = performance.now();
@@ -300,16 +310,19 @@ export function createGymBuddyGame(root: HTMLElement): void {
     lastTime = now;
 
     const inputActions = input.read();
-    const actions = gameStarted ? inputActions : createPausedActions(inputActions);
-    world.update(gameStarted ? deltaSeconds : 0, actions);
+    const canSimulate = gameStarted && !hud.isWorkoutActive();
+    const actions = canSimulate ? inputActions : createPausedActions(inputActions);
+    world.update(canSimulate ? deltaSeconds : 0, actions);
     const events = world.drainEvents();
     const snapshot = world.getSnapshot();
+    const nearbyStation = gameStarted ? getNearestWorkoutStation(snapshot.player.position) : undefined;
 
     for (const event of events) {
       hud.pushMessage(event.message);
     }
 
     renderer.update(snapshot, events, deltaSeconds);
+    hud.updateWorkoutStation(nearbyStation?.station);
     hud.update(snapshot, inputActions, deltaSeconds);
     requestAnimationFrame(frame);
   }
