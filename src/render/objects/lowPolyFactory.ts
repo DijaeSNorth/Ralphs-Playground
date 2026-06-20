@@ -4,7 +4,13 @@ import {
   getHairOption,
   getSkinToneOption
 } from '../../game/content/playerAppearance';
-import type { BuddyDefinition, MuscleBuild, PlayerAppearance, WorkoutStation } from '../../game/types';
+import type {
+  BossDefinition,
+  BuddyDefinition,
+  MuscleBuild,
+  PlayerAppearance,
+  WorkoutStation
+} from '../../game/types';
 
 const standardMaterialCache = new Map<string, THREE.MeshStandardMaterial>();
 const basicMaterialCache = new Map<string, THREE.MeshBasicMaterial>();
@@ -813,6 +819,44 @@ export function createBuddyMesh(definition: BuddyDefinition): THREE.Group {
 
   addBuddyMuscleFeatures(group, definition);
 
+  return markShadows(group) as THREE.Group;
+}
+
+export function createBossMesh(definition: BossDefinition): THREE.Group {
+  const group = new THREE.Group();
+  const body = cylinder(0.56, 0.72, 1.18, definition.color, 7);
+  body.position.y = 0.9;
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.36, 0), standardMaterial(0xffc28f));
+  head.position.y = 1.67;
+  const belt = box(0.94, 0.14, 0.18, definition.accent, 0, 0.64, 0.5);
+
+  const leftArm = cylinder(0.18, 0.22, 0.88, definition.accent, 6);
+  leftArm.position.set(-0.78, 0.98, 0);
+  leftArm.rotation.z = 0.28;
+  const rightArm = leftArm.clone();
+  rightArm.position.x = 0.78;
+  rightArm.rotation.z = -0.28;
+
+  const leftLeg = cylinder(0.16, 0.22, 0.72, 0x1b2f43, 6);
+  leftLeg.position.set(-0.24, 0.38, 0);
+  const rightLeg = leftLeg.clone();
+  rightLeg.position.x = 0.24;
+
+  const bar = cylinder(0.05, 0.05, 2.35, 0xf9f7ef, 8);
+  bar.rotation.z = Math.PI / 2;
+  bar.position.set(0, 1.82, 0);
+  const plateA = cylinder(0.24, 0.24, 0.16, 0x303b4d, 10);
+  plateA.rotation.z = Math.PI / 2;
+  plateA.position.set(-1.32, 1.82, 0);
+  const plateB = plateA.clone();
+  plateB.position.x = 1.32;
+
+  const aura = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.12, 24), basicMaterial(definition.accent, 0.38));
+  aura.rotation.x = -Math.PI / 2;
+  aura.position.y = 0.08;
+
+  group.add(body, head, belt, leftArm, rightArm, leftLeg, rightLeg, bar, plateA, plateB, aura);
+  group.scale.setScalar(1.15);
   return markShadows(group) as THREE.Group;
 }
 

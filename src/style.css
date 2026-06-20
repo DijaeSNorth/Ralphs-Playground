@@ -136,7 +136,9 @@ button {
 .input-status,
 .control-hint,
 .toast,
-.repdex-panel {
+.repdex-panel,
+.crew-panel,
+.boss-panel {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--panel);
@@ -228,6 +230,16 @@ button {
   background: rgba(255, 255, 255, 0.82);
 }
 
+.crew-panel {
+  position: absolute;
+  left: 18px;
+  bottom: 62px;
+  width: 302px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.86);
+  pointer-events: auto;
+}
+
 .panel-title {
   margin-bottom: 8px;
   color: var(--muted);
@@ -239,6 +251,20 @@ button {
 .dex-list {
   display: grid;
   gap: 5px;
+}
+
+.crew-list {
+  display: grid;
+  gap: 6px;
+}
+
+.crew-empty {
+  padding: 9px;
+  border: 1px dashed rgba(23, 36, 54, 0.18);
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 760;
 }
 
 .dex-row {
@@ -270,6 +296,143 @@ button {
 .dex-row--caught {
   color: var(--ink);
   background: rgba(73, 183, 121, 0.18);
+}
+
+.crew-row {
+  display: grid;
+  gap: 5px;
+  min-height: 74px;
+  padding: 7px;
+  border: 1px solid rgba(23, 36, 54, 0.1);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.crew-main,
+.crew-stats,
+.crew-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.crew-main {
+  justify-content: space-between;
+  font-size: 0.76rem;
+  font-weight: 840;
+}
+
+.crew-main span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crew-main strong {
+  flex: 0 0 auto;
+  color: var(--coral);
+  font-size: 0.72rem;
+}
+
+.crew-stats {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 820;
+}
+
+.crew-meter {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #dce5df;
+}
+
+.crew-meter div {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--teal), var(--gold));
+}
+
+.crew-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 5px;
+}
+
+.crew-actions span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 820;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.crew-actions button,
+.boss-panel button {
+  min-height: 27px;
+  border: 1px solid rgba(23, 36, 54, 0.12);
+  border-radius: 6px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.86);
+  font-size: 0.66rem;
+  font-weight: 840;
+  cursor: pointer;
+}
+
+.crew-actions button:disabled {
+  color: rgba(23, 36, 54, 0.36);
+  cursor: default;
+}
+
+.boss-panel {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  width: min(320px, calc(100vw - 36px));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px 10px;
+  align-items: center;
+  padding: 10px;
+  color: #ffffff;
+  background: rgba(23, 36, 54, 0.9);
+  pointer-events: auto;
+  transform: translateX(-50%);
+}
+
+.boss-panel[hidden] {
+  display: none;
+}
+
+.boss-panel div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  grid-column: 1 / -1;
+  font-size: 0.82rem;
+  font-weight: 860;
+}
+
+.boss-panel span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.boss-panel > span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.7rem;
+  font-weight: 820;
+}
+
+.boss-panel button {
+  color: #ffffff;
+  border-color: transparent;
+  background: var(--coral);
 }
 
 .toast {
@@ -496,9 +659,12 @@ button {
   background: var(--ink) !important;
 }
 
+.game-root--creating .crew-panel,
+.game-root--creating .boss-panel,
 .game-root--workout .touch-controls,
 .game-root--workout .control-hint,
-.game-root--workout .repdex-panel {
+.game-root--workout .repdex-panel,
+.game-root--workout .crew-panel {
   display: none;
 }
 
@@ -724,7 +890,32 @@ button {
   }
 
   .toast {
-    bottom: 184px;
+    bottom: 292px;
+  }
+
+  .crew-panel {
+    right: 12px;
+    bottom: 148px;
+    left: 12px;
+    width: auto;
+    max-height: 132px;
+    padding: 8px;
+  }
+
+  .crew-list {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(176px, 1fr);
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .crew-row {
+    min-height: 82px;
+  }
+
+  .boss-panel {
+    top: 154px;
+    width: min(300px, calc(100vw - 24px));
   }
 
   .workout-prompt {
@@ -826,6 +1017,18 @@ button {
   .touch-action--catch {
     width: 82px;
     height: 82px;
+  }
+
+  .crew-panel {
+    max-height: 118px;
+  }
+
+  .crew-list {
+    grid-auto-columns: minmax(168px, 1fr);
+  }
+
+  .crew-row {
+    min-height: 78px;
   }
 }
 

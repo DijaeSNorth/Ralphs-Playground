@@ -5,7 +5,15 @@ import {
   MUSCLE_BUILD_OPTIONS,
   SKIN_TONE_OPTIONS
 } from '../game/content/playerAppearance';
-import type { ActionState, PlayerAppearance, WorkoutStation, WorkoutType, WorldSnapshot } from '../game/types';
+import type {
+  ActionState,
+  BossState,
+  BuddyRosterEntry,
+  PlayerAppearance,
+  WorkoutStation,
+  WorkoutType,
+  WorldSnapshot
+} from '../game/types';
 
 type ActiveWorkout = {
   station: WorkoutStation;
@@ -32,6 +40,12 @@ export class GameHud {
   private readonly objective: HTMLDivElement;
   private readonly target: HTMLDivElement;
   private readonly dexList: HTMLDivElement;
+  private readonly crewCount: HTMLSpanElement;
+  private readonly crewList: HTMLDivElement;
+  private readonly bossPanel: HTMLDivElement;
+  private readonly bossName: HTMLSpanElement;
+  private readonly bossStats: HTMLSpanElement;
+  private readonly bossTimer: HTMLSpanElement;
   private readonly toast: HTMLDivElement;
   private readonly inputStatus: HTMLDivElement;
   private readonly workoutPrompt: HTMLDivElement;
@@ -46,12 +60,17 @@ export class GameHud {
   private readonly appearanceListeners: Array<(appearance: PlayerAppearance) => void> = [];
   private readonly startListeners: Array<() => void> = [];
   private readonly workoutCompleteListeners: Array<(station: WorkoutStation) => void> = [];
+  private readonly rosterTrainListeners: Array<(rosterId: number) => void> = [];
+  private readonly rosterSpotListeners: Array<(rosterId: number) => void> = [];
+  private readonly bossChallengeListeners: Array<() => void> = [];
   private appearance: PlayerAppearance = { ...DEFAULT_PLAYER_APPEARANCE };
   private nearbyStation?: WorkoutStation;
   private activeWorkout?: ActiveWorkout;
   private suppressedWorkoutStationId?: string;
   private workoutPromptCooldown = 0;
   private toastTimer = 0;
+  private renderedDexMarkup = '';
+  private renderedCrewMarkup = '';
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -72,6 +91,10 @@ export class GameHud {
             <span>RepDex</span>
             <strong data-captured>0</strong>
           </div>
+          <div class="stat-row">
+            <span>Crew</span>
+            <strong data-crew-count>0/4</strong>
+          </div>
           <div class="stamina-wrap" aria-label="Stamina">
             <span>Stamina</span>
             <div class="stamina-track">
@@ -82,6 +105,18 @@ export class GameHud {
         <section class="repdex-panel" aria-label="RepDex entries">
           <div class="panel-title">RepDex</div>
           <div class="dex-list" data-dex-list></div>
+        </section>
+        <section class="crew-panel" aria-label="Crew buddies">
+          <div class="panel-title">Crew</div>
+          <div class="crew-list" data-crew-list></div>
+        </section>
+        <section class="boss-panel" data-boss-panel hidden aria-label="Boss challenge">
+          <div>
+            <span data-boss-name>Boss</span>
+            <strong data-boss-timer>0s</strong>
+          </div>
+          <span data-boss-stats>Power set</span>
+          <button type="button" data-boss-challenge>Challenge</button>
         </section>
         <div class="toast" data-toast></div>
         <div class="input-status" data-input-status>Keyboard</div>
@@ -168,9 +203,15 @@ export class GameHud {
     const staminaFill = root.querySelector<HTMLDivElement>('[data-stamina]');
     const shakersValue = root.querySelector<HTMLSpanElement>('[data-shakers]');
     const capturedValue = root.querySelector<HTMLSpanElement>('[data-captured]');
+    const crewCount = root.querySelector<HTMLSpanElement>('[data-crew-count]');
     const objective = root.querySelector<HTMLDivElement>('[data-objective]');
     const target = root.querySelector<HTMLDivElement>('[data-target]');
     const dexList = root.querySelector<HTMLDivElement>('[data-dex-list]');
+    const crewList = root.querySelector<HTMLDivElement>('[data-crew-list]');
+    const bossPanel = root.querySelector<HTMLDivElement>('[data-boss-panel]');
+    const bossName = root.querySelector<HTMLSpanElement>('[data-boss-name]');
+    const bossStats = root.querySelector<HTMLSpanElement>('[data-boss-stats]');
+    const bossTimer = root.querySelector<HTMLSpanElement>('[data-boss-timer]');
     const toast = root.querySelector<HTMLDivElement>('[data-toast]');
     const inputStatus = root.querySelector<HTMLDivElement>('[data-input-status]');
     const touchControls = root.querySelector<HTMLDivElement>('[data-touch-controls]');
@@ -190,9 +231,15 @@ export class GameHud {
       !staminaFill ||
       !shakersValue ||
       !capturedValue ||
+      !crewCount ||
       !objective ||
       !target ||
       !dexList ||
+      !crewList ||
+      !bossPanel ||
+      !bossName ||
+      !bossStats ||
+      !bossTimer ||
       !toast ||
       !inputStatus ||
       !touchControls ||
@@ -215,9 +262,15 @@ export class GameHud {
     this.staminaFill = staminaFill;
     this.shakersValue = shakersValue;
     this.capturedValue = capturedValue;
+    this.crewCount = crewCount;
     this.objective = objective;
     this.target = target;
     this.dexList = dexList;
+    this.crewList = crewList;
+    this.bossPanel = bossPanel;
+    this.bossName = bossName;
+    this.bossStats = bossStats;
+    this.bossTimer = bossTimer;
     this.toast = toast;
     this.inputStatus = inputStatus;
     this.touchControls = touchControls;
@@ -232,6 +285,8 @@ export class GameHud {
     this.workoutButtons = workoutButtons;
     this.bindCharacterCreator();
     this.bindWorkoutUi();
+    this.bindCrewUi();
+    this.bindBossUi();
     this.syncCreatorControls();
   }
 
@@ -241,6 +296,7 @@ export class GameHud {
     this.staminaFill.style.width = `${Math.max(0, Math.min(100, snapshot.player.stamina))}%`;
     this.shakersValue.textContent = String(snapshot.player.proteinShakers);
     this.capturedValue.textContent = String(snapshot.player.capturedTotal);
+    this.crewCount.textContent = `${snapshot.roster.length}/${snapshot.maxRosterSize}`;
     this.inputStatus.textContent = actions.gamepadConnected ? 'Gamepad' : actions.inputLabel;
 
     if (snapshot.nearestBuddy) {
@@ -260,7 +316,7 @@ export class GameHud {
       this.objective.textContent = 'Find a gym buddy and get close.';
     }
 
-    this.dexList.innerHTML = snapshot.repDex
+    const dexMarkup = snapshot.repDex
       .map(
         (entry) => `
           <div class="dex-row ${entry.count > 0 ? 'dex-row--caught' : ''}">
@@ -270,6 +326,17 @@ export class GameHud {
         `
       )
       .join('');
+    if (dexMarkup !== this.renderedDexMarkup) {
+      this.dexList.innerHTML = dexMarkup;
+      this.renderedDexMarkup = dexMarkup;
+    }
+
+    const crewMarkup = this.renderCrew(snapshot.roster);
+    if (crewMarkup !== this.renderedCrewMarkup) {
+      this.crewList.innerHTML = crewMarkup;
+      this.renderedCrewMarkup = crewMarkup;
+    }
+    this.updateBossPanel(snapshot.activeBoss);
 
     if (this.toastTimer > 0) {
       this.toastTimer -= deltaSeconds;
@@ -297,6 +364,18 @@ export class GameHud {
 
   onWorkoutComplete(callback: (station: WorkoutStation) => void): void {
     this.workoutCompleteListeners.push(callback);
+  }
+
+  onRosterTrain(callback: (rosterId: number) => void): void {
+    this.rosterTrainListeners.push(callback);
+  }
+
+  onRosterSpot(callback: (rosterId: number) => void): void {
+    this.rosterSpotListeners.push(callback);
+  }
+
+  onBossChallenge(callback: () => void): void {
+    this.bossChallengeListeners.push(callback);
   }
 
   isWorkoutActive(): boolean {
@@ -398,6 +477,88 @@ export class GameHud {
         this.handleWorkoutAction(action);
       }
     });
+  }
+
+  private bindCrewUi(): void {
+    this.crewList.addEventListener('click', (event) => {
+      const target = event.target;
+
+      if (!(target instanceof HTMLButtonElement)) {
+        return;
+      }
+
+      const trainId = target.dataset.trainBuddy;
+      const spotId = target.dataset.spotBuddy;
+
+      if (trainId) {
+        this.rosterTrainListeners.forEach((callback) => callback(Number(trainId)));
+      }
+
+      if (spotId) {
+        this.rosterSpotListeners.forEach((callback) => callback(Number(spotId)));
+      }
+    });
+  }
+
+  private bindBossUi(): void {
+    this.root.querySelector<HTMLButtonElement>('[data-boss-challenge]')?.addEventListener('click', () => {
+      this.bossChallengeListeners.forEach((callback) => callback());
+    });
+  }
+
+  private renderCrew(roster: BuddyRosterEntry[]): string {
+    if (roster.length === 0) {
+      return '<div class="crew-empty">Catch up to 4 gym buddies.</div>';
+    }
+
+    return roster
+      .map((entry) => {
+        const definition = getBuddyDefinition(entry.definitionId);
+        const busy = entry.status !== 'ready';
+        const progress =
+          entry.taskDuration > 0
+            ? Math.round(Math.max(0, Math.min(100, 100 - entry.taskTimer / entry.taskDuration * 100)))
+            : Math.round(entry.energy);
+        const status =
+          entry.status === 'ready'
+            ? `Energy ${Math.round(entry.energy)}`
+            : `${entry.taskLabel ?? entry.status} ${Math.ceil(entry.taskTimer)}s`;
+
+        return `
+          <div class="crew-row">
+            <div class="crew-main">
+              <span>${definition.name}</span>
+              <strong>Lv ${entry.level}</strong>
+            </div>
+            <div class="crew-stats">
+              <span>S${entry.strength}</span>
+              <span>E${entry.endurance}</span>
+              <span>F${entry.focus}</span>
+            </div>
+            <div class="crew-meter" aria-hidden="true">
+              <div style="width: ${progress}%"></div>
+            </div>
+            <div class="crew-actions">
+              <span>${status}</span>
+              <button type="button" data-spot-buddy="${entry.rosterId}" ${busy ? 'disabled' : ''}>Spot</button>
+              <button type="button" data-train-buddy="${entry.rosterId}" ${busy ? 'disabled' : ''}>Train</button>
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+  }
+
+  private updateBossPanel(boss?: BossState): void {
+    if (!boss || this.root.classList.contains('game-root--creating')) {
+      this.bossPanel.hidden = true;
+      return;
+    }
+
+    this.bossName.textContent = boss.name;
+    this.bossStats.textContent = `S${boss.strength} E${boss.endurance} F${boss.focus}`;
+    this.bossTimer.textContent = `${Math.ceil(boss.timer)}s`;
+    this.bossPanel.hidden = false;
   }
 
   private startWorkout(station: WorkoutStation): void {

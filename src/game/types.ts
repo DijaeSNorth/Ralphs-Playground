@@ -35,6 +35,8 @@ export type WorkoutStation = {
   shakerReward: number;
 };
 
+export type BuddyRosterStatus = 'ready' | 'training' | 'spotting';
+
 export type BuddyDefinition = {
   id: string;
   name: string;
@@ -44,6 +46,42 @@ export type BuddyDefinition = {
   rarity: 'common' | 'uncommon' | 'rare';
   baseCatchRate: number;
   staminaReward: number;
+};
+
+export type BuddyRosterEntry = {
+  rosterId: number;
+  definitionId: string;
+  level: number;
+  xp: number;
+  strength: number;
+  endurance: number;
+  focus: number;
+  energy: number;
+  status: BuddyRosterStatus;
+  taskLabel?: string;
+  taskTimer: number;
+  taskDuration: number;
+};
+
+export type BossDefinition = {
+  id: string;
+  name: string;
+  color: number;
+  accent: number;
+  strength: number;
+  endurance: number;
+  focus: number;
+};
+
+export type BossState = {
+  id: number;
+  definitionId: string;
+  name: string;
+  position: Vec2;
+  strength: number;
+  endurance: number;
+  focus: number;
+  timer: number;
 };
 
 export type BuddyState = {
@@ -87,6 +125,15 @@ export type WorldEvent =
   | {
       type: 'workout';
       message: string;
+    }
+  | {
+      type: 'roster';
+      message: string;
+    }
+  | {
+      type: 'boss';
+      boss?: BossState;
+      message: string;
     };
 
 export type ActionState = {
@@ -108,7 +155,10 @@ export type RepDexEntry = {
 export type WorldSnapshot = {
   player: PlayerState;
   buddies: BuddyState[];
+  roster: BuddyRosterEntry[];
+  maxRosterSize: number;
   repDex: RepDexEntry[];
+  activeBoss?: BossState;
   nearestBuddy?: {
     buddy: BuddyState;
     distance: number;

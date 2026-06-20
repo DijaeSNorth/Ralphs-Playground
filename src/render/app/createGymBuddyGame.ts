@@ -8,12 +8,14 @@ import {
   createArena,
   createBuddyMesh,
   createCaptureRing,
+  createBossMesh,
   createGymProps,
   createProteinShakerProjectile,
   createPlayerMesh,
   createWorkoutEquipment
 } from '../objects/lowPolyFactory';
 import { getBuddyDefinition } from '../../game/content/buddies';
+import { getBossDefinition } from '../../game/content/bosses';
 
 type CaptureEffect = {
   age: number;
@@ -59,6 +61,8 @@ class GymBuddyRenderer {
   private readonly cullables: RenderCullable[] = [];
   private readonly touchOptimized = shouldUseTouchRendering();
   private player = createPlayerMesh();
+  private bossMesh?: THREE.Group;
+  private bossDefinitionId?: string;
   private readonly buddyMeshes = new Map<number, THREE.Group>();
   private readonly effects: CaptureEffect[] = [];
   private readonly clockShadowTarget = new THREE.Object3D();
@@ -98,6 +102,7 @@ class GymBuddyRenderer {
   update(snapshot: WorldSnapshot, events: WorldEvent[], deltaSeconds: number): void {
     this.syncPlayer(snapshot);
     this.syncBuddies(snapshot);
+    this.syncBoss(snapshot);
     this.handleEvents(events);
     this.updateCamera(snapshot, deltaSeconds);
     this.updateEffects(deltaSeconds);
@@ -179,6 +184,35 @@ class GymBuddyRenderer {
       const idleScale = 0.9 + Math.sin(performance.now() * 0.004 + buddy.id) * 0.018;
       mesh.scale.setScalar(idleScale);
     }
+  }
+
+  private syncBoss(snapshot: WorldSnapshot): void {
+    const boss = snapshot.activeBoss;
+
+    if (!boss) {
+      if (this.bossMesh) {
+        this.scene.remove(this.bossMesh);
+        this.disposeObject(this.bossMesh);
+        this.bossMesh = undefined;
+        this.bossDefinitionId = undefined;
+      }
+
+      return;
+    }
+
+    if (!this.bossMesh || this.bossDefinitionId !== boss.definitionId) {
+      if (this.bossMesh) {
+        this.scene.remove(this.bossMesh);
+        this.disposeObject(this.bossMesh);
+      }
+
+      this.bossMesh = createBossMesh(getBossDefinition(boss.definitionId));
+      this.bossDefinitionId = boss.definitionId;
+      this.scene.add(this.bossMesh);
+    }
+
+    this.bossMesh.position.set(boss.position.x, 0, boss.position.z);
+    this.bossMesh.rotation.y += 0.01;
   }
 
   private handleEvents(events: WorldEvent[]): void {
@@ -336,6 +370,15 @@ export function createGymBuddyGame(root: HTMLElement): void {
   });
   hud.onWorkoutComplete((station) => {
     world.completeWorkout(station);
+  });
+  hud.onRosterTrain((rosterId) => {
+    world.sendBuddyToWorkout(rosterId);
+  });
+  hud.onRosterSpot((rosterId) => {
+    world.spotBuddy(rosterId);
+  });
+  hud.onBossChallenge(() => {
+    world.challengeBoss();
   });
   renderer.updatePlayerAppearance(hud.getAppearance());
 
