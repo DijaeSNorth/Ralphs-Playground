@@ -3,7 +3,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   base: './',
   build: {
-    target: 'es2020',
+    target: 'es2018',
     rolldownOptions: {
       output: {
         codeSplitting: {

@@ -5,7 +5,8 @@ A low-poly browser game prototype about catching friendly gym buddies inside a l
 ## Play
 
 - Move with `WASD`, arrow keys, the mobile thumbstick, or the left stick on a standard gamepad.
-- Press `Space`, `E`, the touch Catch button, or gamepad `A` to throw a protein shaker.
+- Press `Space`, the touch Catch button, or gamepad `A` to throw a protein shaker.
+- Press `E`, prompt buttons, or gamepad `X` to use nearby workout stations and vending machines.
 - Hold `Shift`, the touch Sprint button, or gamepad right trigger to sprint while stamina lasts.
 - Use the startup creator to choose hair, skin tone, and muscle build before entering the gym.
 - Catch up to 4 gym buddies, then use the Crew panel to send them to workouts or spot their sets.
