@@ -762,6 +762,22 @@ function createFlatHex(radius: number, color: number): THREE.Mesh {
   return mesh;
 }
 
+function createFacetMuscle(
+  radius: number,
+  color: number,
+  x: number,
+  y: number,
+  z: number,
+  scaleX = 1,
+  scaleY = 1,
+  scaleZ = 1
+): THREE.Mesh {
+  const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(radius, 0), standardMaterial(color));
+  mesh.position.set(x, y, z);
+  mesh.scale.set(scaleX, scaleY, scaleZ);
+  return mesh;
+}
+
 function addPlayerHair(group: THREE.Group, appearance: PlayerAppearance): void {
   const hair = getHairOption(appearance.hair);
   const hairMaterial = standardMaterial(hair.color);
@@ -896,10 +912,57 @@ export function createPlayerMesh(appearance = DEFAULT_PLAYER_APPEARANCE): THREE.
 
 function addBuddyMuscleFeatures(group: THREE.Group, definition: BuddyDefinition): void {
   const accent = definition.accent;
+  const deepTone = definition.archetype === 'runner' ? 0x2d4054 : 0x1b2f43;
+
+  const shoulderLeft = createFacetMuscle(0.16, accent, -0.43, 0.91, 0.04, 1.2, 0.72, 0.9);
+  const shoulderRight = shoulderLeft.clone();
+  shoulderRight.position.x = 0.43;
+  const bicepLeft = createFacetMuscle(0.12, accent, -0.5, 0.68, 0.08, 0.9, 1.2, 0.8);
+  const bicepRight = bicepLeft.clone();
+  bicepRight.position.x = 0.5;
+  const forearmLeft = createFacetMuscle(0.095, accent, -0.46, 0.5, 0.08, 0.85, 1.15, 0.75);
+  const forearmRight = forearmLeft.clone();
+  forearmRight.position.x = 0.46;
+  group.add(shoulderLeft, shoulderRight, bicepLeft, bicepRight, forearmLeft, forearmRight);
+
+  const pecLeft = box(0.18, 0.1, 0.08, accent, -0.11, 0.84, 0.41);
+  pecLeft.rotation.z = 0.16;
+  const pecRight = pecLeft.clone();
+  pecRight.position.x = 0.11;
+  pecRight.rotation.z = -0.16;
+  const trapLeft = box(0.18, 0.08, 0.1, 0xf9f7ef, -0.2, 1.01, 0.31);
+  trapLeft.rotation.z = -0.28;
+  const trapRight = trapLeft.clone();
+  trapRight.position.x = 0.2;
+  trapRight.rotation.z = 0.28;
+  group.add(pecLeft, pecRight, trapLeft, trapRight);
+
+  for (let row = 0; row < 3; row += 1) {
+    for (let col = 0; col < 2; col += 1) {
+      const ab = createFlatHex(0.045, row === 1 ? 0xf9f7ef : accent);
+      ab.position.set(col === 0 ? -0.06 : 0.06, 0.72 - row * 0.075, 0.43);
+      ab.scale.set(0.82, 1, 1);
+      group.add(ab);
+    }
+  }
+
+  const obliqueLeft = box(0.045, 0.2, 0.06, accent, -0.23, 0.66, 0.39);
+  obliqueLeft.rotation.z = -0.38;
+  const obliqueRight = obliqueLeft.clone();
+  obliqueRight.position.x = 0.23;
+  obliqueRight.rotation.z = 0.38;
+  const quadLeft = createFacetMuscle(0.12, deepTone, -0.16, 0.32, 0.09, 0.85, 1.32, 0.72);
+  const quadRight = quadLeft.clone();
+  quadRight.position.x = 0.16;
+  const calfLeft = createFacetMuscle(0.085, accent, -0.18, 0.18, 0.08, 0.75, 1.3, 0.7);
+  const calfRight = calfLeft.clone();
+  calfRight.position.x = 0.18;
+  group.add(obliqueLeft, obliqueRight, quadLeft, quadRight, calfLeft, calfRight);
+
   const leftMark = createFlatHex(0.07, accent);
-  leftMark.position.set(-0.09, 0.78, 0.38);
+  leftMark.position.set(-0.1, 0.79, 0.45);
   const rightMark = leftMark.clone();
-  rightMark.position.x = 0.09;
+  rightMark.position.x = 0.1;
   group.add(leftMark, rightMark);
 
   if (definition.archetype === 'yogi') {
@@ -923,9 +986,7 @@ function addBuddyMuscleFeatures(group: THREE.Group, definition: BuddyDefinition)
   }
 
   if (definition.archetype === 'lifter') {
-    const leftOrb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16, 0), standardMaterial(accent));
-    leftOrb.scale.set(1.15, 0.9, 0.9);
-    leftOrb.position.set(-0.5, 0.76, 0.04);
+    const leftOrb = createFacetMuscle(0.18, accent, -0.52, 0.76, 0.06, 1.2, 0.95, 0.95);
     const rightOrb = leftOrb.clone();
     rightOrb.position.x = 0.5;
     const sternum = box(0.08, 0.28, 0.07, 0xf9f7ef, 0, 0.82, 0.39);
@@ -957,12 +1018,27 @@ function addBuddyMuscleFeatures(group: THREE.Group, definition: BuddyDefinition)
 
 export function createBuddyMesh(definition: BuddyDefinition): THREE.Group {
   const group = new THREE.Group();
-  const body = cylinder(0.34, 0.42, 0.78, definition.color, 7);
-  body.position.y = 0.64;
+  const body = cylinder(0.4, 0.48, 0.84, definition.color, 7);
+  body.position.y = 0.66;
   const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28, 0), standardMaterial(0xffcf9a));
-  head.position.y = 1.14;
+  head.position.y = 1.2;
   const accent = standardMaterial(definition.accent);
-  group.add(body, head);
+  const leftLeg = cylinder(0.1, 0.15, 0.5, 0x1b2f43, 5);
+  leftLeg.position.set(-0.16, 0.3, 0);
+  const rightLeg = leftLeg.clone();
+  rightLeg.position.x = 0.16;
+  const leftArm = cylinder(0.11, 0.14, 0.62, definition.accent, 5);
+  leftArm.position.set(-0.39, 0.68, 0.02);
+  leftArm.rotation.z = 0.26;
+  const rightArm = leftArm.clone();
+  rightArm.position.x = 0.39;
+  rightArm.rotation.z = -0.26;
+  const latLeft = box(0.12, 0.34, 0.1, definition.color, -0.35, 0.72, 0.24);
+  latLeft.rotation.z = -0.2;
+  const latRight = latLeft.clone();
+  latRight.position.x = 0.35;
+  latRight.rotation.z = 0.2;
+  group.add(body, head, leftLeg, rightLeg, leftArm, rightArm, latLeft, latRight);
 
   if (definition.archetype === 'yogi') {
     const halo = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.035, 5, 12), accent);
@@ -1020,22 +1096,116 @@ export function createBuddyMesh(definition: BuddyDefinition): THREE.Group {
   return markShadows(group) as THREE.Group;
 }
 
+function addBossMuscleDefinition(group: THREE.Group, definition: BossDefinition): void {
+  const accent = definition.accent;
+  const skinTone = 0xffc28f;
+  const darkMuscle = 0x1b2f43;
+  const highlight = 0xf9f7ef;
+
+  const trapLeft = box(0.28, 0.14, 0.12, highlight, -0.24, 1.46, 0.46);
+  trapLeft.rotation.z = -0.28;
+  const trapRight = trapLeft.clone();
+  trapRight.position.x = 0.24;
+  trapRight.rotation.z = 0.28;
+  const deltLeft = createFacetMuscle(0.25, skinTone, -0.73, 1.25, 0.05, 1.24, 0.8, 0.95);
+  const deltRight = deltLeft.clone();
+  deltRight.position.x = 0.73;
+  const latLeft = box(0.22, 0.58, 0.12, definition.color, -0.52, 1.0, 0.35);
+  latLeft.rotation.z = -0.18;
+  const latRight = latLeft.clone();
+  latRight.position.x = 0.52;
+  latRight.rotation.z = 0.18;
+  group.add(trapLeft, trapRight, deltLeft, deltRight, latLeft, latRight);
+
+  const bicepLeft = createFacetMuscle(0.2, skinTone, -0.86, 1.0, 0.08, 0.9, 1.28, 0.86);
+  const bicepRight = bicepLeft.clone();
+  bicepRight.position.x = 0.86;
+  const forearmLeft = createFacetMuscle(0.17, skinTone, -0.78, 0.7, 0.08, 0.82, 1.32, 0.76);
+  const forearmRight = forearmLeft.clone();
+  forearmRight.position.x = 0.78;
+  group.add(bicepLeft, bicepRight, forearmLeft, forearmRight);
+
+  const pecLeft = box(0.32, 0.18, 0.1, accent, -0.18, 1.13, 0.58);
+  pecLeft.rotation.z = 0.12;
+  const pecRight = pecLeft.clone();
+  pecRight.position.x = 0.18;
+  pecRight.rotation.z = -0.12;
+  const lowerChestLeft = box(0.24, 0.08, 0.08, highlight, -0.15, 1.0, 0.6);
+  lowerChestLeft.rotation.z = -0.08;
+  const lowerChestRight = lowerChestLeft.clone();
+  lowerChestRight.position.x = 0.15;
+  lowerChestRight.rotation.z = 0.08;
+  const sternum = box(0.08, 0.48, 0.08, highlight, 0, 0.98, 0.61);
+  group.add(pecLeft, pecRight, lowerChestLeft, lowerChestRight, sternum);
+
+  for (let row = 0; row < 4; row += 1) {
+    for (let col = 0; col < 2; col += 1) {
+      const ab = createFlatHex(row === 0 ? 0.075 : 0.068, row % 2 === 0 ? accent : highlight);
+      ab.position.set(col === 0 ? -0.085 : 0.085, 0.9 - row * 0.09, 0.62);
+      ab.scale.set(0.85, 1, 1);
+      group.add(ab);
+    }
+  }
+
+  const serratusLeftA = box(0.045, 0.22, 0.06, accent, -0.36, 0.98, 0.56);
+  serratusLeftA.rotation.z = -0.45;
+  const serratusLeftB = serratusLeftA.clone();
+  serratusLeftB.position.y = 0.83;
+  serratusLeftB.rotation.z = -0.28;
+  const serratusRightA = serratusLeftA.clone();
+  serratusRightA.position.x = 0.36;
+  serratusRightA.rotation.z = 0.45;
+  const serratusRightB = serratusLeftB.clone();
+  serratusRightB.position.x = 0.36;
+  serratusRightB.rotation.z = 0.28;
+  group.add(serratusLeftA, serratusLeftB, serratusRightA, serratusRightB);
+
+  const quadLeft = createFacetMuscle(0.18, darkMuscle, -0.25, 0.42, 0.1, 0.9, 1.45, 0.8);
+  const quadRight = quadLeft.clone();
+  quadRight.position.x = 0.25;
+  const calfLeft = createFacetMuscle(0.13, accent, -0.26, 0.18, 0.08, 0.78, 1.35, 0.7);
+  const calfRight = calfLeft.clone();
+  calfRight.position.x = 0.26;
+  group.add(quadLeft, quadRight, calfLeft, calfRight);
+
+  if (definition.id === 'plate-titan') {
+    const plateCore = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.035, 6, 14), standardMaterial(highlight));
+    plateCore.rotation.x = Math.PI / 2;
+    plateCore.position.set(0, 0.79, 0.64);
+    group.add(plateCore);
+  }
+
+  if (definition.id === 'rep-reaper') {
+    const focusCut = createFlatHex(0.11, accent);
+    focusCut.position.set(0, 1.2, 0.64);
+    focusCut.rotation.z = Math.PI / 4;
+    group.add(focusCut);
+  }
+
+  if (definition.id === 'bulk-baron') {
+    const bulkLeft = createFacetMuscle(0.16, accent, -0.48, 0.78, 0.44, 0.9, 1.4, 0.75);
+    const bulkRight = bulkLeft.clone();
+    bulkRight.position.x = 0.48;
+    group.add(bulkLeft, bulkRight);
+  }
+}
+
 export function createBossMesh(definition: BossDefinition): THREE.Group {
   const group = new THREE.Group();
-  const body = cylinder(0.56, 0.72, 1.18, definition.color, 7);
-  body.position.y = 0.9;
+  const body = cylinder(0.68, 0.84, 1.3, definition.color, 7);
+  body.position.y = 0.96;
   const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.36, 0), standardMaterial(0xffc28f));
-  head.position.y = 1.67;
-  const belt = box(0.94, 0.14, 0.18, definition.accent, 0, 0.64, 0.5);
+  head.position.y = 1.76;
+  const belt = box(1.08, 0.14, 0.2, definition.accent, 0, 0.66, 0.57);
 
-  const leftArm = cylinder(0.18, 0.22, 0.88, definition.accent, 6);
-  leftArm.position.set(-0.78, 0.98, 0);
+  const leftArm = cylinder(0.22, 0.27, 0.96, 0xffc28f, 6);
+  leftArm.position.set(-0.82, 1.02, 0);
   leftArm.rotation.z = 0.28;
   const rightArm = leftArm.clone();
-  rightArm.position.x = 0.78;
+  rightArm.position.x = 0.82;
   rightArm.rotation.z = -0.28;
 
-  const leftLeg = cylinder(0.16, 0.22, 0.72, 0x1b2f43, 6);
+  const leftLeg = cylinder(0.2, 0.28, 0.78, 0x1b2f43, 6);
   leftLeg.position.set(-0.24, 0.38, 0);
   const rightLeg = leftLeg.clone();
   rightLeg.position.x = 0.24;
@@ -1054,6 +1224,7 @@ export function createBossMesh(definition: BossDefinition): THREE.Group {
   aura.position.y = 0.08;
 
   group.add(body, head, belt, leftArm, rightArm, leftLeg, rightLeg, bar, plateA, plateB, aura);
+  addBossMuscleDefinition(group, definition);
   group.scale.setScalar(1.15);
   return markShadows(group) as THREE.Group;
 }
