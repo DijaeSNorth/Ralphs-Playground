@@ -35,13 +35,14 @@ export class InputController {
     window.addEventListener('keydown', (event) => {
       this.keys.add(event.code);
 
-      if ((event.code === 'Space' || event.code === 'KeyE') && !event.repeat) {
+      if (event.code === 'Space' && !event.repeat) {
         this.catchQueued = true;
         event.preventDefault();
       }
 
       if (event.code === 'KeyE' && !event.repeat) {
         this.interactQueued = true;
+        event.preventDefault();
       }
 
       if (event.code === 'KeyR' && !event.repeat) {

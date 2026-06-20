@@ -86,6 +86,24 @@ export class GameHud {
   private toastTimer = 0;
   private renderedDexMarkup = '';
   private renderedCrewMarkup = '';
+  private renderedStaminaWidth = '';
+  private renderedShakersValue = '';
+  private renderedCapturedValue = '';
+  private renderedCrewCountValue = '';
+  private renderedInputStatus = '';
+  private renderedObjective = '';
+  private renderedTarget = '';
+  private renderedTargetReady = false;
+  private renderedToastVisible = false;
+  private renderedWorkoutPromptName = '';
+  private renderedVendingPromptName = '';
+  private renderedBossName = '';
+  private renderedBossStats = '';
+  private renderedBossTimer = '';
+  private renderedVendingEnergyMeta = '';
+  private renderedVendingSnackMeta = '';
+  private renderedWorkoutMeterWidth = '';
+  private renderedWorkoutCursorLeft = '';
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -354,27 +372,54 @@ export class GameHud {
     this.updateActiveWorkout(deltaSeconds);
     this.workoutPromptCooldown = Math.max(0, this.workoutPromptCooldown - deltaSeconds);
     this.vendingPromptCooldown = Math.max(0, this.vendingPromptCooldown - deltaSeconds);
-    this.staminaFill.style.width = `${Math.max(0, Math.min(100, snapshot.player.stamina))}%`;
-    this.shakersValue.textContent = String(snapshot.player.proteinShakers);
-    this.capturedValue.textContent = String(snapshot.player.capturedTotal);
-    this.crewCount.textContent = `${snapshot.roster.length}/${snapshot.maxRosterSize}`;
-    this.inputStatus.textContent = actions.gamepadConnected ? 'Gamepad' : actions.inputLabel;
+    const staminaWidth = `${Math.round(Math.max(0, Math.min(100, snapshot.player.stamina)))}%`;
+    if (staminaWidth !== this.renderedStaminaWidth) {
+      this.staminaFill.style.width = staminaWidth;
+      this.renderedStaminaWidth = staminaWidth;
+    }
 
+    this.renderedShakersValue = this.setText(
+      this.shakersValue,
+      this.renderedShakersValue,
+      String(snapshot.player.proteinShakers)
+    );
+    this.renderedCapturedValue = this.setText(
+      this.capturedValue,
+      this.renderedCapturedValue,
+      String(snapshot.player.capturedTotal)
+    );
+    this.renderedCrewCountValue = this.setText(
+      this.crewCount,
+      this.renderedCrewCountValue,
+      `${snapshot.roster.length}/${snapshot.maxRosterSize}`
+    );
+    this.renderedInputStatus = this.setText(
+      this.inputStatus,
+      this.renderedInputStatus,
+      actions.gamepadConnected ? 'Gamepad' : actions.inputLabel
+    );
+
+    let targetText = 'No target';
+    let objectiveText = 'Find a gym buddy and get close.';
+    let targetReady = false;
     if (snapshot.nearestBuddy) {
       const definition = getBuddyDefinition(snapshot.nearestBuddy.buddy.definitionId);
       const distance = snapshot.nearestBuddy.distance;
       const inRange = distance <= snapshot.captureRange;
-      this.target.textContent = inRange
+      targetText = inRange
         ? `Catch ${definition.name}`
         : `${definition.name} - ${distance.toFixed(1)}m`;
-      this.target.classList.toggle('target-chip--ready', inRange);
-      this.objective.textContent = inRange
+      objectiveText = inRange
         ? 'Buddy in range. Throw clean.'
         : 'Close the gap without draining stamina.';
-    } else {
-      this.target.textContent = 'No target';
-      this.target.classList.remove('target-chip--ready');
-      this.objective.textContent = 'Find a gym buddy and get close.';
+      targetReady = inRange;
+    }
+
+    this.renderedTarget = this.setText(this.target, this.renderedTarget, targetText);
+    this.renderedObjective = this.setText(this.objective, this.renderedObjective, objectiveText);
+    if (targetReady !== this.renderedTargetReady) {
+      this.target.classList.toggle('target-chip--ready', targetReady);
+      this.renderedTargetReady = targetReady;
     }
 
     const dexMarkup = snapshot.repDex
@@ -404,12 +449,34 @@ export class GameHud {
       this.toastTimer -= deltaSeconds;
     }
 
-    this.toast.classList.toggle('toast--visible', this.toastTimer > 0);
+    const toastVisible = this.toastTimer > 0;
+    if (toastVisible !== this.renderedToastVisible) {
+      this.toast.classList.toggle('toast--visible', toastVisible);
+      this.renderedToastVisible = toastVisible;
+    }
   }
 
   pushMessage(message: string): void {
-    this.toast.textContent = message;
+    if (this.toast.textContent !== message) {
+      this.toast.textContent = message;
+    }
+
     this.toastTimer = 2.35;
+  }
+
+  private setText<T extends HTMLElement>(element: T, previous: string, next: string): string {
+    if (previous !== next) {
+      element.textContent = next;
+      return next;
+    }
+
+    return previous;
+  }
+
+  private setHidden<T extends HTMLElement>(element: T, hidden: boolean): void {
+    if (element.hidden !== hidden) {
+      element.hidden = hidden;
+    }
   }
 
   getAppearance(): PlayerAppearance {
@@ -504,7 +571,7 @@ export class GameHud {
       !station ||
       promptSuppressed
     ) {
-      this.workoutPrompt.hidden = true;
+      this.setHidden(this.workoutPrompt, true);
       return;
     }
 
@@ -513,8 +580,12 @@ export class GameHud {
       this.workoutPromptCooldown = 0;
     }
 
-    this.workoutPromptName.textContent = station.name;
-    this.workoutPrompt.hidden = false;
+    this.renderedWorkoutPromptName = this.setText(
+      this.workoutPromptName,
+      this.renderedWorkoutPromptName,
+      station.name
+    );
+    this.setHidden(this.workoutPrompt, false);
   }
 
   updateVendingMachine(machine?: VendingMachine): void {
@@ -537,7 +608,7 @@ export class GameHud {
       !machine ||
       promptSuppressed
     ) {
-      this.vendingPrompt.hidden = true;
+      this.setHidden(this.vendingPrompt, true);
       return;
     }
 
@@ -546,8 +617,12 @@ export class GameHud {
       this.vendingPromptCooldown = 0;
     }
 
-    this.vendingPromptName.textContent = machine.name;
-    this.vendingPrompt.hidden = false;
+    this.renderedVendingPromptName = this.setText(
+      this.vendingPromptName,
+      this.renderedVendingPromptName,
+      machine.name
+    );
+    this.setHidden(this.vendingPrompt, false);
   }
 
   closeCharacterCreator(): void {
@@ -698,23 +773,29 @@ export class GameHud {
 
   private updateBossPanel(boss?: BossState): void {
     if (!boss || this.root.classList.contains('game-root--creating')) {
-      this.bossPanel.hidden = true;
+      this.setHidden(this.bossPanel, true);
       return;
     }
 
-    this.bossName.textContent = boss.name;
-    this.bossStats.textContent = `S${boss.strength} E${boss.endurance} F${boss.focus}`;
-    this.bossTimer.textContent = `${Math.ceil(boss.timer)}s`;
-    this.bossPanel.hidden = false;
+    this.renderedBossName = this.setText(this.bossName, this.renderedBossName, boss.name);
+    this.renderedBossStats = this.setText(
+      this.bossStats,
+      this.renderedBossStats,
+      `S${boss.strength} E${boss.endurance} F${boss.focus}`
+    );
+    this.renderedBossTimer = this.setText(this.bossTimer, this.renderedBossTimer, `${Math.ceil(boss.timer)}s`);
+    this.setHidden(this.bossPanel, false);
   }
 
   private startVending(machine: VendingMachine): void {
     this.activeVending = machine;
     this.root.classList.add('game-root--vending');
-    this.workoutPrompt.hidden = true;
-    this.vendingPrompt.hidden = true;
-    this.vendingTitle.textContent = machine.name;
-    this.vendingPanel.hidden = false;
+    this.setHidden(this.workoutPrompt, true);
+    this.setHidden(this.vendingPrompt, true);
+    if (this.vendingTitle.textContent !== machine.name) {
+      this.vendingTitle.textContent = machine.name;
+    }
+    this.setHidden(this.vendingPanel, false);
   }
 
   private closeVending(): void {
@@ -725,7 +806,7 @@ export class GameHud {
 
     this.activeVending = undefined;
     this.root.classList.remove('game-root--vending');
-    this.vendingPanel.hidden = true;
+    this.setHidden(this.vendingPanel, true);
   }
 
   private updateVendingPanel(snapshot: WorldSnapshot): void {
@@ -738,21 +819,39 @@ export class GameHud {
     const lacksShaker = snapshot.player.proteinShakers < machine.energyDrinkCost;
     const staminaFull = snapshot.player.stamina >= 99.5;
 
-    this.vendingEnergyButton.disabled = lacksShaker || staminaFull;
-    this.vendingSnackButton.disabled = snackCooldown > 0;
-
-    if (lacksShaker) {
-      this.vendingEnergyMeta.textContent = `Need ${machine.energyDrinkCost} shaker`;
-    } else if (staminaFull) {
-      this.vendingEnergyMeta.textContent = 'Stamina full';
-    } else {
-      this.vendingEnergyMeta.textContent = `${machine.energyDrinkCost} shaker -> +${machine.energyDrinkStamina} stamina`;
+    const energyDisabled = lacksShaker || staminaFull;
+    const snackDisabled = snackCooldown > 0;
+    if (this.vendingEnergyButton.disabled !== energyDisabled) {
+      this.vendingEnergyButton.disabled = energyDisabled;
     }
 
-    this.vendingSnackMeta.textContent =
+    if (this.vendingSnackButton.disabled !== snackDisabled) {
+      this.vendingSnackButton.disabled = snackDisabled;
+    }
+
+    let energyMeta: string;
+    if (lacksShaker) {
+      energyMeta = `Need ${machine.energyDrinkCost} shaker`;
+    } else if (staminaFull) {
+      energyMeta = 'Stamina full';
+    } else {
+      energyMeta = `${machine.energyDrinkCost} shaker -> +${machine.energyDrinkStamina} stamina`;
+    }
+
+    const snackMeta =
       snackCooldown > 0
         ? `Restocking ${Math.ceil(snackCooldown)}s`
         : `+${machine.snackStamina} stamina, +${machine.snackCrewEnergy} crew energy`;
+    this.renderedVendingEnergyMeta = this.setText(
+      this.vendingEnergyMeta,
+      this.renderedVendingEnergyMeta,
+      energyMeta
+    );
+    this.renderedVendingSnackMeta = this.setText(
+      this.vendingSnackMeta,
+      this.renderedVendingSnackMeta,
+      snackMeta
+    );
   }
 
   private startWorkout(station: WorkoutStation): void {
@@ -767,15 +866,15 @@ export class GameHud {
       message: this.getWorkoutInstruction(station.type)
     };
     this.root.classList.add('game-root--workout');
-    this.workoutPrompt.hidden = true;
-    this.workoutPanel.hidden = false;
+    this.setHidden(this.workoutPrompt, true);
+    this.setHidden(this.workoutPanel, false);
     this.renderWorkout();
   }
 
   private closeWorkout(): void {
     this.activeWorkout = undefined;
     this.root.classList.remove('game-root--workout');
-    this.workoutPanel.hidden = true;
+    this.setHidden(this.workoutPanel, true);
   }
 
   private updateActiveWorkout(deltaSeconds: number): void {
@@ -866,9 +965,19 @@ export class GameHud {
     }
 
     const workout = this.activeWorkout;
-    this.workoutTitle.textContent = workout.station.name;
-    this.workoutInstruction.textContent = workout.message;
-    this.workoutScore.textContent = `${workout.score} / ${WORKOUT_GOAL}`;
+    if (this.workoutTitle.textContent !== workout.station.name) {
+      this.workoutTitle.textContent = workout.station.name;
+    }
+
+    if (this.workoutInstruction.textContent !== workout.message) {
+      this.workoutInstruction.textContent = workout.message;
+    }
+
+    const scoreText = `${workout.score} / ${WORKOUT_GOAL}`;
+    if (this.workoutScore.textContent !== scoreText) {
+      this.workoutScore.textContent = scoreText;
+    }
+
     this.workoutButtons.innerHTML = this.getWorkoutButtons(workout.station.type, workout.expected);
     this.renderWorkoutMeter();
   }
@@ -879,8 +988,17 @@ export class GameHud {
     }
 
     const progress = (this.activeWorkout.score / WORKOUT_GOAL) * 100;
-    this.workoutMeterFill.style.width = `${progress}%`;
-    this.workoutCursor.style.left = `${this.activeWorkout.cursor}%`;
+    const meterWidth = `${Math.round(progress)}%`;
+    const cursorLeft = `${this.activeWorkout.cursor.toFixed(1)}%`;
+    if (meterWidth !== this.renderedWorkoutMeterWidth) {
+      this.workoutMeterFill.style.width = meterWidth;
+      this.renderedWorkoutMeterWidth = meterWidth;
+    }
+
+    if (cursorLeft !== this.renderedWorkoutCursorLeft) {
+      this.workoutCursor.style.left = cursorLeft;
+      this.renderedWorkoutCursorLeft = cursorLeft;
+    }
   }
 
   private isPressWorkout(type: WorkoutType): boolean {

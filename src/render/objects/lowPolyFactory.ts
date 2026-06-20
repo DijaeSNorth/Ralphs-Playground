@@ -1,4 +1,15 @@
-import * as THREE from 'three';
+import {
+  BoxGeometry,
+  CylinderGeometry,
+  Group,
+  IcosahedronGeometry,
+  Mesh,
+  MeshBasicMaterial,
+  MeshStandardMaterial,
+  Object3D,
+  RingGeometry,
+  TorusGeometry
+} from 'three';
 import {
   DEFAULT_PLAYER_APPEARANCE,
   getHairOption,
@@ -13,10 +24,10 @@ import type {
   WorkoutStation
 } from '../../game/types';
 
-const standardMaterialCache = new Map<string, THREE.MeshStandardMaterial>();
-const basicMaterialCache = new Map<string, THREE.MeshBasicMaterial>();
+const standardMaterialCache = new Map<string, MeshStandardMaterial>();
+const basicMaterialCache = new Map<string, MeshBasicMaterial>();
 
-function standardMaterial(color: number, roughness = 0.78): THREE.MeshStandardMaterial {
+function standardMaterial(color: number, roughness = 0.78): MeshStandardMaterial {
   const key = `${color}:${roughness}`;
   const cached = standardMaterialCache.get(key);
 
@@ -24,7 +35,7 @@ function standardMaterial(color: number, roughness = 0.78): THREE.MeshStandardMa
     return cached;
   }
 
-  const material = new THREE.MeshStandardMaterial({
+  const material = new MeshStandardMaterial({
     color,
     roughness,
     metalness: 0.02,
@@ -34,7 +45,7 @@ function standardMaterial(color: number, roughness = 0.78): THREE.MeshStandardMa
   return material;
 }
 
-function basicMaterial(color: number, opacity = 1): THREE.MeshBasicMaterial {
+function basicMaterial(color: number, opacity = 1): MeshBasicMaterial {
   const key = `${color}:${opacity}`;
   const cached = basicMaterialCache.get(key);
 
@@ -42,7 +53,7 @@ function basicMaterial(color: number, opacity = 1): THREE.MeshBasicMaterial {
     return cached;
   }
 
-  const material = new THREE.MeshBasicMaterial({
+  const material = new MeshBasicMaterial({
     color,
     transparent: opacity < 1,
     opacity,
@@ -60,8 +71,8 @@ function box(
   x = 0,
   y = 0,
   z = 0
-): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), standardMaterial(color));
+): Mesh {
+  const mesh = new Mesh(new BoxGeometry(width, height, depth), standardMaterial(color));
   mesh.position.set(x, y, z);
   return mesh;
 }
@@ -72,16 +83,16 @@ function cylinder(
   height: number,
   color: number,
   radialSegments = 6
-): THREE.Mesh {
-  return new THREE.Mesh(
-    new THREE.CylinderGeometry(radiusTop, radiusBottom, height, radialSegments),
+): Mesh {
+  return new Mesh(
+    new CylinderGeometry(radiusTop, radiusBottom, height, radialSegments),
     standardMaterial(color)
   );
 }
 
-function markShadows(object: THREE.Object3D): THREE.Object3D {
+function markShadows(object: Object3D): Object3D {
   object.traverse((child) => {
-    if (child instanceof THREE.Mesh) {
+    if (child instanceof Mesh) {
       child.castShadow = true;
       child.receiveShadow = true;
     }
@@ -90,31 +101,31 @@ function markShadows(object: THREE.Object3D): THREE.Object3D {
   return object;
 }
 
-export function createArena(radius: number): THREE.Group {
-  const group = new THREE.Group();
+export function createArena(radius: number): Group {
+  const group = new Group();
 
   const gymFloor = box(44, 0.18, 44, 0xc99458, 0, -0.12, 0);
   gymFloor.receiveShadow = true;
   group.add(gymFloor);
 
-  const rubberZone = new THREE.Mesh(
-    new THREE.CylinderGeometry(radius, radius, 0.08, 12),
+  const rubberZone = new Mesh(
+    new CylinderGeometry(radius, radius, 0.08, 12),
     standardMaterial(0x516a72, 0.9)
   );
   rubberZone.position.y = 0.02;
   rubberZone.receiveShadow = true;
   group.add(rubberZone);
 
-  const centerCourt = new THREE.Mesh(
-    new THREE.CylinderGeometry(7.2, 7.2, 0.09, 10),
+  const centerCourt = new Mesh(
+    new CylinderGeometry(7.2, 7.2, 0.09, 10),
     standardMaterial(0x5dd29a, 0.88)
   );
   centerCourt.position.y = 0.08;
   centerCourt.receiveShadow = true;
   group.add(centerCourt);
 
-  const trainingLoop = new THREE.Mesh(
-    new THREE.RingGeometry(9.1, 11.2, 64),
+  const trainingLoop = new Mesh(
+    new RingGeometry(9.1, 11.2, 64),
     standardMaterial(0xe56e57, 0.86)
   );
   trainingLoop.rotation.x = -Math.PI / 2;
@@ -135,17 +146,17 @@ export function createArena(radius: number): THREE.Group {
   }
 
   const wallMaterial = standardMaterial(0xdde5e6, 0.82);
-  const backWall = new THREE.Mesh(new THREE.BoxGeometry(44, 5.8, 0.34), wallMaterial);
+  const backWall = new Mesh(new BoxGeometry(44, 5.8, 0.34), wallMaterial);
   backWall.position.set(0, 2.78, -22);
   backWall.receiveShadow = true;
-  const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.34, 4.7, 44), wallMaterial);
+  const leftWall = new Mesh(new BoxGeometry(0.34, 4.7, 44), wallMaterial);
   leftWall.position.set(-22, 2.25, 0);
   leftWall.receiveShadow = true;
   const rightWall = leftWall.clone();
   rightWall.position.x = 22;
   group.add(backWall, leftWall, rightWall);
 
-  const mirrorPanelMaterial = new THREE.MeshStandardMaterial({
+  const mirrorPanelMaterial = new MeshStandardMaterial({
     color: 0xbfdce2,
     roughness: 0.25,
     metalness: 0.28,
@@ -153,7 +164,7 @@ export function createArena(radius: number): THREE.Group {
   });
 
   for (let i = 0; i < 7; i += 1) {
-    const mirror = new THREE.Mesh(new THREE.BoxGeometry(4.8, 2.15, 0.06), mirrorPanelMaterial);
+    const mirror = new Mesh(new BoxGeometry(4.8, 2.15, 0.06), mirrorPanelMaterial);
     mirror.position.set(-15 + i * 5, 2.15, -21.78);
     group.add(mirror);
   }
@@ -176,8 +187,8 @@ export function createArena(radius: number): THREE.Group {
   return group;
 }
 
-export function createGymProps(): THREE.Group {
-  const group = new THREE.Group();
+export function createGymProps(): Group {
+  const group = new Group();
   const mats = [
     { x: -13.4, z: -8.4, rotation: 0.45 },
     { x: 13.2, z: 7.2, rotation: -0.55 },
@@ -192,7 +203,7 @@ export function createGymProps(): THREE.Group {
     group.add(mat);
   }
 
-  const rig = new THREE.Group();
+  const rig = new Group();
   const leftPost = cylinder(0.09, 0.09, 3.1, 0x34445a, 8);
   leftPost.position.set(-15.1, 1.55, 5.8);
   const rightPost = leftPost.clone();
@@ -212,7 +223,7 @@ export function createGymProps(): THREE.Group {
   ];
 
   for (const rackInfo of racks) {
-    const rack = new THREE.Group();
+    const rack = new Group();
     const base = box(2.6, 0.16, 1.2, 0x303b4d, 0, 0.12, 0);
     const backA = cylinder(0.07, 0.07, 2.2, 0x34445a, 8);
     backA.position.set(-0.95, 1.15, -0.38);
@@ -233,11 +244,11 @@ export function createGymProps(): THREE.Group {
 
   for (let i = 0; i < 8; i += 1) {
     const angle = (i / 8) * Math.PI * 2 + 0.8;
-    const bell = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.35, 0), standardMaterial(0x59667a));
+    const bell = new Group();
+    const body = new Mesh(new IcosahedronGeometry(0.35, 0), standardMaterial(0x59667a));
     body.scale.set(1, 0.82, 1);
     body.position.y = 0.34;
-    const handle = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.045, 6, 8, Math.PI), standardMaterial(0x34445a));
+    const handle = new Mesh(new TorusGeometry(0.24, 0.045, 6, 8, Math.PI), standardMaterial(0x34445a));
     handle.position.y = 0.67;
     handle.rotation.z = Math.PI;
     bell.add(body, handle);
@@ -246,7 +257,7 @@ export function createGymProps(): THREE.Group {
   }
 
   for (let i = 0; i < 4; i += 1) {
-    const machine = new THREE.Group();
+    const machine = new Group();
     const base = box(1.55, 0.12, 1.15, 0x303b4d, 0, 0.12, 0);
     const back = box(0.28, 1.65, 0.18, 0x34445a, -0.52, 0.94, -0.25);
     const pad = box(0.48, 0.82, 0.16, 0x1b2f43, -0.26, 0.74, 0.18);
@@ -254,7 +265,7 @@ export function createGymProps(): THREE.Group {
     const lever = cylinder(0.045, 0.045, 1.15, 0xf9f7ef, 8);
     lever.rotation.z = Math.PI / 2;
     lever.position.set(0.33, 1.18, 0.14);
-    const stack = new THREE.Group();
+    const stack = new Group();
 
     for (let plate = 0; plate < 5; plate += 1) {
       stack.add(box(0.34, 0.06, 0.42, 0x59667a, 0.62, 0.36 + plate * 0.075, -0.3));
@@ -280,9 +291,9 @@ export function createGymProps(): THREE.Group {
   return group;
 }
 
-function addStationMarker(group: THREE.Group, station: WorkoutStation, color = 0xf6c85f): void {
-  const marker = new THREE.Mesh(
-    new THREE.RingGeometry(1.15, 1.3, 24),
+function addStationMarker(group: Group, station: WorkoutStation, color = 0xf6c85f): void {
+  const marker = new Mesh(
+    new RingGeometry(1.15, 1.3, 24),
     basicMaterial(color, 0.5)
   );
   marker.rotation.x = -Math.PI / 2;
@@ -294,8 +305,8 @@ function getStationRotation(station: WorkoutStation, fallback: number): number {
   return station.rotation ?? fallback;
 }
 
-function createBenchStation(station: WorkoutStation): THREE.Group {
-  const group = new THREE.Group();
+function createBenchStation(station: WorkoutStation): Group {
+  const group = new Group();
   const platform = box(3.4, 0.1, 2.1, 0x8b6542, 0, 0.12, 0);
   const pad = box(1.75, 0.16, 0.52, 0x1b2f43, -0.2, 0.48, 0);
   pad.rotation.z = -0.12;
@@ -314,11 +325,11 @@ function createBenchStation(station: WorkoutStation): THREE.Group {
   group.add(platform, pad, postA, postB, bar, plateA, plateB);
   group.position.set(station.position.x, 0, station.position.z);
   group.rotation.y = getStationRotation(station, -0.7);
-  return markShadows(group) as THREE.Group;
+  return markShadows(group) as Group;
 }
 
-function createInclineBenchStation(station: WorkoutStation): THREE.Group {
-  const group = new THREE.Group();
+function createInclineBenchStation(station: WorkoutStation): Group {
+  const group = new Group();
   const base = box(3.2, 0.1, 2.0, 0x8b6542, 0, 0.12, 0);
   const seat = box(0.75, 0.15, 0.58, 0x1b2f43, -0.72, 0.46, 0);
   const backPad = box(1.25, 0.16, 0.58, 0x1b2f43, 0.0, 0.82, 0);
@@ -338,11 +349,11 @@ function createInclineBenchStation(station: WorkoutStation): THREE.Group {
   group.add(base, seat, backPad, uprightA, uprightB, bar, plateA, plateB);
   group.position.set(station.position.x, 0, station.position.z);
   group.rotation.y = getStationRotation(station, 0.75);
-  return markShadows(group) as THREE.Group;
+  return markShadows(group) as Group;
 }
 
-function createSquatRackStation(station: WorkoutStation): THREE.Group {
-  const group = new THREE.Group();
+function createSquatRackStation(station: WorkoutStation): Group {
+  const group = new Group();
   const platform = box(3.4, 0.12, 2.6, 0x516a72, 0, 0.12, 0);
   const postA = cylinder(0.08, 0.08, 2.65, 0x34445a, 8);
   postA.position.set(-0.82, 1.42, -0.74);
@@ -371,11 +382,11 @@ function createSquatRackStation(station: WorkoutStation): THREE.Group {
   group.add(platform, postA, postB, postC, postD, topA, topB, safetyA, safetyB, bar, plateA, plateB);
   group.position.set(station.position.x, 0, station.position.z);
   group.rotation.y = getStationRotation(station, 0.25);
-  return markShadows(group) as THREE.Group;
+  return markShadows(group) as Group;
 }
 
-function createLegPressStation(station: WorkoutStation): THREE.Group {
-  const group = new THREE.Group();
+function createLegPressStation(station: WorkoutStation): Group {
+  const group = new Group();
   const base = box(3.0, 0.14, 1.85, 0x303b4d, 0, 0.14, 0);
   const seat = box(0.82, 0.2, 0.74, 0x1b2f43, -0.78, 0.58, 0);
   seat.rotation.z = 0.18;
@@ -398,21 +409,21 @@ function createLegPressStation(station: WorkoutStation): THREE.Group {
   group.add(base, seat, backPad, railA, railB, sled, footPlate, plateA, plateB);
   group.position.set(station.position.x, 0, station.position.z);
   group.rotation.y = getStationRotation(station, -0.45);
-  return markShadows(group) as THREE.Group;
+  return markShadows(group) as Group;
 }
 
-function createCableTowerStation(station: WorkoutStation): THREE.Group {
-  const group = new THREE.Group();
+function createCableTowerStation(station: WorkoutStation): Group {
+  const group = new Group();
   const base = box(2.4, 0.16, 1.4, 0x303b4d, 0, 0.14, 0);
   const towerA = box(0.18, 3.1, 0.18, 0x34445a, -0.75, 1.65, 0);
   const towerB = towerA.clone();
   towerB.position.x = 0.75;
   const top = box(1.75, 0.18, 0.2, 0x34445a, 0, 3.08, 0);
-  const stack = new THREE.Group();
+  const stack = new Group();
   for (let i = 0; i < 6; i += 1) {
     stack.add(box(0.52, 0.08, 0.52, 0x59667a, 0, 0.45 + i * 0.1, -0.38));
   }
-  const pulleyA = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.025, 6, 12), standardMaterial(0xf6c85f));
+  const pulleyA = new Mesh(new TorusGeometry(0.16, 0.025, 6, 12), standardMaterial(0xf6c85f));
   pulleyA.position.set(-0.75, 2.85, 0.15);
   const pulleyB = pulleyA.clone();
   pulleyB.position.x = 0.75;
@@ -422,11 +433,11 @@ function createCableTowerStation(station: WorkoutStation): THREE.Group {
   group.add(base, towerA, towerB, top, stack, pulleyA, pulleyB, handleA, handleB);
   group.position.set(station.position.x, 0, station.position.z);
   group.rotation.y = getStationRotation(station, 0.6);
-  return markShadows(group) as THREE.Group;
+  return markShadows(group) as Group;
 }
 
-function createFreeWeightsStation(station: WorkoutStation): THREE.Group {
-  const group = new THREE.Group();
+function createFreeWeightsStation(station: WorkoutStation): Group {
+  const group = new Group();
   const rackBack = box(3.0, 1.25, 0.18, 0x34445a, 0, 0.86, -0.45);
   const rackShelfA = box(3.2, 0.12, 0.42, 0x303b4d, 0, 0.64, -0.12);
   const rackShelfB = rackShelfA.clone();
@@ -435,7 +446,7 @@ function createFreeWeightsStation(station: WorkoutStation): THREE.Group {
 
   for (let i = 0; i < 6; i += 1) {
     const x = -1.25 + i * 0.5;
-    const dumbbell = new THREE.Group();
+    const dumbbell = new Group();
     const grip = cylinder(0.035, 0.035, 0.32, 0xf9f7ef, 8);
     grip.rotation.z = Math.PI / 2;
     const headA = cylinder(0.1 + i * 0.012, 0.1 + i * 0.012, 0.08, 0x59667a, 6);
@@ -450,11 +461,11 @@ function createFreeWeightsStation(station: WorkoutStation): THREE.Group {
   }
 
   for (let i = 0; i < 4; i += 1) {
-    const bell = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.24 + i * 0.03, 0), standardMaterial(0x2f3d4c));
+    const bell = new Group();
+    const body = new Mesh(new IcosahedronGeometry(0.24 + i * 0.03, 0), standardMaterial(0x2f3d4c));
     body.scale.set(1, 0.86, 1);
     body.position.y = 0.28;
-    const handle = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.035, 6, 8, Math.PI), standardMaterial(0xf6c85f));
+    const handle = new Mesh(new TorusGeometry(0.18, 0.035, 6, 8, Math.PI), standardMaterial(0xf6c85f));
     handle.position.y = 0.56;
     handle.rotation.z = Math.PI;
     bell.add(body, handle);
@@ -462,12 +473,12 @@ function createFreeWeightsStation(station: WorkoutStation): THREE.Group {
     group.add(bell);
   }
 
-  const plateTree = new THREE.Group();
+  const plateTree = new Group();
   const post = cylinder(0.06, 0.06, 1.4, 0x34445a, 8);
   post.position.y = 0.72;
   plateTree.add(post);
   for (let i = 0; i < 5; i += 1) {
-    const plate = new THREE.Mesh(new THREE.TorusGeometry(0.2 + i * 0.02, 0.035, 6, 12), standardMaterial(0x59667a));
+    const plate = new Mesh(new TorusGeometry(0.2 + i * 0.02, 0.035, 6, 12), standardMaterial(0x59667a));
     plate.position.set(0, 0.22 + i * 0.18, 0);
     plate.rotation.x = Math.PI / 2;
     plateTree.add(plate);
@@ -477,11 +488,11 @@ function createFreeWeightsStation(station: WorkoutStation): THREE.Group {
 
   group.position.set(station.position.x, 0, station.position.z);
   group.rotation.y = getStationRotation(station, 0.45);
-  return markShadows(group) as THREE.Group;
+  return markShadows(group) as Group;
 }
 
-function createMachinePressStation(station: WorkoutStation): THREE.Group {
-  const group = new THREE.Group();
+function createMachinePressStation(station: WorkoutStation): Group {
+  const group = new Group();
   const shoulderPress = station.id.includes('shoulder');
   const base = box(2.35, 0.16, 1.65, 0x303b4d, 0, 0.14, 0);
   const seat = box(0.68, 0.18, 0.68, 0x1b2f43, -0.62, 0.52, 0);
@@ -508,11 +519,11 @@ function createMachinePressStation(station: WorkoutStation): THREE.Group {
   group.add(base, seat, backPad, tower, braceA, armA, armB, handleA, handleB, plateA, plateB, foot);
   group.position.set(station.position.x, 0, station.position.z);
   group.rotation.y = getStationRotation(station, -1.1);
-  return markShadows(group) as THREE.Group;
+  return markShadows(group) as Group;
 }
 
-function createLatPulldownStation(station: WorkoutStation): THREE.Group {
-  const group = new THREE.Group();
+function createLatPulldownStation(station: WorkoutStation): Group {
+  const group = new Group();
   const rowVariant = station.id.includes('row');
   const base = box(2.45, 0.16, 1.55, 0x303b4d, 0, 0.14, 0);
   const towerA = box(0.2, 3.0, 0.2, 0x34445a, 0.72, 1.58, -0.5);
@@ -523,11 +534,11 @@ function createLatPulldownStation(station: WorkoutStation): THREE.Group {
   const kneePad = box(0.72, 0.16, 0.78, 0xff705c, -0.2, 0.92, 0);
   const footPlate = box(0.18, 0.58, 1.0, 0xf9f7ef, -0.98, 0.52, 0);
   footPlate.rotation.z = rowVariant ? -0.42 : 0;
-  const stack = new THREE.Group();
+  const stack = new Group();
   for (let i = 0; i < 7; i += 1) {
     stack.add(box(0.46, 0.075, 0.54, 0x59667a, 0.76, 0.36 + i * 0.09, 0));
   }
-  const pulley = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.025, 6, 12), standardMaterial(0xf6c85f));
+  const pulley = new Mesh(new TorusGeometry(0.15, 0.025, 6, 12), standardMaterial(0xf6c85f));
   pulley.position.set(0.72, rowVariant ? 1.05 : 2.82, 0);
   const cable = cylinder(0.018, 0.018, rowVariant ? 1.15 : 2.0, 0x172436, 6);
   cable.position.set(rowVariant ? -0.14 : 0.1, rowVariant ? 0.88 : 1.9, 0);
@@ -538,11 +549,11 @@ function createLatPulldownStation(station: WorkoutStation): THREE.Group {
   group.add(base, towerA, towerB, top, seat, kneePad, footPlate, stack, pulley, cable, bar);
   group.position.set(station.position.x, 0, station.position.z);
   group.rotation.y = getStationRotation(station, 0);
-  return markShadows(group) as THREE.Group;
+  return markShadows(group) as Group;
 }
 
-function createHackSquatStation(station: WorkoutStation): THREE.Group {
-  const group = new THREE.Group();
+function createHackSquatStation(station: WorkoutStation): Group {
+  const group = new Group();
   const base = box(2.65, 0.16, 1.9, 0x303b4d, 0, 0.14, 0);
   const footPlate = box(0.88, 0.16, 1.35, 0xf9f7ef, -0.82, 0.45, 0);
   footPlate.rotation.z = -0.62;
@@ -567,11 +578,11 @@ function createHackSquatStation(station: WorkoutStation): THREE.Group {
   group.add(base, footPlate, railA, railB, sled, padA, padB, plateA, plateB, topBrace);
   group.position.set(station.position.x, 0, station.position.z);
   group.rotation.y = getStationRotation(station, 0.65);
-  return markShadows(group) as THREE.Group;
+  return markShadows(group) as Group;
 }
 
-function createFreeWeightBenchStation(station: WorkoutStation): THREE.Group {
-  const group = new THREE.Group();
+function createFreeWeightBenchStation(station: WorkoutStation): Group {
+  const group = new Group();
   const mat = box(2.75, 0.08, 1.75, 0x516a72, 0, 0.11, 0);
   const foot = box(0.18, 0.42, 0.16, 0x34445a, -0.7, 0.34, 0);
   const footB = foot.clone();
@@ -581,7 +592,7 @@ function createFreeWeightBenchStation(station: WorkoutStation): THREE.Group {
   back.rotation.z = -0.35;
   const rack = box(1.35, 0.12, 0.3, 0x303b4d, 0.2, 0.62, -0.65);
   for (let i = 0; i < 4; i += 1) {
-    const dumbbell = new THREE.Group();
+    const dumbbell = new Group();
     const grip = cylinder(0.03, 0.03, 0.28, 0xf9f7ef, 8);
     grip.rotation.z = Math.PI / 2;
     const headA = cylinder(0.09 + i * 0.014, 0.09 + i * 0.014, 0.07, 0x59667a, 6);
@@ -601,14 +612,14 @@ function createFreeWeightBenchStation(station: WorkoutStation): THREE.Group {
   group.add(mat, foot, footB, seat, back, rack, floorBellA, floorBellB);
   group.position.set(station.position.x, 0, station.position.z);
   group.rotation.y = getStationRotation(station, 0.5);
-  return markShadows(group) as THREE.Group;
+  return markShadows(group) as Group;
 }
 
-export function createWorkoutEquipment(stations: WorkoutStation[]): THREE.Group {
-  const group = new THREE.Group();
+export function createWorkoutEquipment(stations: WorkoutStation[]): Group {
+  const group = new Group();
 
   for (const station of stations) {
-    const stationGroup = new THREE.Group();
+    const stationGroup = new Group();
     stationGroup.userData.cullCenter = station.position;
     stationGroup.userData.renderDistance = 25;
     addStationMarker(stationGroup, station);
@@ -659,14 +670,14 @@ export function createWorkoutEquipment(stations: WorkoutStation[]): THREE.Group 
   return group;
 }
 
-function createVendingMachine(machine: VendingMachine): THREE.Group {
-  const group = new THREE.Group();
+function createVendingMachine(machine: VendingMachine): Group {
+  const group = new Group();
   group.userData.cullCenter = machine.position;
   group.userData.renderDistance = 25;
   group.position.set(machine.position.x, 0, machine.position.z);
   group.rotation.y = -Math.PI / 2;
 
-  const marker = new THREE.Mesh(new THREE.RingGeometry(1.12, 1.3, 24), basicMaterial(0x21a7a5, 0.48));
+  const marker = new Mesh(new RingGeometry(1.12, 1.3, 24), basicMaterial(0x21a7a5, 0.48));
   marker.rotation.x = -Math.PI / 2;
   marker.position.y = 0.2;
 
@@ -699,11 +710,11 @@ function createVendingMachine(machine: VendingMachine): THREE.Group {
   }
 
   group.add(marker, base, topSign, sideGlow, screen, snackDoor, payPanel, slot, buttonA, buttonB);
-  return markShadows(group) as THREE.Group;
+  return markShadows(group) as Group;
 }
 
-export function createVendingMachines(machines: VendingMachine[]): THREE.Group {
-  const group = new THREE.Group();
+export function createVendingMachines(machines: VendingMachine[]): Group {
+  const group = new Group();
 
   for (const machine of machines) {
     group.add(createVendingMachine(machine));
@@ -753,9 +764,9 @@ const MUSCLE_SPECS: Record<
   }
 };
 
-function createFlatHex(radius: number, color: number): THREE.Mesh {
-  const mesh = new THREE.Mesh(
-    new THREE.CylinderGeometry(radius, radius, 0.035, 6),
+function createFlatHex(radius: number, color: number): Mesh {
+  const mesh = new Mesh(
+    new CylinderGeometry(radius, radius, 0.035, 6),
     standardMaterial(color)
   );
   mesh.rotation.x = Math.PI / 2;
@@ -771,19 +782,19 @@ function createFacetMuscle(
   scaleX = 1,
   scaleY = 1,
   scaleZ = 1
-): THREE.Mesh {
-  const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(radius, 0), standardMaterial(color));
+): Mesh {
+  const mesh = new Mesh(new IcosahedronGeometry(radius, 0), standardMaterial(color));
   mesh.position.set(x, y, z);
   mesh.scale.set(scaleX, scaleY, scaleZ);
   return mesh;
 }
 
-function addPlayerHair(group: THREE.Group, appearance: PlayerAppearance): void {
+function addPlayerHair(group: Group, appearance: PlayerAppearance): void {
   const hair = getHairOption(appearance.hair);
   const hairMaterial = standardMaterial(hair.color);
 
   if (appearance.hair === 'crop') {
-    const cap = new THREE.Mesh(new THREE.IcosahedronGeometry(0.27, 0), hairMaterial);
+    const cap = new Mesh(new IcosahedronGeometry(0.27, 0), hairMaterial);
     cap.scale.set(1.05, 0.45, 0.9);
     cap.position.set(0, 1.34, -0.02);
     const front = box(0.34, 0.07, 0.18, hair.color, 0, 1.33, 0.19);
@@ -792,17 +803,17 @@ function addPlayerHair(group: THREE.Group, appearance: PlayerAppearance): void {
   }
 
   if (appearance.hair === 'bun') {
-    const cap = new THREE.Mesh(new THREE.IcosahedronGeometry(0.25, 0), hairMaterial);
+    const cap = new Mesh(new IcosahedronGeometry(0.25, 0), hairMaterial);
     cap.scale.set(1.0, 0.48, 0.9);
     cap.position.set(0, 1.33, -0.03);
-    const bun = new THREE.Mesh(new THREE.IcosahedronGeometry(0.15, 0), hairMaterial);
+    const bun = new Mesh(new IcosahedronGeometry(0.15, 0), hairMaterial);
     bun.position.set(0, 1.51, -0.18);
     group.add(cap, bun);
     return;
   }
 
-  const sweep = new THREE.Group();
-  const cap = new THREE.Mesh(new THREE.IcosahedronGeometry(0.25, 0), hairMaterial);
+  const sweep = new Group();
+  const cap = new Mesh(new IcosahedronGeometry(0.25, 0), hairMaterial);
   cap.scale.set(1.0, 0.42, 0.88);
   cap.position.set(0, 1.33, -0.02);
   const wedgeA = box(0.34, 0.09, 0.2, hair.color, -0.08, 1.42, 0.12);
@@ -814,27 +825,27 @@ function addPlayerHair(group: THREE.Group, appearance: PlayerAppearance): void {
 }
 
 function addPlayerMuscleGeometry(
-  group: THREE.Group,
+  group: Group,
   build: MuscleBuild,
   skinColor: number,
   shirtAccent: number
 ): void {
   const spec = MUSCLE_SPECS[build];
-  const leftShoulder = new THREE.Mesh(new THREE.IcosahedronGeometry(spec.shoulder, 0), standardMaterial(skinColor));
+  const leftShoulder = new Mesh(new IcosahedronGeometry(spec.shoulder, 0), standardMaterial(skinColor));
   leftShoulder.scale.set(1.2, 0.72, 0.9);
   leftShoulder.position.set(-0.39, 0.94, 0.04);
   const rightShoulder = leftShoulder.clone();
   rightShoulder.position.x = 0.39;
   group.add(leftShoulder, rightShoulder);
 
-  const leftBicep = new THREE.Mesh(new THREE.IcosahedronGeometry(spec.arm * 1.35, 0), standardMaterial(skinColor));
+  const leftBicep = new Mesh(new IcosahedronGeometry(spec.arm * 1.35, 0), standardMaterial(skinColor));
   leftBicep.scale.set(0.9, 1.2, 0.78);
   leftBicep.position.set(-0.46, 0.72, 0.08);
   const rightBicep = leftBicep.clone();
   rightBicep.position.x = 0.46;
   group.add(leftBicep, rightBicep);
 
-  const leftQuad = new THREE.Mesh(new THREE.IcosahedronGeometry(spec.leg * 1.25, 0), standardMaterial(0x1b2f43));
+  const leftQuad = new Mesh(new IcosahedronGeometry(spec.leg * 1.25, 0), standardMaterial(0x1b2f43));
   leftQuad.scale.set(0.8, 1.25, 0.72);
   leftQuad.position.set(-0.15, 0.42, 0.09);
   const rightQuad = leftQuad.clone();
@@ -881,13 +892,13 @@ function addPlayerMuscleGeometry(
   }
 }
 
-export function createPlayerMesh(appearance = DEFAULT_PLAYER_APPEARANCE): THREE.Group {
-  const group = new THREE.Group();
+export function createPlayerMesh(appearance = DEFAULT_PLAYER_APPEARANCE): Group {
+  const group = new Group();
   const skinColor = getSkinToneOption(appearance.skinTone).color;
   const spec = MUSCLE_SPECS[appearance.muscleBuild];
   const body = cylinder(spec.torsoTop, spec.torsoBottom, 0.78, 0x24445f, 7);
   body.position.y = 0.72;
-  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.25, 0), standardMaterial(skinColor));
+  const head = new Mesh(new IcosahedronGeometry(0.25, 0), standardMaterial(skinColor));
   head.position.y = 1.2;
   const headband = box(0.36, 0.055, 0.3, 0xff705c, 0, 1.29, 0.06);
 
@@ -907,10 +918,10 @@ export function createPlayerMesh(appearance = DEFAULT_PLAYER_APPEARANCE): THREE.
   addPlayerHair(group, appearance);
   addPlayerMuscleGeometry(group, appearance.muscleBuild, skinColor, 0xff705c);
   group.scale.setScalar(spec.baseScale);
-  return markShadows(group) as THREE.Group;
+  return markShadows(group) as Group;
 }
 
-function addBuddyMuscleFeatures(group: THREE.Group, definition: BuddyDefinition): void {
+function addBuddyMuscleFeatures(group: Group, definition: BuddyDefinition): void {
   const accent = definition.accent;
   const deepTone = definition.archetype === 'runner' ? 0x2d4054 : 0x1b2f43;
 
@@ -966,7 +977,7 @@ function addBuddyMuscleFeatures(group: THREE.Group, definition: BuddyDefinition)
   group.add(leftMark, rightMark);
 
   if (definition.archetype === 'yogi') {
-    const coreRing = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.022, 5, 14), standardMaterial(accent));
+    const coreRing = new Mesh(new TorusGeometry(0.18, 0.022, 5, 14), standardMaterial(accent));
     coreRing.rotation.x = Math.PI / 2;
     coreRing.position.set(0, 0.68, 0.39);
     const breathDiamond = createFlatHex(0.05, 0xf9f7ef);
@@ -994,7 +1005,7 @@ function addBuddyMuscleFeatures(group: THREE.Group, definition: BuddyDefinition)
   }
 
   if (definition.archetype === 'spinner') {
-    const shoulderRingA = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.025, 5, 12), standardMaterial(accent));
+    const shoulderRingA = new Mesh(new TorusGeometry(0.13, 0.025, 5, 12), standardMaterial(accent));
     shoulderRingA.position.set(-0.39, 0.92, 0.07);
     shoulderRingA.rotation.y = Math.PI / 2;
     const shoulderRingB = shoulderRingA.clone();
@@ -1016,11 +1027,11 @@ function addBuddyMuscleFeatures(group: THREE.Group, definition: BuddyDefinition)
   }
 }
 
-export function createBuddyMesh(definition: BuddyDefinition): THREE.Group {
-  const group = new THREE.Group();
+export function createBuddyMesh(definition: BuddyDefinition): Group {
+  const group = new Group();
   const body = cylinder(0.4, 0.48, 0.84, definition.color, 7);
   body.position.y = 0.66;
-  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28, 0), standardMaterial(0xffcf9a));
+  const head = new Mesh(new IcosahedronGeometry(0.28, 0), standardMaterial(0xffcf9a));
   head.position.y = 1.2;
   const accent = standardMaterial(definition.accent);
   const leftLeg = cylinder(0.1, 0.15, 0.5, 0x1b2f43, 5);
@@ -1041,7 +1052,7 @@ export function createBuddyMesh(definition: BuddyDefinition): THREE.Group {
   group.add(body, head, leftLeg, rightLeg, leftArm, rightArm, latLeft, latRight);
 
   if (definition.archetype === 'yogi') {
-    const halo = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.035, 5, 12), accent);
+    const halo = new Mesh(new TorusGeometry(0.32, 0.035, 5, 12), accent);
     halo.position.y = 1.45;
     halo.rotation.x = Math.PI / 2;
     const mat = box(1.08, 0.045, 0.5, definition.accent, 0, 0.07, -0.04);
@@ -1074,7 +1085,7 @@ export function createBuddyMesh(definition: BuddyDefinition): THREE.Group {
   }
 
   if (definition.archetype === 'spinner') {
-    const wheelA = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.04, 6, 12), accent);
+    const wheelA = new Mesh(new TorusGeometry(0.28, 0.04, 6, 12), accent);
     wheelA.position.set(-0.42, 0.24, 0.2);
     wheelA.rotation.y = Math.PI / 2;
     const wheelB = wheelA.clone();
@@ -1093,10 +1104,10 @@ export function createBuddyMesh(definition: BuddyDefinition): THREE.Group {
 
   addBuddyMuscleFeatures(group, definition);
 
-  return markShadows(group) as THREE.Group;
+  return markShadows(group) as Group;
 }
 
-function addBossMuscleDefinition(group: THREE.Group, definition: BossDefinition): void {
+function addBossMuscleDefinition(group: Group, definition: BossDefinition): void {
   const accent = definition.accent;
   const skinTone = 0xffc28f;
   const darkMuscle = 0x1b2f43;
@@ -1169,7 +1180,7 @@ function addBossMuscleDefinition(group: THREE.Group, definition: BossDefinition)
   group.add(quadLeft, quadRight, calfLeft, calfRight);
 
   if (definition.id === 'plate-titan') {
-    const plateCore = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.035, 6, 14), standardMaterial(highlight));
+    const plateCore = new Mesh(new TorusGeometry(0.22, 0.035, 6, 14), standardMaterial(highlight));
     plateCore.rotation.x = Math.PI / 2;
     plateCore.position.set(0, 0.79, 0.64);
     group.add(plateCore);
@@ -1190,11 +1201,11 @@ function addBossMuscleDefinition(group: THREE.Group, definition: BossDefinition)
   }
 }
 
-export function createBossMesh(definition: BossDefinition): THREE.Group {
-  const group = new THREE.Group();
+export function createBossMesh(definition: BossDefinition): Group {
+  const group = new Group();
   const body = cylinder(0.68, 0.84, 1.3, definition.color, 7);
   body.position.y = 0.96;
-  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.36, 0), standardMaterial(0xffc28f));
+  const head = new Mesh(new IcosahedronGeometry(0.36, 0), standardMaterial(0xffc28f));
   head.position.y = 1.76;
   const belt = box(1.08, 0.14, 0.2, definition.accent, 0, 0.66, 0.57);
 
@@ -1219,18 +1230,18 @@ export function createBossMesh(definition: BossDefinition): THREE.Group {
   const plateB = plateA.clone();
   plateB.position.x = 1.32;
 
-  const aura = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.12, 24), basicMaterial(definition.accent, 0.38));
+  const aura = new Mesh(new RingGeometry(0.95, 1.12, 24), basicMaterial(definition.accent, 0.38));
   aura.rotation.x = -Math.PI / 2;
   aura.position.y = 0.08;
 
   group.add(body, head, belt, leftArm, rightArm, leftLeg, rightLeg, bar, plateA, plateB, aura);
   addBossMuscleDefinition(group, definition);
   group.scale.setScalar(1.15);
-  return markShadows(group) as THREE.Group;
+  return markShadows(group) as Group;
 }
 
-export function createProteinShakerProjectile(): THREE.Group {
-  const group = new THREE.Group();
+export function createProteinShakerProjectile(): Group {
+  const group = new Group();
   const body = cylinder(0.13, 0.15, 0.54, 0x2aa6a5, 8);
   body.rotation.x = Math.PI / 2;
   const lid = cylinder(0.12, 0.12, 0.08, 0xf9f7ef, 8);
@@ -1244,17 +1255,17 @@ export function createProteinShakerProjectile(): THREE.Group {
   band.position.z = 0.03;
   const spout = box(0.08, 0.08, 0.12, 0xf9f7ef, 0, 0.12, 0.36);
   group.add(body, lid, base, band, spout);
-  return markShadows(group) as THREE.Group;
+  return markShadows(group) as Group;
 }
 
-export function createCaptureRing(color: number): THREE.Mesh {
-  const material = new THREE.MeshBasicMaterial({
+export function createCaptureRing(color: number): Mesh {
+  const material = new MeshBasicMaterial({
     color,
     transparent: true,
     opacity: 0.9,
     depthWrite: false
   });
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.035, 6, 24), material);
+  const ring = new Mesh(new TorusGeometry(0.45, 0.035, 6, 24), material);
   ring.rotation.x = Math.PI / 2;
   return ring;
 }

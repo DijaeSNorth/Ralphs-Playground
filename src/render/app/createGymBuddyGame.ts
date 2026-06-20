@@ -1,4 +1,19 @@
-import * as THREE from 'three';
+import {
+  Color,
+  DirectionalLight,
+  Fog,
+  Group,
+  HemisphereLight,
+  Mesh,
+  MeshBasicMaterial,
+  Object3D,
+  PCFSoftShadowMap,
+  PerspectiveCamera,
+  Scene,
+  SRGBColorSpace,
+  Vector3,
+  WebGLRenderer
+} from 'three';
 import { getNearestWorkoutStation, WORKOUT_STATIONS } from '../../game/content/equipment';
 import { getNearestVendingMachine, VENDING_MACHINES } from '../../game/content/vending';
 import { InputController } from '../../game/input/actions';
@@ -24,13 +39,13 @@ type CaptureEffect = {
   duration: number;
   start: Vec2;
   target: Vec2;
-  projectile: THREE.Group;
-  ring: THREE.Mesh;
+  projectile: Group;
+  ring: Mesh;
   success: boolean;
 };
 
 type RenderCullable = {
-  object: THREE.Object3D;
+  object: Object3D;
   renderDistance: number;
   center: Vec2;
 };
@@ -57,37 +72,38 @@ function easeOutCubic(value: number): number {
 }
 
 class GymBuddyRenderer {
-  private readonly scene = new THREE.Scene();
-  private readonly camera = new THREE.PerspectiveCamera(52, 1, 0.1, 120);
-  private readonly renderer: THREE.WebGLRenderer;
+  private readonly scene = new Scene();
+  private readonly camera = new PerspectiveCamera(52, 1, 0.1, 120);
+  private readonly renderer: WebGLRenderer;
   private readonly cullables: RenderCullable[] = [];
   private readonly touchOptimized = shouldUseTouchRendering();
   private player = createPlayerMesh();
-  private bossMesh?: THREE.Group;
+  private bossMesh?: Group;
   private bossDefinitionId?: string;
-  private readonly buddyMeshes = new Map<number, THREE.Group>();
+  private readonly buddyMeshes = new Map<number, Group>();
   private readonly effects: CaptureEffect[] = [];
-  private readonly clockShadowTarget = new THREE.Object3D();
+  private readonly clockShadowTarget = new Object3D();
+  private lastCullPosition?: Vec2;
   private width = 1;
   private height = 1;
 
   constructor(private readonly container: HTMLElement, initialSnapshot: WorldSnapshot) {
-    this.renderer = new THREE.WebGLRenderer({
+    this.renderer = new WebGLRenderer({
       antialias: !this.touchOptimized,
       preserveDrawingBuffer: false,
       powerPreference: this.touchOptimized ? 'default' : 'high-performance'
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, getRenderPixelRatioCap(this.touchOptimized)));
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = PCFSoftShadowMap;
     this.renderer.domElement.addEventListener('webglcontextlost', (event) => {
       event.preventDefault();
     });
 
     this.container.appendChild(this.renderer.domElement);
-    this.scene.background = new THREE.Color(0xc7d8dc);
-    this.scene.fog = new THREE.Fog(0xc7d8dc, 32, 82);
+    this.scene.background = new Color(0xc7d8dc);
+    this.scene.fog = new Fog(0xc7d8dc, 32, 82);
 
     this.camera.position.set(0, 11, 14);
     this.scene.add(this.clockShadowTarget);
@@ -132,10 +148,10 @@ class GymBuddyRenderer {
   }
 
   private addLights(): void {
-    const hemi = new THREE.HemisphereLight(0xf6fbff, 0xa06f4c, 1.75);
+    const hemi = new HemisphereLight(0xf6fbff, 0xa06f4c, 1.75);
     this.scene.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xfff4dc, 2.05);
+    const sun = new DirectionalLight(0xfff4dc, 2.05);
     sun.position.set(10, 16, 7);
     sun.castShadow = true;
     const shadowSize = this.touchOptimized ? 512 : 1024;
@@ -165,7 +181,7 @@ class GymBuddyRenderer {
       if (!activeIds.has(id)) {
         this.scene.remove(mesh);
         mesh.traverse((child) => {
-          if (child instanceof THREE.Mesh) {
+          if (child instanceof Mesh) {
             child.geometry.dispose();
           }
         });
@@ -255,12 +271,12 @@ class GymBuddyRenderer {
       x: -Math.sin(player.heading),
       z: -Math.cos(player.heading)
     };
-    const desired = new THREE.Vector3(
+    const desired = new Vector3(
       player.position.x + backward.x * 11,
       9.5,
       player.position.z + backward.z * 11
     );
-    const lookAt = new THREE.Vector3(player.position.x, 0.75, player.position.z);
+    const lookAt = new Vector3(player.position.x, 0.75, player.position.z);
     const smoothing = 1 - Math.pow(0.001, deltaSeconds);
 
     this.camera.position.lerp(desired, smoothing);
@@ -287,13 +303,13 @@ class GymBuddyRenderer {
       effect.ring.position.set(effect.target.x, 0.12, effect.target.z);
       effect.ring.scale.setScalar(effect.success ? 0.35 + eased * 2.3 : 0.3 + eased * 1.2);
 
-      const material = effect.ring.material as THREE.MeshBasicMaterial;
+      const material = effect.ring.material as MeshBasicMaterial;
       material.opacity = Math.max(0, 0.9 * (1 - progress));
 
       if (progress >= 1) {
         this.scene.remove(effect.projectile, effect.ring);
         effect.projectile.traverse((child) => {
-          if (child instanceof THREE.Mesh) {
+          if (child instanceof Mesh) {
             child.geometry.dispose();
           }
         });
@@ -304,7 +320,7 @@ class GymBuddyRenderer {
     }
   }
 
-  private registerCullables(root: THREE.Group): void {
+  private registerCullables(root: Group): void {
     for (const child of root.children) {
       const center = child.userData.cullCenter as Vec2 | undefined;
       const baseRenderDistance =
@@ -322,6 +338,19 @@ class GymBuddyRenderer {
   }
 
   private updateRenderDistance(playerPosition: Vec2): void {
+    if (this.lastCullPosition) {
+      const moved = Math.hypot(
+        playerPosition.x - this.lastCullPosition.x,
+        playerPosition.z - this.lastCullPosition.z
+      );
+
+      if (moved < 0.35) {
+        return;
+      }
+    }
+
+    this.lastCullPosition = { x: playerPosition.x, z: playerPosition.z };
+
     for (const cullable of this.cullables) {
       const distance = Math.hypot(
         cullable.center.x - playerPosition.x,
@@ -341,9 +370,9 @@ class GymBuddyRenderer {
     this.renderer.setSize(this.width, this.height, false);
   }
 
-  private disposeObject(object: THREE.Object3D): void {
+  private disposeObject(object: Object3D): void {
     object.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
+      if (child instanceof Mesh) {
         child.geometry.dispose();
       }
     });
@@ -399,6 +428,39 @@ export function createGymBuddyGame(root: HTMLElement): void {
   renderer.updatePlayerAppearance(hud.getAppearance());
 
   let lastTime = performance.now();
+  let proximityTimer = 0;
+  let lastProximityPosition: Vec2 | undefined;
+
+  function refreshNearbyPrompts(playerPosition: Vec2): void {
+    if (!gameStarted) {
+      lastProximityPosition = undefined;
+      proximityTimer = 0;
+      hud.updateVendingMachine(undefined);
+      hud.updateWorkoutStation(undefined);
+      return;
+    }
+
+    const nearbyStation = getNearestWorkoutStation(playerPosition);
+    const nearbyVending = getNearestVendingMachine(playerPosition);
+    lastProximityPosition = { x: playerPosition.x, z: playerPosition.z };
+    proximityTimer = 0.1;
+    hud.updateVendingMachine(nearbyVending?.machine);
+    hud.updateWorkoutStation(nearbyVending ? undefined : nearbyStation?.station);
+  }
+
+  function shouldRefreshNearbyPrompts(playerPosition: Vec2, deltaSeconds: number): boolean {
+    proximityTimer = Math.max(0, proximityTimer - deltaSeconds);
+
+    if (!lastProximityPosition) {
+      return true;
+    }
+
+    const moved = Math.hypot(
+      playerPosition.x - lastProximityPosition.x,
+      playerPosition.z - lastProximityPosition.z
+    );
+    return proximityTimer <= 0 || moved > 0.25;
+  }
 
   function frame(now: number): void {
     const deltaSeconds = Math.min((now - lastTime) / 1000, 0.08);
@@ -406,6 +468,8 @@ export function createGymBuddyGame(root: HTMLElement): void {
 
     const inputActions = input.read();
     if (gameStarted && !hud.isInteractionActive() && inputActions.interactPressed) {
+      refreshNearbyPrompts(world.getSnapshot().player.position);
+
       if (!hud.tryStartNearbyVending()) {
         hud.tryStartNearbyWorkout();
       }
@@ -416,16 +480,16 @@ export function createGymBuddyGame(root: HTMLElement): void {
     world.update(canSimulate ? deltaSeconds : 0, actions);
     const events = world.drainEvents();
     const snapshot = world.getSnapshot();
-    const nearbyStation = gameStarted ? getNearestWorkoutStation(snapshot.player.position) : undefined;
-    const nearbyVending = gameStarted ? getNearestVendingMachine(snapshot.player.position) : undefined;
+
+    if (!gameStarted || shouldRefreshNearbyPrompts(snapshot.player.position, deltaSeconds)) {
+      refreshNearbyPrompts(snapshot.player.position);
+    }
 
     for (const event of events) {
       hud.pushMessage(event.message);
     }
 
     renderer.update(snapshot, events, deltaSeconds);
-    hud.updateVendingMachine(nearbyVending?.machine);
-    hud.updateWorkoutStation(nearbyVending ? undefined : nearbyStation?.station);
     hud.update(snapshot, inputActions, deltaSeconds);
     requestAnimationFrame(frame);
   }
