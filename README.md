@@ -1,6 +1,6 @@
 # Gym Buddy Catcher
 
-A low-poly browser game prototype about catching friendly gym buddies around an outdoor fitness park.
+A low-poly browser game prototype about catching friendly gym buddies inside a large indoor gym.
 
 ## Play
 

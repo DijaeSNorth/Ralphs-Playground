@@ -34,7 +34,7 @@ html {
 
 body {
   overflow: hidden;
-  background: #9ed9b0;
+  background: #c7d8dc;
   color: var(--ink);
 }
 
@@ -55,7 +55,7 @@ button {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  background: #9ed9b0;
+  background: #c7d8dc;
 }
 
 .game-canvas canvas {

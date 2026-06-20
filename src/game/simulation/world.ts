@@ -202,7 +202,7 @@ export class GymBuddyWorld {
           this.events.push({
             type: 'spawn',
             buddy: { ...this.buddies[index], position: copyVec2(this.buddies[index].position) },
-            message: `${getBuddyDefinition(this.buddies[index].definitionId).name} entered Flex Park.`
+            message: `${getBuddyDefinition(this.buddies[index].definitionId).name} entered Mega Gym.`
           });
         }
 

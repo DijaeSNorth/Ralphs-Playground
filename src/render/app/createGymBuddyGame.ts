@@ -8,7 +8,7 @@ import {
   createBuddyMesh,
   createCaptureProjectile,
   createCaptureRing,
-  createParkProps,
+  createGymProps,
   createPlayerMesh
 } from '../objects/lowPolyFactory';
 import { getBuddyDefinition } from '../../game/content/buddies';
@@ -57,13 +57,13 @@ class GymBuddyRenderer {
     });
 
     this.container.appendChild(this.renderer.domElement);
-    this.scene.background = new THREE.Color(0x9bd9b0);
-    this.scene.fog = new THREE.Fog(0x9bd9b0, 28, 72);
+    this.scene.background = new THREE.Color(0xc7d8dc);
+    this.scene.fog = new THREE.Fog(0xc7d8dc, 32, 82);
 
     this.camera.position.set(0, 11, 14);
     this.scene.add(this.clockShadowTarget);
     this.addLights();
-    this.scene.add(createArena(initialSnapshot.arenaRadius), createParkProps(), this.player);
+    this.scene.add(createArena(initialSnapshot.arenaRadius), createGymProps(), this.player);
 
     const resizeObserver = new ResizeObserver(() => this.resize());
     resizeObserver.observe(this.container);
@@ -80,11 +80,11 @@ class GymBuddyRenderer {
   }
 
   private addLights(): void {
-    const hemi = new THREE.HemisphereLight(0xeaf7ff, 0x5f8c62, 2.15);
+    const hemi = new THREE.HemisphereLight(0xf6fbff, 0xa06f4c, 1.75);
     this.scene.add(hemi);
 
-    const sun = new THREE.DirectionalLight(0xffffff, 2.3);
-    sun.position.set(12, 18, 8);
+    const sun = new THREE.DirectionalLight(0xfff4dc, 2.05);
+    sun.position.set(10, 16, 7);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.near = 1;
@@ -247,7 +247,7 @@ export function createGymBuddyGame(root: HTMLElement): void {
   const renderer = new GymBuddyRenderer(hud.canvasMount, initialSnapshot);
 
   input.bindTouchControls(hud.touchControls);
-  hud.pushMessage('Flex Park is open.');
+  hud.pushMessage('Mega Gym is open.');
 
   let lastTime = performance.now();
 

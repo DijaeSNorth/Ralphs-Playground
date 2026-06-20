@@ -60,83 +60,146 @@ function markShadows(object: THREE.Object3D): THREE.Object3D {
 export function createArena(radius: number): THREE.Group {
   const group = new THREE.Group();
 
-  const ground = new THREE.Mesh(
-    new THREE.CylinderGeometry(radius, radius, 0.18, 12),
-    standardMaterial(0x6ccf8c, 0.92)
-  );
-  ground.position.y = -0.12;
-  ground.receiveShadow = true;
-  group.add(ground);
+  const gymFloor = box(44, 0.18, 44, 0xc99458, 0, -0.12, 0);
+  gymFloor.receiveShadow = true;
+  group.add(gymFloor);
 
-  const track = new THREE.Mesh(
-    new THREE.RingGeometry(8.5, 10.7, 64),
-    standardMaterial(0xd96e5d, 0.86)
+  const rubberZone = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius, radius, 0.08, 12),
+    standardMaterial(0x516a72, 0.9)
   );
-  track.rotation.x = -Math.PI / 2;
-  track.position.y = 0.02;
-  track.receiveShadow = true;
-  group.add(track);
+  rubberZone.position.y = 0.02;
+  rubberZone.receiveShadow = true;
+  group.add(rubberZone);
 
-  const center = new THREE.Mesh(
-    new THREE.CylinderGeometry(6.8, 6.8, 0.06, 10),
-    standardMaterial(0x77d99b, 0.9)
+  const centerCourt = new THREE.Mesh(
+    new THREE.CylinderGeometry(7.2, 7.2, 0.09, 10),
+    standardMaterial(0x5dd29a, 0.88)
   );
-  center.position.y = 0.02;
-  group.add(center);
+  centerCourt.position.y = 0.08;
+  centerCourt.receiveShadow = true;
+  group.add(centerCourt);
+
+  const trainingLoop = new THREE.Mesh(
+    new THREE.RingGeometry(9.1, 11.2, 64),
+    standardMaterial(0xe56e57, 0.86)
+  );
+  trainingLoop.rotation.x = -Math.PI / 2;
+  trainingLoop.position.y = 0.12;
+  trainingLoop.receiveShadow = true;
+  group.add(trainingLoop);
+
+  const keyLine = box(0.12, 0.04, 13.8, 0xf7e17b, 0, 0.18, 0);
+  const crossLine = box(13.8, 0.04, 0.12, 0xf7e17b, 0, 0.18, 0);
+  group.add(keyLine, crossLine);
 
   for (let i = 0; i < 12; i += 1) {
     const angle = (i / 12) * Math.PI * 2;
-    const lane = box(0.08, 0.035, 1.3, 0xf9d66d);
-    lane.position.set(Math.cos(angle) * 9.55, 0.07, Math.sin(angle) * 9.55);
+    const lane = box(0.08, 0.035, 1.15, 0xf9d66d);
+    lane.position.set(Math.cos(angle) * 10.2, 0.18, Math.sin(angle) * 10.2);
     lane.rotation.y = -angle;
     group.add(lane);
+  }
+
+  const wallMaterial = standardMaterial(0xdde5e6, 0.82);
+  const backWall = new THREE.Mesh(new THREE.BoxGeometry(44, 5.8, 0.34), wallMaterial);
+  backWall.position.set(0, 2.78, -22);
+  backWall.receiveShadow = true;
+  const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.34, 4.7, 44), wallMaterial);
+  leftWall.position.set(-22, 2.25, 0);
+  leftWall.receiveShadow = true;
+  const rightWall = leftWall.clone();
+  rightWall.position.x = 22;
+  group.add(backWall, leftWall, rightWall);
+
+  const mirrorPanelMaterial = new THREE.MeshStandardMaterial({
+    color: 0xbfdce2,
+    roughness: 0.25,
+    metalness: 0.28,
+    flatShading: true
+  });
+
+  for (let i = 0; i < 7; i += 1) {
+    const mirror = new THREE.Mesh(new THREE.BoxGeometry(4.8, 2.15, 0.06), mirrorPanelMaterial);
+    mirror.position.set(-15 + i * 5, 2.15, -21.78);
+    group.add(mirror);
+  }
+
+  for (let i = 0; i < 8; i += 1) {
+    const angle = (i / 8) * Math.PI * 2 + 0.2;
+    const pillar = cylinder(0.18, 0.22, 4.4, 0x9aaab1, 6);
+    pillar.position.set(Math.cos(angle) * 19.5, 2.15, Math.sin(angle) * 19.5);
+    group.add(pillar);
+  }
+
+  for (let row = 0; row < 2; row += 1) {
+    for (let col = 0; col < 5; col += 1) {
+      const light = box(2.4, 0.08, 0.42, 0xfff0bd, -12 + col * 6, 6.2, -10 + row * 16);
+      light.rotation.y = row === 0 ? 0.08 : -0.08;
+      group.add(light);
+    }
   }
 
   return group;
 }
 
-export function createParkProps(): THREE.Group {
+export function createGymProps(): THREE.Group {
   const group = new THREE.Group();
-  const stations = [
-    { x: -12.8, z: -5.8, rotation: 0.45 },
-    { x: 12.5, z: 4.8, rotation: -0.55 },
-    { x: -5.5, z: 12.3, rotation: 1.05 },
-    { x: 7.2, z: -11.8, rotation: -0.95 }
+  const mats = [
+    { x: -13.4, z: -8.4, rotation: 0.45 },
+    { x: 13.2, z: 7.2, rotation: -0.55 },
+    { x: -6.5, z: 13.5, rotation: 1.05 },
+    { x: 7.4, z: -13.1, rotation: -0.95 }
   ];
 
-  for (const station of stations) {
-    const mat = box(2.7, 0.08, 1.35, 0x2aa6a5, station.x, 0.08, station.z);
-    mat.rotation.y = station.rotation;
+  for (const matInfo of mats) {
+    const mat = box(3.2, 0.08, 1.45, 0x2aa6a5, matInfo.x, 0.13, matInfo.z);
+    mat.rotation.y = matInfo.rotation;
     mat.receiveShadow = true;
     group.add(mat);
   }
 
-  const bars = new THREE.Group();
-  const leftPost = cylinder(0.08, 0.08, 2.4, 0x34445a, 8);
-  leftPost.position.set(-14.2, 1.18, 6.3);
+  const rig = new THREE.Group();
+  const leftPost = cylinder(0.09, 0.09, 3.1, 0x34445a, 8);
+  leftPost.position.set(-15.1, 1.55, 5.8);
   const rightPost = leftPost.clone();
-  rightPost.position.x = -12.8;
-  const crossBar = cylinder(0.07, 0.07, 1.5, 0x34445a, 8);
+  rightPost.position.x = -13.0;
+  const crossBar = cylinder(0.07, 0.07, 2.25, 0x34445a, 8);
   crossBar.rotation.z = Math.PI / 2;
-  crossBar.position.set(-13.5, 2.36, 6.3);
-  bars.add(leftPost, rightPost, crossBar);
-  group.add(markShadows(bars));
+  crossBar.position.set(-14.05, 3.05, 5.8);
+  const topBar = crossBar.clone();
+  topBar.position.z = 4.85;
+  rig.add(leftPost, rightPost, crossBar, topBar);
+  group.add(markShadows(rig));
 
-  for (let i = 0; i < 7; i += 1) {
-    const angle = (i / 7) * Math.PI * 2 + 0.3;
-    const tree = new THREE.Group();
-    const trunk = cylinder(0.15, 0.2, 1.1, 0x8d6644, 5);
-    trunk.position.y = 0.55;
-    const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(0.88, 0), standardMaterial(0x358f62));
-    crown.position.y = 1.45;
-    tree.add(trunk, crown);
-    tree.position.set(Math.cos(angle) * 16.5, 0, Math.sin(angle) * 16.5);
-    tree.rotation.y = angle;
-    group.add(markShadows(tree));
+  const racks = [
+    { x: 15.2, z: -7.8, rotation: -0.45 },
+    { x: -15.8, z: -13.6, rotation: 0.2 },
+    { x: 13.8, z: 13.1, rotation: 0.55 }
+  ];
+
+  for (const rackInfo of racks) {
+    const rack = new THREE.Group();
+    const base = box(2.6, 0.16, 1.2, 0x303b4d, 0, 0.12, 0);
+    const backA = cylinder(0.07, 0.07, 2.2, 0x34445a, 8);
+    backA.position.set(-0.95, 1.15, -0.38);
+    const backB = backA.clone();
+    backB.position.x = 0.95;
+    const top = cylinder(0.06, 0.06, 2.1, 0x34445a, 8);
+    top.rotation.z = Math.PI / 2;
+    top.position.set(0, 2.24, -0.38);
+    const bench = box(1.35, 0.16, 0.44, 0x1f2d3a, 0, 0.46, 0.34);
+    const bar = cylinder(0.04, 0.04, 2.7, 0x202b35, 8);
+    bar.rotation.z = Math.PI / 2;
+    bar.position.set(0, 1.75, -0.42);
+    rack.add(base, backA, backB, top, bench, bar);
+    rack.position.set(rackInfo.x, 0, rackInfo.z);
+    rack.rotation.y = rackInfo.rotation;
+    group.add(markShadows(rack));
   }
 
-  for (let i = 0; i < 6; i += 1) {
-    const angle = (i / 6) * Math.PI * 2 + 0.8;
+  for (let i = 0; i < 8; i += 1) {
+    const angle = (i / 8) * Math.PI * 2 + 0.8;
     const bell = new THREE.Group();
     const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.35, 0), standardMaterial(0x59667a));
     body.scale.set(1, 0.82, 1);
@@ -145,8 +208,35 @@ export function createParkProps(): THREE.Group {
     handle.position.y = 0.67;
     handle.rotation.z = Math.PI;
     bell.add(body, handle);
-    bell.position.set(Math.cos(angle) * 5.6, 0, Math.sin(angle) * 5.6);
+    bell.position.set(Math.cos(angle) * 6.1, 0, Math.sin(angle) * 6.1);
     group.add(markShadows(bell));
+  }
+
+  for (let i = 0; i < 4; i += 1) {
+    const bike = new THREE.Group();
+    const wheelA = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.045, 6, 12), standardMaterial(0x2f3d4c));
+    wheelA.position.set(-0.42, 0.48, 0);
+    wheelA.rotation.y = Math.PI / 2;
+    const wheelB = wheelA.clone();
+    wheelB.position.x = 0.48;
+    const seat = box(0.46, 0.12, 0.32, 0x1b2f43, 0.04, 1.08, -0.08);
+    const handles = box(0.75, 0.08, 0.08, 0x34445a, 0.5, 1.22, 0.2);
+    const frame = box(1.18, 0.08, 0.1, 0x21a7a5, 0.05, 0.78, 0);
+    bike.add(wheelA, wheelB, seat, handles, frame);
+    bike.position.set(-18.2 + i * 2.2, 0, -17.4);
+    bike.rotation.y = 0.1;
+    group.add(markShadows(bike));
+  }
+
+  const platformSpots = [
+    { x: -10.6, z: 15.8 },
+    { x: 10.8, z: -15.9 }
+  ];
+
+  for (const spot of platformSpots) {
+    const platform = box(4.1, 0.12, 2.4, 0x8b6542, spot.x, 0.1, spot.z);
+    const pad = box(2.3, 0.14, 1.8, 0x59667a, spot.x, 0.22, spot.z);
+    group.add(platform, pad);
   }
 
   return group;
