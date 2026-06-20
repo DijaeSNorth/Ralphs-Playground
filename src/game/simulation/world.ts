@@ -4,8 +4,8 @@ import type { ActionState, BuddyState, RepDexEntry, Vec2, WorldEvent, WorldSnaps
 const ARENA_RADIUS = 18;
 const CAPTURE_RANGE = 2.85;
 const MAX_STAMINA = 100;
-const MAX_BUDDY_BALLS = 8;
-const STARTING_BUDDY_BALLS = 6;
+const MAX_PROTEIN_SHAKERS = 8;
+const STARTING_PROTEIN_SHAKERS = 6;
 const ACTIVE_BUDDIES = 6;
 const WALK_SPEED = 5.2;
 const SPRINT_SPEED = 7.8;
@@ -66,7 +66,7 @@ export class GymBuddyWorld {
     position: { x: 0, z: 5 },
     heading: Math.PI,
     stamina: MAX_STAMINA,
-    buddyBalls: STARTING_BUDDY_BALLS,
+    proteinShakers: STARTING_PROTEIN_SHAKERS,
     capturedTotal: 0
   };
 
@@ -74,7 +74,7 @@ export class GymBuddyWorld {
   private readonly captured = new Map<string, number>();
   private readonly events: WorldEvent[] = [];
   private catchCooldown = 0;
-  private ballRechargeTimer = 0;
+  private shakerRechargeTimer = 0;
 
   constructor() {
     this.reset();
@@ -85,14 +85,14 @@ export class GymBuddyWorld {
       position: { x: 0, z: 5 },
       heading: Math.PI,
       stamina: MAX_STAMINA,
-      buddyBalls: STARTING_BUDDY_BALLS,
+      proteinShakers: STARTING_PROTEIN_SHAKERS,
       capturedTotal: 0
     };
     this.buddies.length = 0;
     this.captured.clear();
     this.events.length = 0;
     this.catchCooldown = 0;
-    this.ballRechargeTimer = 0;
+    this.shakerRechargeTimer = 0;
 
     for (let index = 0; index < ACTIVE_BUDDIES; index += 1) {
       const buddy = this.createBuddy();
@@ -119,7 +119,7 @@ export class GymBuddyWorld {
     this.catchCooldown = Math.max(0, this.catchCooldown - dt);
     this.updatePlayer(dt, actions);
     this.updateBuddies(dt);
-    this.rechargeBuddyBalls(dt);
+    this.rechargeProteinShakers(dt);
 
     if (actions.catchPressed) {
       this.tryCapture();
@@ -142,7 +142,7 @@ export class GymBuddyWorld {
         position: copyVec2(this.player.position),
         heading: this.player.heading,
         stamina: this.player.stamina,
-        buddyBalls: this.player.buddyBalls,
+        proteinShakers: this.player.proteinShakers,
         capturedTotal: this.player.capturedTotal
       },
       buddies: this.buddies.map((buddy) => ({
@@ -250,17 +250,17 @@ export class GymBuddyWorld {
     }
   }
 
-  private rechargeBuddyBalls(dt: number): void {
-    if (this.player.buddyBalls >= MAX_BUDDY_BALLS) {
-      this.ballRechargeTimer = 0;
+  private rechargeProteinShakers(dt: number): void {
+    if (this.player.proteinShakers >= MAX_PROTEIN_SHAKERS) {
+      this.shakerRechargeTimer = 0;
       return;
     }
 
-    this.ballRechargeTimer += dt;
+    this.shakerRechargeTimer += dt;
 
-    if (this.ballRechargeTimer > 5.5) {
-      this.player.buddyBalls += 1;
-      this.ballRechargeTimer = 0;
+    if (this.shakerRechargeTimer > 5.5) {
+      this.player.proteinShakers += 1;
+      this.shakerRechargeTimer = 0;
     }
   }
 
@@ -273,12 +273,12 @@ export class GymBuddyWorld {
 
     this.catchCooldown = 0.6;
 
-    if (this.player.buddyBalls <= 0) {
+    if (this.player.proteinShakers <= 0) {
       this.events.push({
         type: 'capture',
         result: 'empty',
         start,
-        message: 'Out of Buddy Balls. Jog a lap to restock.'
+        message: 'Out of protein shakers. Jog a lap to restock.'
       });
       return;
     }
@@ -301,7 +301,7 @@ export class GymBuddyWorld {
       return;
     }
 
-    this.player.buddyBalls -= 1;
+    this.player.proteinShakers -= 1;
 
     const buddy = nearest.buddy;
     const definition = getBuddyDefinition(buddy.definitionId);
@@ -315,7 +315,11 @@ export class GymBuddyWorld {
       buddy.respawnTimer = 1.45;
       this.player.capturedTotal += 1;
       this.player.stamina = clamp(this.player.stamina + definition.staminaReward, 0, MAX_STAMINA);
-      this.player.buddyBalls = clamp(this.player.buddyBalls + 1, 0, MAX_BUDDY_BALLS);
+      this.player.proteinShakers = clamp(
+        this.player.proteinShakers + 1,
+        0,
+        MAX_PROTEIN_SHAKERS
+      );
       this.captured.set(definition.id, (this.captured.get(definition.id) ?? 0) + 1);
     } else {
       const away = {

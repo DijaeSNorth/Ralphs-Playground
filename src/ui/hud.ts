@@ -6,7 +6,7 @@ export class GameHud {
   readonly touchControls: HTMLDivElement;
 
   private readonly staminaFill: HTMLDivElement;
-  private readonly ballsValue: HTMLSpanElement;
+  private readonly shakersValue: HTMLSpanElement;
   private readonly capturedValue: HTMLSpanElement;
   private readonly objective: HTMLDivElement;
   private readonly target: HTMLDivElement;
@@ -26,8 +26,8 @@ export class GameHud {
         </section>
         <section class="hud-cluster hud-cluster--right" aria-label="Player status">
           <div class="stat-row">
-            <span>Buddy Balls</span>
-            <strong data-balls>0</strong>
+            <span>Protein Shakers</span>
+            <strong data-shakers>0</strong>
           </div>
           <div class="stat-row">
             <span>RepDex</span>
@@ -69,7 +69,7 @@ export class GameHud {
 
     const canvasMount = root.querySelector<HTMLDivElement>('[data-canvas-mount]');
     const staminaFill = root.querySelector<HTMLDivElement>('[data-stamina]');
-    const ballsValue = root.querySelector<HTMLSpanElement>('[data-balls]');
+    const shakersValue = root.querySelector<HTMLSpanElement>('[data-shakers]');
     const capturedValue = root.querySelector<HTMLSpanElement>('[data-captured]');
     const objective = root.querySelector<HTMLDivElement>('[data-objective]');
     const target = root.querySelector<HTMLDivElement>('[data-target]');
@@ -81,7 +81,7 @@ export class GameHud {
     if (
       !canvasMount ||
       !staminaFill ||
-      !ballsValue ||
+      !shakersValue ||
       !capturedValue ||
       !objective ||
       !target ||
@@ -95,7 +95,7 @@ export class GameHud {
 
     this.canvasMount = canvasMount;
     this.staminaFill = staminaFill;
-    this.ballsValue = ballsValue;
+    this.shakersValue = shakersValue;
     this.capturedValue = capturedValue;
     this.objective = objective;
     this.target = target;
@@ -107,7 +107,7 @@ export class GameHud {
 
   update(snapshot: WorldSnapshot, actions: ActionState, deltaSeconds: number): void {
     this.staminaFill.style.width = `${Math.max(0, Math.min(100, snapshot.player.stamina))}%`;
-    this.ballsValue.textContent = String(snapshot.player.buddyBalls);
+    this.shakersValue.textContent = String(snapshot.player.proteinShakers);
     this.capturedValue.textContent = String(snapshot.player.capturedTotal);
     this.inputStatus.textContent = actions.gamepadConnected ? 'Gamepad' : actions.inputLabel;
 

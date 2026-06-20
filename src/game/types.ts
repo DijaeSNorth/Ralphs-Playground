@@ -33,7 +33,7 @@ export type PlayerState = {
   position: Vec2;
   heading: number;
   stamina: number;
-  buddyBalls: number;
+  proteinShakers: number;
   capturedTotal: number;
 };
 

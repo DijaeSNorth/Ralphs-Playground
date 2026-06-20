@@ -331,16 +331,21 @@ export function createBuddyMesh(definition: BuddyDefinition): THREE.Group {
   return markShadows(group) as THREE.Group;
 }
 
-export function createCaptureProjectile(): THREE.Group {
+export function createProteinShakerProjectile(): THREE.Group {
   const group = new THREE.Group();
-  const body = cylinder(0.12, 0.14, 0.46, 0xff705c, 8);
+  const body = cylinder(0.13, 0.15, 0.54, 0x2aa6a5, 8);
   body.rotation.x = Math.PI / 2;
-  const capA = cylinder(0.1, 0.1, 0.08, 0xf9f7ef, 8);
-  capA.rotation.x = Math.PI / 2;
-  capA.position.z = 0.27;
-  const capB = capA.clone();
-  capB.position.z = -0.27;
-  group.add(body, capA, capB);
+  const lid = cylinder(0.12, 0.12, 0.08, 0xf9f7ef, 8);
+  lid.rotation.x = Math.PI / 2;
+  lid.position.z = 0.31;
+  const base = cylinder(0.11, 0.11, 0.04, 0xf9f7ef, 8);
+  base.rotation.x = Math.PI / 2;
+  base.position.z = -0.31;
+  const band = cylinder(0.132, 0.132, 0.07, 0xff705c, 8);
+  band.rotation.x = Math.PI / 2;
+  band.position.z = 0.03;
+  const spout = box(0.08, 0.08, 0.12, 0xf9f7ef, 0, 0.12, 0.36);
+  group.add(body, lid, base, band, spout);
   return markShadows(group) as THREE.Group;
 }
 

@@ -6,9 +6,9 @@ import { GameHud } from '../../ui/hud';
 import {
   createArena,
   createBuddyMesh,
-  createCaptureProjectile,
   createCaptureRing,
   createGymProps,
+  createProteinShakerProjectile,
   createPlayerMesh
 } from '../objects/lowPolyFactory';
 import { getBuddyDefinition } from '../../game/content/buddies';
@@ -150,7 +150,7 @@ class GymBuddyRenderer {
         continue;
       }
 
-      const projectile = createCaptureProjectile();
+      const projectile = createProteinShakerProjectile();
       const ring = createCaptureRing(event.result === 'success' ? 0xf6c85f : 0xffffff);
       projectile.position.set(event.start.x, 0.8, event.start.z);
       ring.position.set(event.target.x, 0.08, event.target.z);
