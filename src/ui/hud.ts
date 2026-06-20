@@ -1,10 +1,18 @@
 import { getBuddyDefinition } from '../game/content/buddies';
-import type { ActionState, WorldSnapshot } from '../game/types';
+import {
+  DEFAULT_PLAYER_APPEARANCE,
+  HAIR_OPTIONS,
+  MUSCLE_BUILD_OPTIONS,
+  SKIN_TONE_OPTIONS
+} from '../game/content/playerAppearance';
+import type { ActionState, PlayerAppearance, WorldSnapshot } from '../game/types';
 
 export class GameHud {
   readonly canvasMount: HTMLDivElement;
   readonly touchControls: HTMLDivElement;
 
+  private readonly root: HTMLElement;
+  private readonly characterCreator: HTMLDivElement;
   private readonly staminaFill: HTMLDivElement;
   private readonly shakersValue: HTMLSpanElement;
   private readonly capturedValue: HTMLSpanElement;
@@ -13,10 +21,14 @@ export class GameHud {
   private readonly dexList: HTMLDivElement;
   private readonly toast: HTMLDivElement;
   private readonly inputStatus: HTMLDivElement;
+  private readonly appearanceListeners: Array<(appearance: PlayerAppearance) => void> = [];
+  private readonly startListeners: Array<() => void> = [];
+  private appearance: PlayerAppearance = { ...DEFAULT_PLAYER_APPEARANCE };
   private toastTimer = 0;
 
   constructor(root: HTMLElement) {
-    root.className = 'game-root';
+    this.root = root;
+    root.className = 'game-root game-root--creating';
     root.innerHTML = `
       <div class="game-canvas" data-canvas-mount></div>
       <div class="hud" aria-live="polite">
@@ -46,7 +58,54 @@ export class GameHud {
         </section>
         <div class="toast" data-toast></div>
         <div class="input-status" data-input-status>Keyboard</div>
-        <div class="control-hint">Move · Catch · Sprint</div>
+        <div class="control-hint">Move / Catch / Sprint</div>
+        <section class="character-creator" data-character-creator aria-label="Character creation">
+          <div class="creator-panel">
+            <div class="creator-head">
+              <h1>Create your catcher</h1>
+              <span>Mega Gym entry</span>
+            </div>
+            <div class="creator-group" aria-label="Hair">
+              <div class="creator-label">Hair</div>
+              <div class="creator-options">
+                ${HAIR_OPTIONS.map(
+                  (option) => `
+                    <button type="button" class="creator-choice" data-hair="${option.id}" aria-pressed="false">
+                      <span class="choice-swatch" style="--swatch: ${option.swatch}"></span>
+                      <span>${option.label}</span>
+                    </button>
+                  `
+                ).join('')}
+              </div>
+            </div>
+            <div class="creator-group" aria-label="Skin tone">
+              <div class="creator-label">Skin Tone</div>
+              <div class="creator-options">
+                ${SKIN_TONE_OPTIONS.map(
+                  (option) => `
+                    <button type="button" class="creator-choice" data-skin="${option.id}" aria-pressed="false">
+                      <span class="choice-swatch" style="--swatch: ${option.swatch}"></span>
+                      <span>${option.label}</span>
+                    </button>
+                  `
+                ).join('')}
+              </div>
+            </div>
+            <div class="creator-group" aria-label="Muscle build">
+              <div class="creator-label">Muscle</div>
+              <div class="creator-options creator-options--muscle">
+                ${MUSCLE_BUILD_OPTIONS.map(
+                  (option) => `
+                    <button type="button" class="creator-choice creator-choice--muscle" data-muscle="${option.id}" aria-pressed="false">
+                      <span>${option.label}</span>
+                    </button>
+                  `
+                ).join('')}
+              </div>
+            </div>
+            <button type="button" class="creator-start" data-start-game>Enter Gym</button>
+          </div>
+        </section>
         <div class="touch-controls" data-touch-controls aria-label="Touch controls">
           <div class="touch-pad" aria-label="Movement">
             <button type="button" class="touch-key touch-key--up" data-move="up" aria-label="Move up">
@@ -77,6 +136,7 @@ export class GameHud {
     const toast = root.querySelector<HTMLDivElement>('[data-toast]');
     const inputStatus = root.querySelector<HTMLDivElement>('[data-input-status]');
     const touchControls = root.querySelector<HTMLDivElement>('[data-touch-controls]');
+    const characterCreator = root.querySelector<HTMLDivElement>('[data-character-creator]');
 
     if (
       !canvasMount ||
@@ -88,12 +148,14 @@ export class GameHud {
       !dexList ||
       !toast ||
       !inputStatus ||
-      !touchControls
+      !touchControls ||
+      !characterCreator
     ) {
       throw new Error('HUD failed to initialize');
     }
 
     this.canvasMount = canvasMount;
+    this.characterCreator = characterCreator;
     this.staminaFill = staminaFill;
     this.shakersValue = shakersValue;
     this.capturedValue = capturedValue;
@@ -103,6 +165,8 @@ export class GameHud {
     this.toast = toast;
     this.inputStatus = inputStatus;
     this.touchControls = touchControls;
+    this.bindCharacterCreator();
+    this.syncCreatorControls();
   }
 
   update(snapshot: WorldSnapshot, actions: ActionState, deltaSeconds: number): void {
@@ -117,7 +181,7 @@ export class GameHud {
       const inRange = distance <= snapshot.captureRange;
       this.target.textContent = inRange
         ? `Catch ${definition.name}`
-        : `${definition.name} · ${distance.toFixed(1)}m`;
+        : `${definition.name} - ${distance.toFixed(1)}m`;
       this.target.classList.toggle('target-chip--ready', inRange);
       this.objective.textContent = inRange
         ? 'Buddy in range. Throw clean.'
@@ -149,5 +213,74 @@ export class GameHud {
   pushMessage(message: string): void {
     this.toast.textContent = message;
     this.toastTimer = 2.35;
+  }
+
+  getAppearance(): PlayerAppearance {
+    return { ...this.appearance };
+  }
+
+  onAppearanceChange(callback: (appearance: PlayerAppearance) => void): void {
+    this.appearanceListeners.push(callback);
+  }
+
+  onStart(callback: () => void): void {
+    this.startListeners.push(callback);
+  }
+
+  closeCharacterCreator(): void {
+    this.root.classList.remove('game-root--creating');
+    this.characterCreator.hidden = true;
+  }
+
+  private bindCharacterCreator(): void {
+    this.characterCreator.querySelectorAll<HTMLButtonElement>('[data-hair]').forEach((button) => {
+      button.addEventListener('click', () => {
+        this.setAppearance({ hair: button.dataset.hair as PlayerAppearance['hair'] });
+      });
+    });
+
+    this.characterCreator.querySelectorAll<HTMLButtonElement>('[data-skin]').forEach((button) => {
+      button.addEventListener('click', () => {
+        this.setAppearance({ skinTone: button.dataset.skin as PlayerAppearance['skinTone'] });
+      });
+    });
+
+    this.characterCreator.querySelectorAll<HTMLButtonElement>('[data-muscle]').forEach((button) => {
+      button.addEventListener('click', () => {
+        this.setAppearance({ muscleBuild: button.dataset.muscle as PlayerAppearance['muscleBuild'] });
+      });
+    });
+
+    this.characterCreator.querySelector<HTMLButtonElement>('[data-start-game]')?.addEventListener('click', () => {
+      this.closeCharacterCreator();
+      this.startListeners.forEach((callback) => callback());
+    });
+  }
+
+  private setAppearance(appearance: Partial<PlayerAppearance>): void {
+    this.appearance = { ...this.appearance, ...appearance };
+    this.syncCreatorControls();
+    const snapshot = this.getAppearance();
+    this.appearanceListeners.forEach((callback) => callback(snapshot));
+  }
+
+  private syncCreatorControls(): void {
+    this.characterCreator.querySelectorAll<HTMLButtonElement>('[data-hair]').forEach((button) => {
+      const selected = button.dataset.hair === this.appearance.hair;
+      button.classList.toggle('creator-choice--selected', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
+
+    this.characterCreator.querySelectorAll<HTMLButtonElement>('[data-skin]').forEach((button) => {
+      const selected = button.dataset.skin === this.appearance.skinTone;
+      button.classList.toggle('creator-choice--selected', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
+
+    this.characterCreator.querySelectorAll<HTMLButtonElement>('[data-muscle]').forEach((button) => {
+      const selected = button.dataset.muscle === this.appearance.muscleBuild;
+      button.classList.toggle('creator-choice--selected', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
   }
 }

@@ -274,6 +274,116 @@ button {
   transform: translateX(-50%);
 }
 
+.character-creator {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-items: end;
+  justify-items: start;
+  padding: 18px;
+  pointer-events: auto;
+  background: linear-gradient(90deg, rgba(23, 36, 54, 0.34), rgba(23, 36, 54, 0));
+}
+
+.character-creator[hidden] {
+  display: none;
+}
+
+.creator-panel {
+  width: min(390px, calc(100vw - 36px));
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 8px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+}
+
+.creator-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.creator-head h1 {
+  margin: 0;
+  font-size: 1.2rem;
+  line-height: 1.08;
+}
+
+.creator-head span,
+.creator-label {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 820;
+  text-transform: uppercase;
+}
+
+.creator-group {
+  display: grid;
+  gap: 7px;
+}
+
+.creator-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.creator-choice,
+.creator-start {
+  min-height: 42px;
+  border: 1px solid rgba(23, 36, 54, 0.14);
+  border-radius: 8px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.78);
+  font-size: 0.78rem;
+  font-weight: 820;
+  cursor: pointer;
+}
+
+.creator-choice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px;
+}
+
+.creator-choice--muscle {
+  min-height: 46px;
+}
+
+.creator-choice--selected {
+  color: #ffffff;
+  border-color: transparent;
+  background: var(--ink);
+}
+
+.choice-swatch {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border: 2px solid rgba(255, 255, 255, 0.78);
+  border-radius: 999px;
+  background: var(--swatch);
+  box-shadow: 0 0 0 1px rgba(23, 36, 54, 0.18);
+}
+
+.creator-start {
+  color: #ffffff;
+  background: var(--coral);
+}
+
+.game-root--creating .touch-controls,
+.game-root--creating .control-hint {
+  display: none;
+}
+
 .touch-controls {
   position: absolute;
   inset: auto 16px 16px 16px;
@@ -374,6 +484,29 @@ button {
 
   .toast {
     bottom: 184px;
+  }
+
+  .character-creator {
+    align-items: end;
+    justify-items: center;
+    padding: 12px;
+    background: linear-gradient(0deg, rgba(23, 36, 54, 0.38), rgba(23, 36, 54, 0.04));
+  }
+
+  .creator-panel {
+    width: min(430px, calc(100vw - 24px));
+    gap: 11px;
+    padding: 13px;
+  }
+
+  .creator-head h1 {
+    font-size: 1rem;
+  }
+
+  .creator-choice,
+  .creator-start {
+    min-height: 38px;
+    font-size: 0.72rem;
   }
 }
 

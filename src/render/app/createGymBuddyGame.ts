@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { InputController } from '../../game/input/actions';
 import { GymBuddyWorld } from '../../game/simulation/world';
-import type { Vec2, WorldEvent, WorldSnapshot } from '../../game/types';
+import type { ActionState, PlayerAppearance, Vec2, WorldEvent, WorldSnapshot } from '../../game/types';
 import { GameHud } from '../../ui/hud';
 import {
   createArena,
@@ -35,7 +35,7 @@ class GymBuddyRenderer {
   private readonly scene = new THREE.Scene();
   private readonly camera = new THREE.PerspectiveCamera(52, 1, 0.1, 120);
   private readonly renderer: THREE.WebGLRenderer;
-  private readonly player = createPlayerMesh();
+  private player = createPlayerMesh();
   private readonly buddyMeshes = new Map<number, THREE.Group>();
   private readonly effects: CaptureEffect[] = [];
   private readonly clockShadowTarget = new THREE.Object3D();
@@ -77,6 +77,17 @@ class GymBuddyRenderer {
     this.updateCamera(snapshot, deltaSeconds);
     this.updateEffects(deltaSeconds);
     this.renderer.render(this.scene, this.camera);
+  }
+
+  updatePlayerAppearance(appearance: PlayerAppearance): void {
+    const position = this.player.position.clone();
+    const rotationY = this.player.rotation.y;
+    this.scene.remove(this.player);
+    this.disposeObject(this.player);
+    this.player = createPlayerMesh(appearance);
+    this.player.position.copy(position);
+    this.player.rotation.y = rotationY;
+    this.scene.add(this.player);
   }
 
   private addLights(): void {
@@ -139,7 +150,7 @@ class GymBuddyRenderer {
       mesh.position.set(buddy.position.x, 0, buddy.position.z);
       mesh.rotation.y = buddy.heading;
 
-      const idleScale = 1 + Math.sin(performance.now() * 0.004 + buddy.id) * 0.025;
+      const idleScale = 0.9 + Math.sin(performance.now() * 0.004 + buddy.id) * 0.018;
       mesh.scale.setScalar(idleScale);
     }
   }
@@ -237,6 +248,31 @@ class GymBuddyRenderer {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(this.width, this.height, false);
   }
+
+  private disposeObject(object: THREE.Object3D): void {
+    object.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.geometry.dispose();
+
+        if (Array.isArray(child.material)) {
+          child.material.forEach((material) => material.dispose());
+        } else {
+          child.material.dispose();
+        }
+      }
+    });
+  }
+}
+
+function createPausedActions(actions: ActionState): ActionState {
+  return {
+    ...actions,
+    moveX: 0,
+    moveZ: 0,
+    catchPressed: false,
+    sprintHeld: false,
+    resetPressed: false
+  };
 }
 
 export function createGymBuddyGame(root: HTMLElement): void {
@@ -245,9 +281,17 @@ export function createGymBuddyGame(root: HTMLElement): void {
   const world = new GymBuddyWorld();
   const initialSnapshot = world.getSnapshot();
   const renderer = new GymBuddyRenderer(hud.canvasMount, initialSnapshot);
+  let gameStarted = false;
 
   input.bindTouchControls(hud.touchControls);
-  hud.pushMessage('Mega Gym is open.');
+  hud.onAppearanceChange((appearance) => {
+    renderer.updatePlayerAppearance(appearance);
+  });
+  hud.onStart(() => {
+    gameStarted = true;
+    hud.pushMessage('Mega Gym is open.');
+  });
+  renderer.updatePlayerAppearance(hud.getAppearance());
 
   let lastTime = performance.now();
 
@@ -255,8 +299,9 @@ export function createGymBuddyGame(root: HTMLElement): void {
     const deltaSeconds = Math.min((now - lastTime) / 1000, 0.08);
     lastTime = now;
 
-    const actions = input.read();
-    world.update(deltaSeconds, actions);
+    const inputActions = input.read();
+    const actions = gameStarted ? inputActions : createPausedActions(inputActions);
+    world.update(gameStarted ? deltaSeconds : 0, actions);
     const events = world.drainEvents();
     const snapshot = world.getSnapshot();
 
@@ -265,7 +310,7 @@ export function createGymBuddyGame(root: HTMLElement): void {
     }
 
     renderer.update(snapshot, events, deltaSeconds);
-    hud.update(snapshot, actions, deltaSeconds);
+    hud.update(snapshot, inputActions, deltaSeconds);
     requestAnimationFrame(frame);
   }
 

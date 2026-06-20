@@ -5,6 +5,18 @@ export type Vec2 = {
 
 export type BuddyArchetype = 'yogi' | 'runner' | 'lifter' | 'spinner' | 'climber';
 
+export type HairStyle = 'crop' | 'bun' | 'sweep';
+
+export type SkinTone = 'light' | 'warm' | 'deep';
+
+export type MuscleBuild = 'lean' | 'power' | 'sculpted';
+
+export type PlayerAppearance = {
+  hair: HairStyle;
+  skinTone: SkinTone;
+  muscleBuild: MuscleBuild;
+};
+
 export type BuddyDefinition = {
   id: string;
   name: string;

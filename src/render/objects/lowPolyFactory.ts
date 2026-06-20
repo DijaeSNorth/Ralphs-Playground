@@ -1,5 +1,10 @@
 import * as THREE from 'three';
-import type { BuddyDefinition } from '../../game/types';
+import {
+  DEFAULT_PLAYER_APPEARANCE,
+  getHairOption,
+  getSkinToneOption
+} from '../../game/content/playerAppearance';
+import type { BuddyDefinition, MuscleBuild, PlayerAppearance } from '../../game/types';
 
 function standardMaterial(color: number, roughness = 0.78): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
@@ -242,30 +247,247 @@ export function createGymProps(): THREE.Group {
   return group;
 }
 
-export function createPlayerMesh(): THREE.Group {
-  const group = new THREE.Group();
-  const body = cylinder(0.28, 0.34, 0.76, 0x24445f, 7);
-  body.position.y = 0.72;
-  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.25, 0), standardMaterial(0xffcf9a));
-  head.position.y = 1.2;
-  const cap = box(0.38, 0.08, 0.34, 0xff705c, 0, 1.38, 0.02);
-  const visor = box(0.2, 0.04, 0.25, 0xff705c, 0, 1.36, 0.25);
+const MUSCLE_SPECS: Record<
+  MuscleBuild,
+  {
+    torsoTop: number;
+    torsoBottom: number;
+    shoulder: number;
+    arm: number;
+    forearm: number;
+    leg: number;
+    baseScale: number;
+  }
+> = {
+  lean: {
+    torsoTop: 0.28,
+    torsoBottom: 0.31,
+    shoulder: 0.24,
+    arm: 0.08,
+    forearm: 0.075,
+    leg: 0.09,
+    baseScale: 1.05
+  },
+  power: {
+    torsoTop: 0.36,
+    torsoBottom: 0.4,
+    shoulder: 0.32,
+    arm: 0.12,
+    forearm: 0.1,
+    leg: 0.12,
+    baseScale: 1.08
+  },
+  sculpted: {
+    torsoTop: 0.34,
+    torsoBottom: 0.37,
+    shoulder: 0.3,
+    arm: 0.11,
+    forearm: 0.095,
+    leg: 0.115,
+    baseScale: 1.08
+  }
+};
 
-  const leftLeg = cylinder(0.08, 0.1, 0.48, 0x1b2f43, 5);
+function createFlatHex(radius: number, color: number): THREE.Mesh {
+  const mesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius, radius, 0.035, 6),
+    standardMaterial(color)
+  );
+  mesh.rotation.x = Math.PI / 2;
+  return mesh;
+}
+
+function addPlayerHair(group: THREE.Group, appearance: PlayerAppearance): void {
+  const hair = getHairOption(appearance.hair);
+  const hairMaterial = standardMaterial(hair.color);
+
+  if (appearance.hair === 'crop') {
+    const cap = new THREE.Mesh(new THREE.IcosahedronGeometry(0.27, 0), hairMaterial);
+    cap.scale.set(1.05, 0.45, 0.9);
+    cap.position.set(0, 1.34, -0.02);
+    const front = box(0.34, 0.07, 0.18, hair.color, 0, 1.33, 0.19);
+    group.add(cap, front);
+    return;
+  }
+
+  if (appearance.hair === 'bun') {
+    const cap = new THREE.Mesh(new THREE.IcosahedronGeometry(0.25, 0), hairMaterial);
+    cap.scale.set(1.0, 0.48, 0.9);
+    cap.position.set(0, 1.33, -0.03);
+    const bun = new THREE.Mesh(new THREE.IcosahedronGeometry(0.15, 0), hairMaterial);
+    bun.position.set(0, 1.51, -0.18);
+    group.add(cap, bun);
+    return;
+  }
+
+  const sweep = new THREE.Group();
+  const cap = new THREE.Mesh(new THREE.IcosahedronGeometry(0.25, 0), hairMaterial);
+  cap.scale.set(1.0, 0.42, 0.88);
+  cap.position.set(0, 1.33, -0.02);
+  const wedgeA = box(0.34, 0.09, 0.2, hair.color, -0.08, 1.42, 0.12);
+  wedgeA.rotation.z = -0.25;
+  const wedgeB = box(0.24, 0.07, 0.18, hair.color, 0.13, 1.36, 0.17);
+  wedgeB.rotation.z = -0.55;
+  sweep.add(cap, wedgeA, wedgeB);
+  group.add(sweep);
+}
+
+function addPlayerMuscleGeometry(
+  group: THREE.Group,
+  build: MuscleBuild,
+  skinColor: number,
+  shirtAccent: number
+): void {
+  const spec = MUSCLE_SPECS[build];
+  const leftShoulder = new THREE.Mesh(new THREE.IcosahedronGeometry(spec.shoulder, 0), standardMaterial(skinColor));
+  leftShoulder.scale.set(1.2, 0.72, 0.9);
+  leftShoulder.position.set(-0.39, 0.94, 0.04);
+  const rightShoulder = leftShoulder.clone();
+  rightShoulder.position.x = 0.39;
+  group.add(leftShoulder, rightShoulder);
+
+  const leftBicep = new THREE.Mesh(new THREE.IcosahedronGeometry(spec.arm * 1.35, 0), standardMaterial(skinColor));
+  leftBicep.scale.set(0.9, 1.2, 0.78);
+  leftBicep.position.set(-0.46, 0.72, 0.08);
+  const rightBicep = leftBicep.clone();
+  rightBicep.position.x = 0.46;
+  group.add(leftBicep, rightBicep);
+
+  const leftQuad = new THREE.Mesh(new THREE.IcosahedronGeometry(spec.leg * 1.25, 0), standardMaterial(0x1b2f43));
+  leftQuad.scale.set(0.8, 1.25, 0.72);
+  leftQuad.position.set(-0.15, 0.42, 0.09);
+  const rightQuad = leftQuad.clone();
+  rightQuad.position.x = 0.15;
+  group.add(leftQuad, rightQuad);
+
+  if (build === 'lean') {
+    const chestLineA = box(0.08, 0.025, 0.28, shirtAccent, -0.1, 0.93, 0.32);
+    chestLineA.rotation.z = 0.35;
+    const chestLineB = chestLineA.clone();
+    chestLineB.position.x = 0.1;
+    chestLineB.rotation.z = -0.35;
+    const core = createFlatHex(0.06, shirtAccent);
+    core.position.set(0, 0.72, 0.35);
+    group.add(chestLineA, chestLineB, core);
+    return;
+  }
+
+  const pecLeft = box(0.2, 0.11, 0.08, shirtAccent, -0.12, 0.9, 0.35);
+  pecLeft.rotation.z = 0.12;
+  const pecRight = pecLeft.clone();
+  pecRight.position.x = 0.12;
+  pecRight.rotation.z = -0.12;
+  group.add(pecLeft, pecRight);
+
+  const abRows = build === 'sculpted' ? 3 : 2;
+
+  for (let row = 0; row < abRows; row += 1) {
+    for (let col = 0; col < 2; col += 1) {
+      const ab = createFlatHex(build === 'sculpted' ? 0.055 : 0.045, 0x5dd29a);
+      ab.position.set(col === 0 ? -0.055 : 0.055, 0.76 - row * 0.075, 0.36);
+      ab.scale.set(0.82, 1, 1);
+      group.add(ab);
+    }
+  }
+
+  if (build === 'sculpted') {
+    const obliqueLeft = box(0.045, 0.18, 0.05, 0xffc55c, -0.21, 0.73, 0.34);
+    obliqueLeft.rotation.z = -0.35;
+    const obliqueRight = obliqueLeft.clone();
+    obliqueRight.position.x = 0.21;
+    obliqueRight.rotation.z = 0.35;
+    group.add(obliqueLeft, obliqueRight);
+  }
+}
+
+export function createPlayerMesh(appearance = DEFAULT_PLAYER_APPEARANCE): THREE.Group {
+  const group = new THREE.Group();
+  const skinColor = getSkinToneOption(appearance.skinTone).color;
+  const spec = MUSCLE_SPECS[appearance.muscleBuild];
+  const body = cylinder(spec.torsoTop, spec.torsoBottom, 0.78, 0x24445f, 7);
+  body.position.y = 0.72;
+  const head = new THREE.Mesh(new THREE.IcosahedronGeometry(0.25, 0), standardMaterial(skinColor));
+  head.position.y = 1.2;
+  const headband = box(0.36, 0.055, 0.3, 0xff705c, 0, 1.29, 0.06);
+
+  const leftLeg = cylinder(spec.leg * 0.78, spec.leg, 0.48, 0x1b2f43, 5);
   leftLeg.position.set(-0.12, 0.28, 0);
   const rightLeg = leftLeg.clone();
   rightLeg.position.x = 0.12;
 
-  const leftArm = cylinder(0.07, 0.08, 0.58, 0xffcf9a, 5);
+  const leftArm = cylinder(spec.arm * 0.85, spec.forearm, 0.58, skinColor, 5);
   leftArm.position.set(-0.36, 0.76, 0.04);
   leftArm.rotation.z = 0.28;
   const rightArm = leftArm.clone();
   rightArm.position.x = 0.36;
   rightArm.rotation.z = -0.28;
 
-  group.add(body, head, cap, visor, leftLeg, rightLeg, leftArm, rightArm);
-  group.scale.setScalar(1.04);
+  group.add(body, head, headband, leftLeg, rightLeg, leftArm, rightArm);
+  addPlayerHair(group, appearance);
+  addPlayerMuscleGeometry(group, appearance.muscleBuild, skinColor, 0xff705c);
+  group.scale.setScalar(spec.baseScale);
   return markShadows(group) as THREE.Group;
+}
+
+function addBuddyMuscleFeatures(group: THREE.Group, definition: BuddyDefinition): void {
+  const accent = definition.accent;
+  const leftMark = createFlatHex(0.07, accent);
+  leftMark.position.set(-0.09, 0.78, 0.38);
+  const rightMark = leftMark.clone();
+  rightMark.position.x = 0.09;
+  group.add(leftMark, rightMark);
+
+  if (definition.archetype === 'yogi') {
+    const coreRing = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.022, 5, 14), standardMaterial(accent));
+    coreRing.rotation.x = Math.PI / 2;
+    coreRing.position.set(0, 0.68, 0.39);
+    const breathDiamond = createFlatHex(0.05, 0xf9f7ef);
+    breathDiamond.position.set(0, 0.86, 0.4);
+    group.add(coreRing, breathDiamond);
+  }
+
+  if (definition.archetype === 'runner') {
+    const calfLeft = box(0.08, 0.18, 0.07, accent, -0.17, 0.26, 0.1);
+    calfLeft.rotation.z = -0.3;
+    const calfRight = calfLeft.clone();
+    calfRight.position.x = 0.17;
+    calfRight.rotation.z = 0.3;
+    const speedChevron = box(0.28, 0.05, 0.07, 0xf9f7ef, 0, 0.98, 0.36);
+    speedChevron.rotation.z = -0.18;
+    group.add(calfLeft, calfRight, speedChevron);
+  }
+
+  if (definition.archetype === 'lifter') {
+    const leftOrb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16, 0), standardMaterial(accent));
+    leftOrb.scale.set(1.15, 0.9, 0.9);
+    leftOrb.position.set(-0.5, 0.76, 0.04);
+    const rightOrb = leftOrb.clone();
+    rightOrb.position.x = 0.5;
+    const sternum = box(0.08, 0.28, 0.07, 0xf9f7ef, 0, 0.82, 0.39);
+    group.add(leftOrb, rightOrb, sternum);
+  }
+
+  if (definition.archetype === 'spinner') {
+    const shoulderRingA = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.025, 5, 12), standardMaterial(accent));
+    shoulderRingA.position.set(-0.39, 0.92, 0.07);
+    shoulderRingA.rotation.y = Math.PI / 2;
+    const shoulderRingB = shoulderRingA.clone();
+    shoulderRingB.position.x = 0.39;
+    const cadenceCore = createFlatHex(0.09, 0xf9f7ef);
+    cadenceCore.position.set(0, 0.67, 0.39);
+    group.add(shoulderRingA, shoulderRingB, cadenceCore);
+  }
+
+  if (definition.archetype === 'climber') {
+    const forearmLeft = box(0.09, 0.24, 0.07, accent, -0.4, 0.82, 0.08);
+    forearmLeft.rotation.z = 0.45;
+    const forearmRight = forearmLeft.clone();
+    forearmRight.position.x = 0.4;
+    forearmRight.rotation.z = -0.45;
+    const gripCore = createFlatHex(0.08, 0xf9f7ef);
+    gripCore.position.set(0, 0.7, 0.39);
+    group.add(forearmLeft, forearmRight, gripCore);
+  }
 }
 
 export function createBuddyMesh(definition: BuddyDefinition): THREE.Group {
@@ -327,6 +549,8 @@ export function createBuddyMesh(definition: BuddyDefinition): THREE.Group {
     const rightGrip = box(0.22, 0.18, 0.16, definition.accent, 0.52, 1.14, 0.04);
     group.add(chalkBag, leftGrip, rightGrip);
   }
+
+  addBuddyMuscleFeatures(group, definition);
 
   return markShadows(group) as THREE.Group;
 }
