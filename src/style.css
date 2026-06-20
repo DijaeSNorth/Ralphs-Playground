@@ -34,8 +34,11 @@ html {
 
 body {
   overflow: hidden;
+  overscroll-behavior: none;
   background: #c7d8dc;
   color: var(--ink);
+  touch-action: none;
+  user-select: none;
 }
 
 button {
@@ -178,6 +181,13 @@ button {
   gap: 10px;
   font-size: 0.78rem;
   font-weight: 720;
+}
+
+.stat-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .stat-row strong {
@@ -604,85 +614,98 @@ button {
 
 .touch-controls {
   position: absolute;
-  inset: auto 16px 16px 16px;
+  inset: auto calc(18px + env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom))
+    calc(18px + env(safe-area-inset-left));
   display: none;
   align-items: end;
   justify-content: space-between;
   pointer-events: none;
 }
 
-.touch-pad {
+.touch-joystick {
   position: relative;
-  width: 138px;
-  height: 138px;
+  width: 148px;
+  height: 148px;
+  border-radius: 999px;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.touch-joystick-ring,
+.touch-joystick-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+}
+
+.touch-joystick-ring {
+  width: 118px;
+  height: 118px;
+  border: 1px solid rgba(23, 36, 54, 0.16);
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.88) 0 28%, rgba(255, 255, 255, 0.52) 29% 100%);
+  box-shadow: 0 14px 28px rgba(23, 36, 54, 0.18);
+  backdrop-filter: blur(12px);
+}
+
+.touch-joystick-knob {
+  width: 54px;
+  height: 54px;
+  border: 1px solid rgba(23, 36, 54, 0.18);
+  background: var(--ink);
+  box-shadow: 0 10px 22px rgba(23, 36, 54, 0.22);
+  will-change: transform;
+}
+
+.touch-actions {
+  display: grid;
+  grid-template-columns: 72px 94px;
+  gap: 10px;
+  align-items: end;
   pointer-events: auto;
 }
 
-.touch-key,
-.catch-button {
+.touch-action {
   border: 1px solid rgba(23, 36, 54, 0.16);
   border-radius: 8px;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.82);
   box-shadow: 0 12px 24px rgba(23, 36, 54, 0.16);
   touch-action: none;
+  pointer-events: auto;
 }
 
-.touch-key {
-  position: absolute;
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-}
-
-.touch-key svg {
-  width: 22px;
-  height: 22px;
-  fill: currentColor;
-}
-
-.touch-key--up {
-  top: 0;
-  left: 47px;
-}
-
-.touch-key--left {
-  top: 47px;
-  left: 0;
-}
-
-.touch-key--right {
-  top: 47px;
-  right: 0;
-}
-
-.touch-key--down {
-  bottom: 0;
-  left: 47px;
-}
-
-.touch-key:active,
-.catch-button:active {
+.touch-action:active {
   background: var(--gold);
 }
 
-.catch-button {
-  width: 92px;
-  height: 92px;
+.touch-action--sprint {
+  width: 72px;
+  height: 72px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.88);
+  font-size: 0.72rem;
+  font-weight: 840;
+}
+
+.touch-action--catch {
+  width: 94px;
+  height: 94px;
   color: #ffffff;
   background: var(--coral);
   font-size: 0.86rem;
   font-weight: 840;
-  pointer-events: auto;
 }
 
 @media (max-width: 820px) {
   .hud-cluster--right {
-    top: 242px;
+    top: 12px;
     right: 12px;
     bottom: auto;
-    width: 164px;
+    width: 132px;
+    gap: 6px;
   }
 
   .hud-cluster--left {
@@ -735,15 +758,29 @@ button {
     min-height: 38px;
     font-size: 0.72rem;
   }
+
+  .stat-row,
+  .stamina-wrap {
+    padding: 7px 8px;
+    font-size: 0.68rem;
+  }
+
+  .stat-row strong {
+    font-size: 0.96rem;
+  }
+
+  .stamina-track {
+    height: 7px;
+  }
 }
 
 @media (max-width: 520px) {
   .objective-chip {
-    max-width: 220px;
+    max-width: 176px;
   }
 
   .hud-cluster--right {
-    width: 142px;
+    width: 118px;
   }
 
   .stat-row,
@@ -754,6 +791,41 @@ button {
   .workout-buttons button,
   .workout-prompt button {
     font-size: 0.72rem;
+  }
+
+  .touch-controls {
+    inset: auto calc(12px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom))
+      calc(12px + env(safe-area-inset-left));
+  }
+
+  .touch-joystick {
+    width: 126px;
+    height: 126px;
+  }
+
+  .touch-joystick-ring {
+    width: 102px;
+    height: 102px;
+  }
+
+  .touch-joystick-knob {
+    width: 48px;
+    height: 48px;
+  }
+
+  .touch-actions {
+    grid-template-columns: 62px 82px;
+    gap: 8px;
+  }
+
+  .touch-action--sprint {
+    width: 62px;
+    height: 62px;
+  }
+
+  .touch-action--catch {
+    width: 82px;
+    height: 82px;
   }
 }
 

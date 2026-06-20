@@ -32,7 +32,17 @@ type RenderCullable = {
 };
 
 const BUDDY_RENDER_DISTANCE = 24;
+const BUDDY_RENDER_DISTANCE_TOUCH = 18;
 const DEFAULT_STATION_RENDER_DISTANCE = 25;
+const DEFAULT_STATION_RENDER_DISTANCE_TOUCH = 21;
+
+function shouldUseTouchRendering(): boolean {
+  return window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || window.innerWidth <= 820;
+}
+
+function getRenderPixelRatioCap(touchOptimized: boolean): number {
+  return touchOptimized ? 1.15 : 1.5;
+}
 
 function lerp(start: number, end: number, amount: number): number {
   return start + (end - start) * amount;
@@ -47,6 +57,7 @@ class GymBuddyRenderer {
   private readonly camera = new THREE.PerspectiveCamera(52, 1, 0.1, 120);
   private readonly renderer: THREE.WebGLRenderer;
   private readonly cullables: RenderCullable[] = [];
+  private readonly touchOptimized = shouldUseTouchRendering();
   private player = createPlayerMesh();
   private readonly buddyMeshes = new Map<number, THREE.Group>();
   private readonly effects: CaptureEffect[] = [];
@@ -56,11 +67,11 @@ class GymBuddyRenderer {
 
   constructor(private readonly container: HTMLElement, initialSnapshot: WorldSnapshot) {
     this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: !this.touchOptimized,
       preserveDrawingBuffer: false,
-      powerPreference: 'high-performance'
+      powerPreference: this.touchOptimized ? 'default' : 'high-performance'
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, getRenderPixelRatioCap(this.touchOptimized)));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -112,7 +123,8 @@ class GymBuddyRenderer {
     const sun = new THREE.DirectionalLight(0xfff4dc, 2.05);
     sun.position.set(10, 16, 7);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
+    const shadowSize = this.touchOptimized ? 512 : 1024;
+    sun.shadow.mapSize.set(shadowSize, shadowSize);
     sun.shadow.camera.near = 1;
     sun.shadow.camera.far = 60;
     sun.shadow.camera.left = -24;
@@ -159,7 +171,8 @@ class GymBuddyRenderer {
         buddy.position.x - snapshot.player.position.x,
         buddy.position.z - snapshot.player.position.z
       );
-      mesh.visible = !buddy.captured && playerDistance <= BUDDY_RENDER_DISTANCE;
+      const renderDistance = this.touchOptimized ? BUDDY_RENDER_DISTANCE_TOUCH : BUDDY_RENDER_DISTANCE;
+      mesh.visible = !buddy.captured && playerDistance <= renderDistance;
       mesh.position.set(buddy.position.x, 0, buddy.position.z);
       mesh.rotation.y = buddy.heading;
 
@@ -241,6 +254,7 @@ class GymBuddyRenderer {
           }
         });
         effect.ring.geometry.dispose();
+        material.dispose();
         this.effects.splice(index, 1);
       }
     }
@@ -249,12 +263,15 @@ class GymBuddyRenderer {
   private registerCullables(root: THREE.Group): void {
     for (const child of root.children) {
       const center = child.userData.cullCenter as Vec2 | undefined;
+      const baseRenderDistance =
+        typeof child.userData.renderDistance === 'number'
+          ? child.userData.renderDistance
+          : DEFAULT_STATION_RENDER_DISTANCE;
       this.cullables.push({
         object: child,
-        renderDistance:
-          typeof child.userData.renderDistance === 'number'
-            ? child.userData.renderDistance
-            : DEFAULT_STATION_RENDER_DISTANCE,
+        renderDistance: this.touchOptimized
+          ? Math.min(baseRenderDistance, DEFAULT_STATION_RENDER_DISTANCE_TOUCH)
+          : baseRenderDistance,
         center: center ?? { x: child.position.x, z: child.position.z }
       });
     }
@@ -276,6 +293,7 @@ class GymBuddyRenderer {
     this.height = Math.max(1, Math.floor(rect.height));
     this.camera.aspect = this.width / this.height;
     this.camera.updateProjectionMatrix();
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, getRenderPixelRatioCap(this.touchOptimized)));
     this.renderer.setSize(this.width, this.height, false);
   }
 

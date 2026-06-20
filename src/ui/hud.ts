@@ -65,7 +65,7 @@ export class GameHud {
         </section>
         <section class="hud-cluster hud-cluster--right" aria-label="Player status">
           <div class="stat-row">
-            <span>Protein Shakers</span>
+            <span>Shakers</span>
             <strong data-shakers>0</strong>
           </div>
           <div class="stat-row">
@@ -152,21 +152,14 @@ export class GameHud {
           </div>
         </section>
         <div class="touch-controls" data-touch-controls aria-label="Touch controls">
-          <div class="touch-pad" aria-label="Movement">
-            <button type="button" class="touch-key touch-key--up" data-move="up" aria-label="Move up">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5l7 8h-5v6h-4v-6H5l7-8z"/></svg>
-            </button>
-            <button type="button" class="touch-key touch-key--left" data-move="left" aria-label="Move left">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l8-7v5h6v4h-6v5l-8-7z"/></svg>
-            </button>
-            <button type="button" class="touch-key touch-key--right" data-move="right" aria-label="Move right">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12l-8 7v-5H5v-4h6V5l8 7z"/></svg>
-            </button>
-            <button type="button" class="touch-key touch-key--down" data-move="down" aria-label="Move down">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19l-7-8h5V5h4v6h5l-7 8z"/></svg>
-            </button>
+          <div class="touch-joystick" data-joystick aria-label="Move">
+            <div class="touch-joystick-ring"></div>
+            <div class="touch-joystick-knob" data-joystick-knob></div>
           </div>
-          <button type="button" class="catch-button" data-catch>Catch</button>
+          <div class="touch-actions">
+            <button type="button" class="touch-action touch-action--sprint" data-sprint>Sprint</button>
+            <button type="button" class="touch-action touch-action--catch" data-catch>Catch</button>
+          </div>
         </div>
       </div>
     `;

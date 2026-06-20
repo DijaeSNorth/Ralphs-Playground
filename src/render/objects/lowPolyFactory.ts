@@ -835,7 +835,13 @@ export function createProteinShakerProjectile(): THREE.Group {
 }
 
 export function createCaptureRing(color: number): THREE.Mesh {
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.035, 6, 24), basicMaterial(color, 0.9));
+  const material = new THREE.MeshBasicMaterial({
+    color,
+    transparent: true,
+    opacity: 0.9,
+    depthWrite: false
+  });
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.035, 6, 24), material);
   ring.rotation.x = Math.PI / 2;
   return ring;
 }

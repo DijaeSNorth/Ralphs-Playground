@@ -3,9 +3,15 @@ import type { ActionState } from '../types';
 type MoveDirection = 'up' | 'down' | 'left' | 'right';
 
 const DEAD_ZONE = 0.18;
+const TOUCH_DEAD_ZONE = 0.08;
+const TOUCH_STICK_RADIUS = 54;
 
 function applyDeadZone(value: number): number {
   return Math.abs(value) < DEAD_ZONE ? 0 : value;
+}
+
+function applyTouchDeadZone(value: number): number {
+  return Math.abs(value) < TOUCH_DEAD_ZONE ? 0 : value;
 }
 
 function clampAxis(value: number): number {
@@ -15,6 +21,8 @@ function clampAxis(value: number): number {
 export class InputController {
   private readonly keys = new Set<string>();
   private readonly virtualDirections = new Set<MoveDirection>();
+  private virtualAxis = { x: 0, z: 0 };
+  private virtualSprintHeld = false;
   private catchQueued = false;
   private interactQueued = false;
   private resetQueued = false;
@@ -52,6 +60,8 @@ export class InputController {
     window.addEventListener('blur', () => {
       this.keys.clear();
       this.virtualDirections.clear();
+      this.virtualAxis = { x: 0, z: 0 };
+      this.virtualSprintHeld = false;
     });
 
     window.addEventListener('gamepadconnected', (event) => {
@@ -60,6 +70,55 @@ export class InputController {
   }
 
   bindTouchControls(root: HTMLElement): void {
+    const joystick = root.querySelector<HTMLDivElement>('[data-joystick]');
+    const joystickKnob = root.querySelector<HTMLDivElement>('[data-joystick-knob]');
+
+    if (joystick && joystickKnob) {
+      const resetJoystick = () => {
+        this.virtualAxis = { x: 0, z: 0 };
+        joystickKnob.style.transform = 'translate(-50%, -50%)';
+      };
+
+      const updateJoystick = (event: PointerEvent) => {
+        event.preventDefault();
+        const rect = joystick.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const rawX = event.clientX - centerX;
+        const rawY = event.clientY - centerY;
+        const distance = Math.hypot(rawX, rawY);
+        const scale = distance > TOUCH_STICK_RADIUS ? TOUCH_STICK_RADIUS / distance : 1;
+        const x = rawX * scale;
+        const y = rawY * scale;
+
+        this.virtualAxis = {
+          x: applyTouchDeadZone(x / TOUCH_STICK_RADIUS),
+          z: applyTouchDeadZone(y / TOUCH_STICK_RADIUS)
+        };
+        joystickKnob.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+        this.lastInputLabel = 'Touch';
+      };
+
+      const activate = (event: PointerEvent) => {
+        joystick.setPointerCapture(event.pointerId);
+        updateJoystick(event);
+      };
+
+      const release = (event: PointerEvent) => {
+        event.preventDefault();
+        resetJoystick();
+
+        if (joystick.hasPointerCapture(event.pointerId)) {
+          joystick.releasePointerCapture(event.pointerId);
+        }
+      };
+
+      joystick.addEventListener('pointerdown', activate);
+      joystick.addEventListener('pointermove', updateJoystick);
+      joystick.addEventListener('pointerup', release);
+      joystick.addEventListener('pointercancel', release);
+    }
+
     root.querySelectorAll<HTMLButtonElement>('[data-move]').forEach((button) => {
       const direction = button.dataset.move as MoveDirection;
 
@@ -88,7 +147,31 @@ export class InputController {
       button.addEventListener('pointerdown', (event) => {
         event.preventDefault();
         this.catchQueued = true;
+        this.lastInputLabel = 'Touch';
       });
+    });
+
+    root.querySelectorAll<HTMLButtonElement>('[data-sprint]').forEach((button) => {
+      const activate = (event: PointerEvent) => {
+        event.preventDefault();
+        this.virtualSprintHeld = true;
+        this.lastInputLabel = 'Touch';
+        button.setPointerCapture(event.pointerId);
+      };
+
+      const release = (event: PointerEvent) => {
+        event.preventDefault();
+        this.virtualSprintHeld = false;
+
+        if (button.hasPointerCapture(event.pointerId)) {
+          button.releasePointerCapture(event.pointerId);
+        }
+      };
+
+      button.addEventListener('pointerdown', activate);
+      button.addEventListener('pointerup', release);
+      button.addEventListener('pointercancel', release);
+      button.addEventListener('pointerleave', release);
     });
   }
 
@@ -112,12 +195,18 @@ export class InputController {
       moveZ += 1;
     }
 
+    if (this.virtualAxis.x !== 0 || this.virtualAxis.z !== 0) {
+      moveX = this.virtualAxis.x;
+      moveZ = this.virtualAxis.z;
+    }
+
     const gamepad = this.getPrimaryGamepad();
     let gamepadConnected = false;
     let gamepadCatch = false;
     let gamepadInteract = false;
     let gamepadReset = false;
-    let sprintHeld = this.keys.has('ShiftLeft') || this.keys.has('ShiftRight');
+    let sprintHeld =
+      this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') || this.virtualSprintHeld;
 
     if (gamepad) {
       gamepadConnected = true;
