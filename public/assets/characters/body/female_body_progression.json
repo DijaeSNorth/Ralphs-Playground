@@ -1,0 +1,12 @@
+{
+  "schema": "1.0",
+  "build": [
+    { "id": "beginner", "scale": { "shoulders": 0.86, "torso": 0.84, "arms": 0.84, "legs": 0.84, "hips": 0.84, "chest": 0.84, "glutes": 0.82, "thighs": 0.84, "calfs": 0.82 } },
+    { "id": "average", "scale": { "shoulders": 0.98, "torso": 0.98, "arms": 0.98, "legs": 0.98, "hips": 0.96, "chest": 0.96, "glutes": 0.94, "thighs": 0.98, "calfs": 0.95 } },
+    { "id": "toned", "scale": { "shoulders": 1.04, "torso": 1.05, "arms": 1.06, "legs": 1.05, "hips": 1.02, "chest": 1.06, "glutes": 1.01, "thighs": 1.04, "calfs": 1.0 } },
+    { "id": "athletic", "scale": { "shoulders": 1.08, "torso": 1.1, "arms": 1.13, "legs": 1.1, "hips": 1.06, "chest": 1.11, "glutes": 1.06, "thighs": 1.09, "calfs": 1.06 } },
+    { "id": "muscular", "scale": { "shoulders": 1.11, "torso": 1.15, "arms": 1.16, "legs": 1.13, "hips": 1.1, "chest": 1.16, "glutes": 1.08, "thighs": 1.13, "calfs": 1.1 } },
+    { "id": "bodybuilder", "scale": { "shoulders": 1.16, "torso": 1.2, "arms": 1.21, "legs": 1.17, "hips": 1.14, "chest": 1.22, "glutes": 1.12, "thighs": 1.17, "calfs": 1.14 } },
+    { "id": "elite", "scale": { "shoulders": 1.2, "torso": 1.24, "arms": 1.26, "legs": 1.2, "hips": 1.16, "chest": 1.27, "glutes": 1.15, "thighs": 1.2, "calfs": 1.18 } }
+  ]
+}

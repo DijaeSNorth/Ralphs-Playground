@@ -1,0 +1,5 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='-1.2 -1.6 2.4 4.8' width='1024' height='1024'>
+  <g id='hair_back'><path id='hair_back_shape' d='M -0.3 0.9 C -0.3 1.0 -0.1 1.2 0.1 1.2 C 0.3 1.2 0.5 1.0 0.5 0.8 L 0.5 -0.2 L -0.3 -0.2 Z' fill='#2b1a12'/></g>
+  <g id='hair_cap_base'><ellipse id='hair_cap_base_shape' cx='0' cy='1.0' rx='0.35' ry='0.18' fill='#2f1d14'/></g>
+  <g id='hairline_front'><ellipse id='hairline_front_main' cx='0' cy='1.05' rx='0.28' ry='0.1' fill='#22150e'/></g>
+</svg>

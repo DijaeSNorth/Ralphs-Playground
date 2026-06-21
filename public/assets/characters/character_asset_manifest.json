@@ -1,0 +1,141 @@
+{
+  "schemaVersion": "1.1.0",
+  "project": "gym-buddy-catcher character visuals",
+  "assetRoot": "/assets/characters",
+  "lighting": {
+    "key": "top-left",
+    "ambient": 0.28,
+    "direction": [-0.25, 1, 0.35]
+  },
+  "paletteProfiles": {
+    "skin": {
+      "deep": { "base": "#7a4b36", "light": "#c9875d", "highlight": "#e3b08a", "shadow": "#6d3f2f", "deepShadow": "#3b211a" },
+      "warm": { "base": "#c9875d", "light": "#d8a17b", "highlight": "#e8bc9f", "shadow": "#8a4c34", "deepShadow": "#5e3828" },
+      "light": { "base": "#ffd6aa", "light": "#ffe0be", "highlight": "#ffe9d0", "shadow": "#d1a17c", "deepShadow": "#9d6c4d" }
+    },
+    "hair": {
+      "default": { "base": "#2b1a12", "highlight": "#5a3928", "shadow": "#140c08" }
+    },
+    "outline": "#1e2733",
+    "accent": "#ff705c"
+  },
+  "bodyMeshes": {
+    "man": {
+      "base": "/assets/characters/body/male_body_base.svg",
+      "progression": "/assets/characters/body/male_body_progression.json",
+      "renderGroup": "root",
+      "groups": [
+        "body_base",
+        "head",
+        "neck",
+        "torso",
+        "chest_group",
+        "core_group",
+        "arm_L_group",
+        "arm_R_group",
+        "leg_L_group",
+        "leg_R_group",
+        "shadow_facets",
+        "highlight_facets",
+        "bevel_facets",
+        "ambient_occlusion",
+        "outline"
+      ],
+      "anchorPoints": [
+        "scalp_top",
+        "forehead_center",
+        "temple_L",
+        "temple_R",
+        "shoulder_L",
+        "shoulder_R",
+        "wrist_L",
+        "wrist_R",
+        "hip_L",
+        "hip_R",
+        "heel_L",
+        "heel_R"
+      ],
+      "progressiveStages": [
+        "beginner",
+        "average",
+        "toned",
+        "athletic",
+        "muscular",
+        "bodybuilder",
+        "elite"
+      ]
+    },
+    "woman": {
+      "base": "/assets/characters/body/female_body_base.svg",
+      "progression": "/assets/characters/body/female_body_progression.json",
+      "renderGroup": "root",
+      "groups": [
+        "body_base",
+        "head",
+        "neck",
+        "torso",
+        "chest_group",
+        "core_group",
+        "arm_L_group",
+        "arm_R_group",
+        "leg_L_group",
+        "leg_R_group",
+        "hips_group",
+        "shadow_facets",
+        "highlight_facets",
+        "bevel_facets",
+        "ambient_occlusion",
+        "outline"
+      ],
+      "anchorPoints": [
+        "scalp_top",
+        "forehead_center",
+        "temple_L",
+        "temple_R",
+        "shoulder_L",
+        "shoulder_R",
+        "wrist_L",
+        "wrist_R",
+        "hip_L",
+        "hip_R",
+        "heel_L",
+        "heel_R"
+      ],
+      "progressiveStages": [
+        "beginner",
+        "average",
+        "toned",
+        "athletic",
+        "strong",
+        "elite"
+      ]
+    }
+  },
+  "hairMeshes": [
+    { "id": "buzz-cut", "file": "/assets/characters/hair/hair_buzz_cut.svg", "group": "root", "aliasFor": ["buzz", "crop"] },
+    { "id": "fade", "file": "/assets/characters/hair/hair_fade.svg", "group": "root", "aliasFor": ["tapered-fade"] },
+    { "id": "short-curls", "file": "/assets/characters/hair/hair_curls_short.svg", "group": "root", "aliasFor": ["medium-curls"] },
+    { "id": "waves", "file": "/assets/characters/hair/hair_waves.svg", "group": "root", "anchorHints": ["forehead_center", "temple_L", "temple_R"] },
+    { "id": "afro", "file": "/assets/characters/hair/hair_afro.svg", "group": "root", "aliasFor": ["coils"] },
+    { "id": "locs", "file": "/assets/characters/hair/hair_locs.svg", "group": "root", "aliasFor": ["short-locs"] },
+    { "id": "braids", "file": "/assets/characters/hair/hair_braids.svg", "group": "root", "aliasFor": ["box-braids"] },
+    { "id": "twists", "file": "/assets/characters/hair/hair_twists.svg", "group": "root", "aliasFor": ["bantu-knots"] },
+    { "id": "ponytail", "file": "/assets/characters/hair/hair_ponytail.svg", "group": "root", "anchorHints": ["nape_back"] },
+    { "id": "bun", "file": "/assets/characters/hair/hair_bun.svg", "group": "root", "aliasFor": ["puff"] },
+    { "id": "high-puff", "file": "/assets/characters/hair/hair_high_puff.svg", "group": "root" },
+    { "id": "long-straight", "file": "/assets/characters/hair/hair_long_straight.svg", "group": "root" },
+    { "id": "long-wavy", "file": "/assets/characters/hair/hair_long_wavy.svg", "group": "root" },
+    { "id": "bangs", "file": "/assets/characters/hair/hair_bangs.svg", "group": "root" },
+    { "id": "high-top", "file": "/assets/characters/hair/hair_high_top.svg", "group": "root" },
+    { "id": "side-part", "file": "/assets/characters/hair/hair_side_part.svg", "group": "root" },
+    { "id": "undercut", "file": "/assets/characters/hair/hair_undercut.svg", "group": "root" },
+    { "id": "mohawk", "file": "/assets/characters/hair/hair_mohawk.svg", "group": "root" },
+    { "id": "spiky", "file": "/assets/characters/hair/hair_spiky.svg", "group": "root", "aliasFor": ["spiky-hair"] },
+    { "id": "swept-back", "file": "/assets/characters/hair/hair_swept_back.svg", "group": "root", "aliasFor": ["sweptback"] }
+  ],
+  "combinedPreviews": {
+    "man": "/assets/characters/combined/male_preview_combined.svg",
+    "woman": "/assets/characters/combined/female_preview_combined.svg"
+  },
+  "previewPage": "/assets/characters/preview.html"
+}

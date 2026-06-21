@@ -12,6 +12,8 @@ import {
 } from 'three';
 import {
   DEFAULT_PLAYER_APPEARANCE,
+  normalizeHairStyle,
+  normalizeMuscleBuild,
   getHairOption,
   getSkinToneOption
 } from '../../game/content/playerAppearance';
@@ -19,6 +21,7 @@ import type {
   BossDefinition,
   BuddyDefinition,
   BuddyBodyTraits,
+  CharacterSex,
   MuscleBuild,
   PlayerAppearance,
   VendingMachine,
@@ -724,46 +727,212 @@ export function createVendingMachines(machines: VendingMachine[]): Group {
   return group;
 }
 
-const MUSCLE_SPECS: Record<
-  MuscleBuild,
-  {
-    torsoTop: number;
-    torsoBottom: number;
-    shoulder: number;
-    arm: number;
-    forearm: number;
-    leg: number;
-    baseScale: number;
-  }
-> = {
-  lean: {
-    torsoTop: 0.28,
-    torsoBottom: 0.31,
+type CanonicalMuscleBuild = Exclude<MuscleBuild, 'lean' | 'power' | 'sculpted'>;
+
+type BodyBuildSpec = {
+  torsoTop: number;
+  torsoBottom: number;
+  shoulderPlane: number;
+  shoulder: number;
+  arm: number;
+  forearm: number;
+  leg: number;
+  neckHeight: number;
+  coreDepth: number;
+  deltoid: number;
+  pec: number;
+  glute: number;
+  calf: number;
+  baseScale: number;
+};
+
+const MUSCLE_SPECS: Record<CanonicalMuscleBuild, BodyBuildSpec> = {
+  beginner: {
+    torsoTop: 0.26,
+    torsoBottom: 0.29,
+    shoulderPlane: 0.21,
+    shoulder: 0.2,
+    arm: 0.07,
+    forearm: 0.065,
+    leg: 0.08,
+    neckHeight: 0.13,
+    coreDepth: 0.88,
+    deltoid: 0.79,
+    pec: 0.72,
+    glute: 0.86,
+    calf: 0.83,
+    baseScale: 1.02
+  },
+  average: {
+    torsoTop: 0.3,
+    torsoBottom: 0.34,
+    shoulderPlane: 0.23,
     shoulder: 0.24,
     arm: 0.08,
-    forearm: 0.075,
-    leg: 0.09,
+    forearm: 0.07,
+    leg: 0.087,
+    neckHeight: 0.15,
+    coreDepth: 0.94,
+    deltoid: 0.83,
+    pec: 0.8,
+    glute: 0.92,
+    calf: 0.86,
     baseScale: 1.05
   },
-  power: {
+  toned: {
+    torsoTop: 0.33,
+    torsoBottom: 0.36,
+    shoulderPlane: 0.24,
+    shoulder: 0.255,
+    arm: 0.088,
+    forearm: 0.08,
+    leg: 0.096,
+    neckHeight: 0.154,
+    coreDepth: 1,
+    deltoid: 0.9,
+    pec: 0.9,
+    glute: 0.98,
+    calf: 0.9,
+    baseScale: 1.06
+  },
+  athletic: {
     torsoTop: 0.36,
     torsoBottom: 0.4,
-    shoulder: 0.32,
-    arm: 0.12,
-    forearm: 0.1,
-    leg: 0.12,
-    baseScale: 1.08
-  },
-  sculpted: {
-    torsoTop: 0.34,
-    torsoBottom: 0.37,
+    shoulderPlane: 0.265,
     shoulder: 0.3,
     arm: 0.11,
-    forearm: 0.095,
-    leg: 0.115,
+    forearm: 0.096,
+    leg: 0.108,
+    neckHeight: 0.162,
+    coreDepth: 1.05,
+    deltoid: 1.01,
+    pec: 1.02,
+    glute: 1.06,
+    calf: 0.95,
     baseScale: 1.08
+  },
+  muscular: {
+    torsoTop: 0.39,
+    torsoBottom: 0.43,
+    shoulderPlane: 0.285,
+    shoulder: 0.315,
+    arm: 0.118,
+    forearm: 0.102,
+    leg: 0.113,
+    neckHeight: 0.17,
+    coreDepth: 1.1,
+    deltoid: 1.1,
+    pec: 1.15,
+    glute: 1.12,
+    calf: 1.0,
+    baseScale: 1.11
+  },
+  bodybuilder: {
+    torsoTop: 0.41,
+    torsoBottom: 0.45,
+    shoulderPlane: 0.295,
+    shoulder: 0.33,
+    arm: 0.126,
+    forearm: 0.11,
+    leg: 0.117,
+    neckHeight: 0.174,
+    coreDepth: 1.14,
+    deltoid: 1.16,
+    pec: 1.22,
+    glute: 1.16,
+    calf: 1.03,
+    baseScale: 1.14
+  },
+  elite: {
+    torsoTop: 0.43,
+    torsoBottom: 0.48,
+    shoulderPlane: 0.31,
+    shoulder: 0.34,
+    arm: 0.135,
+    forearm: 0.116,
+    leg: 0.123,
+    neckHeight: 0.178,
+    coreDepth: 1.18,
+    deltoid: 1.2,
+    pec: 1.29,
+    glute: 1.2,
+    calf: 1.06,
+    baseScale: 1.16
   }
 };
+
+const MUSCLE_ALIAS_MAP: Record<MuscleBuild, CanonicalMuscleBuild> = {
+  lean: 'beginner',
+  beginner: 'beginner',
+  average: 'average',
+  power: 'athletic',
+  toned: 'toned',
+  athletic: 'athletic',
+  sculpted: 'bodybuilder',
+  muscular: 'muscular',
+  bodybuilder: 'bodybuilder',
+  elite: 'elite'
+};
+
+type BodySexStyle = {
+  label: string;
+  shoulderWidth: number;
+  shoulderDepth: number;
+  torsoWidth: number;
+  torsoDepth: number;
+  hipWidth: number;
+  hipDepth: number;
+  armLength: number;
+  armMass: number;
+  calfMass: number;
+  thighMass: number;
+  gluteDepth: number;
+  chestLift: number;
+  wingLift: number;
+};
+
+const BODY_STYLE_BY_SEX: Record<CharacterSex, BodySexStyle> = {
+  man: {
+    label: 'man',
+    shoulderWidth: 1.06,
+    shoulderDepth: 1,
+    torsoWidth: 1,
+    torsoDepth: 1.01,
+    hipWidth: 0.96,
+    hipDepth: 0.96,
+    armLength: 1,
+    armMass: 1.08,
+    calfMass: 1,
+    thighMass: 1,
+    gluteDepth: 0.94,
+    chestLift: 1.01,
+    wingLift: 1
+  },
+  woman: {
+    label: 'woman',
+    shoulderWidth: 0.9,
+    shoulderDepth: 0.92,
+    torsoWidth: 0.98,
+    torsoDepth: 1.11,
+    hipWidth: 1.22,
+    hipDepth: 1.17,
+    armLength: 0.96,
+    armMass: 0.94,
+    calfMass: 1.03,
+    thighMass: 1.03,
+    gluteDepth: 1.2,
+    chestLift: 0.94,
+    wingLift: 0.88
+  }
+};
+
+function resolveBuild(build: MuscleBuild): CanonicalMuscleBuild {
+  return MUSCLE_ALIAS_MAP[normalizeMuscleBuild(build)] ?? 'athletic';
+}
+
+function resolveBodyStyle(sex: CharacterSex): BodySexStyle {
+  return BODY_STYLE_BY_SEX[sex];
+}
 
 const FRAME_SPECS: Record<
   PlayerAppearance['frame'],
@@ -907,20 +1076,33 @@ function addHairLock(
 }
 
 function addPlayerHair(group: Group, appearance: PlayerAppearance): void {
-  const hair = getHairOption(appearance.hair);
+  const hairStyle = normalizeHairStyle(appearance.hair);
+  const hair = getHairOption(hairStyle);
   const hairMaterial = standardMaterial(hair.color);
+  const isWoman = appearance.sex === 'woman';
 
-  if (appearance.hair === 'crop') {
+  const addBaseCap = (scaleX = 1, scaleY = 0.44, scaleZ = 0.9, y = 1.34): void => {
     const cap = new Mesh(new IcosahedronGeometry(0.27, 0), hairMaterial);
-    cap.scale.set(1.05, 0.45, 0.9);
-    cap.position.set(0, 1.34, -0.02);
+    cap.scale.set(scaleX, scaleY, scaleZ);
+    cap.position.set(0, y, -0.02);
+    group.add(cap);
+  };
+
+  const addTopRibbon = (x: number, width: number, depth: number, y = 1.42, z = -0.03): void => {
+    const ribbon = box(width, 0.055, depth, hair.color, x, y, z);
+    ribbon.scale.set(1, 1, 1);
+    group.add(ribbon);
+  };
+
+  if (hairStyle === 'buzz-cut') {
+    addBaseCap(1.05, 0.45, 0.9, 1.34);
     const front = box(0.34, 0.07, 0.18, hair.color, 0, 1.33, 0.19);
-    group.add(cap, front);
+    group.add(front);
     return;
   }
 
-  if (appearance.hair === 'afro') {
-    addHairOrb(group, hairMaterial, 0, 1.38, -0.01, 0.31, 1.18, 0.98, 1.08);
+  if (hairStyle === 'afro') {
+    addBaseCap(1.08, 0.44, 0.9, 1.38);
     const afroPoints = [
       [-0.24, 1.35, 0.02],
       [0.24, 1.35, 0.02],
@@ -938,29 +1120,25 @@ function addPlayerHair(group: Group, appearance: PlayerAppearance): void {
     return;
   }
 
-  if (appearance.hair === 'coils') {
-    const cap = new Mesh(new IcosahedronGeometry(0.25, 0), hairMaterial);
-    cap.scale.set(1.02, 0.42, 0.88);
-    cap.position.set(0, 1.33, -0.02);
-    group.add(cap);
-
-    for (let row = 0; row < 3; row += 1) {
-      for (let col = 0; col < 5; col += 1) {
-        const x = -0.22 + col * 0.11 + (row % 2) * 0.04;
-        const z = -0.02 + row * 0.08;
-        addHairOrb(group, hairMaterial, x, 1.4 + row * 0.03, z, 0.055, 1.1, 0.8, 1.1);
+  if (hairStyle === 'short-curls' || hairStyle === 'medium-curls') {
+    addBaseCap(1.02, 0.42, 0.88, 1.33);
+    const rows = hairStyle === 'short-curls' ? 3 : 4;
+    const size = hairStyle === 'short-curls' ? 0.065 : 0.072;
+    const spread = hairStyle === 'short-curls' ? 0.11 : 0.10;
+    for (let row = 0; row < rows; row += 1) {
+      const lockCount = 5;
+      for (let col = 0; col < lockCount; col += 1) {
+        const x = -0.22 + col * spread + (row % 2) * 0.04;
+        const z = -0.05 + row * 0.09;
+        addHairOrb(group, hairMaterial, x, 1.4 + row * 0.03, z, size, 1.1, 0.8, 1.1);
       }
     }
 
     return;
   }
 
-  if (appearance.hair === 'tapered-fade') {
-    const fade = new Mesh(new IcosahedronGeometry(0.24, 0), hairMaterial);
-    fade.scale.set(1.05, 0.3, 0.84);
-    fade.position.set(0, 1.3, -0.02);
-    group.add(fade);
-
+  if (hairStyle === 'fade') {
+    addBaseCap(1.05, 0.3, 0.84, 1.3);
     for (let i = 0; i < 5; i += 1) {
       addHairOrb(group, hairMaterial, -0.16 + i * 0.08, 1.42, 0.04, 0.055, 1, 0.9, 1);
     }
@@ -968,12 +1146,8 @@ function addPlayerHair(group: Group, appearance: PlayerAppearance): void {
     return;
   }
 
-  if (appearance.hair === 'waves') {
-    const cap = new Mesh(new IcosahedronGeometry(0.25, 0), hairMaterial);
-    cap.scale.set(1.08, 0.32, 0.9);
-    cap.position.set(0, 1.31, -0.03);
-    group.add(cap);
-
+  if (hairStyle === 'waves') {
+    addBaseCap(1.08, 0.32, 0.9, 1.31);
     for (let i = 0; i < 4; i += 1) {
       const wave = box(0.34, 0.035, 0.035, hair.color, 0, 1.36 + i * 0.035, 0.1 - i * 0.07);
       wave.rotation.z = i % 2 === 0 ? 0.2 : -0.2;
@@ -983,7 +1157,7 @@ function addPlayerHair(group: Group, appearance: PlayerAppearance): void {
     return;
   }
 
-  if (appearance.hair === 'high-top') {
+  if (hairStyle === 'high-top') {
     const base = new Mesh(new IcosahedronGeometry(0.24, 0), hairMaterial);
     base.scale.set(1.02, 0.34, 0.88);
     base.position.set(0, 1.31, -0.02);
@@ -993,58 +1167,101 @@ function addPlayerHair(group: Group, appearance: PlayerAppearance): void {
     return;
   }
 
-  if (appearance.hair === 'bun') {
-    const cap = new Mesh(new IcosahedronGeometry(0.25, 0), hairMaterial);
-    cap.scale.set(1.0, 0.48, 0.9);
-    cap.position.set(0, 1.33, -0.03);
+  if (hairStyle === 'bun') {
+    addBaseCap(1, 0.48, 0.9, 1.33);
+    const base = new Mesh(new IcosahedronGeometry(0.25, 0), hairMaterial);
+    base.position.set(0, 1.33, -0.03);
     const bun = new Mesh(new IcosahedronGeometry(0.15, 0), hairMaterial);
-    bun.position.set(0, 1.51, -0.18);
-    group.add(cap, bun);
+    bun.position.set(0, 1.51, isWoman ? -0.2 : -0.18);
+    const tail = box(0.14, 0.1, 0.09, hair.color, 0, 1.58, isWoman ? -0.29 : -0.25);
+    base.scale.set(1, 0.48, 0.9);
+    group.add(base, bun, tail);
     return;
   }
 
-  if (appearance.hair === 'puff') {
-    const cap = new Mesh(new IcosahedronGeometry(0.25, 0), hairMaterial);
-    cap.scale.set(1.0, 0.42, 0.86);
-    cap.position.set(0, 1.31, -0.03);
-    addHairOrb(group, hairMaterial, 0, 1.55, -0.1, 0.24, 1.18, 1, 1.08);
+  if (hairStyle === 'high-puff') {
+    addBaseCap(1, 0.42, 0.86, 1.31);
+    addHairOrb(group, hairMaterial, 0, 1.55, isWoman ? -0.12 : -0.1, 0.24, 1.18, 1, 1.08);
+    return;
+  }
+
+  if (hairStyle === 'ponytail') {
+    addBaseCap(1.02, 0.38, 0.88, 1.33);
+    addHairOrb(group, hairMaterial, -0.14, 1.26, 0.14, 0.09, 1.4, 1.08, 1.02);
+    addHairOrb(group, hairMaterial, 0, 1.24, -0.35, 0.11, isWoman ? 1.2 : 1.08, 1.05, 0.95);
+    addHairOrb(group, hairMaterial, -0.06, 1.12, -0.34, 0.08, 1.25, 0.85, 0.9);
+    return;
+  }
+
+  if (hairStyle === 'side-part') {
+    addBaseCap(1.02, 0.39, 0.9, 1.33);
+    const divider = box(0.07, 0.05, 0.21, 0x1d2024, -0.05, 1.4, 0.03);
+    divider.scale.set(0.9, 0.65, 1);
+    const sideLeft = box(0.24, 0.17, 0.12, hair.color, -0.18, 1.45, 0.08);
+    const sideRight = box(0.24, 0.17, 0.06, hair.color, 0.13, 1.38, 0.08);
+    group.add(divider, sideLeft, sideRight);
+    return;
+  }
+
+  if (hairStyle === 'undercut') {
+    addBaseCap(1.05, 0.34, 0.88, 1.31);
+    addTopRibbon(-0.2, 0.1, 0.07, 1.42, -0.03);
+    addTopRibbon(0.2, 0.1, 0.07, 1.43, -0.04);
+    const fade = box(0.35, 0.06, 0.14, hair.color, 0, 1.29, 0.09);
+    fade.rotation.z = 0.22;
+    group.add(fade);
+    return;
+  }
+
+  if (hairStyle === 'mohawk') {
+    addBaseCap(0.96, 0.24, 0.83, 1.33);
+    const spike = box(0.14, 0.34, 0.13, hair.color, 0, 1.58, -0.12);
+    spike.rotation.x = -0.22;
+    const left = box(0.06, 0.24, 0.11, hair.color, -0.1, 1.5, -0.08);
+    const right = box(0.06, 0.24, 0.11, hair.color, 0.1, 1.5, -0.08);
+    group.add(spike, left, right);
+    return;
+  }
+
+  if (hairStyle === 'spiky') {
+    addBaseCap(1.02, 0.44, 0.9, 1.32);
+    addHairOrb(group, hairMaterial, -0.16, 1.42, 0.06, 0.05, 0.95, 1, 1.1);
+    addHairOrb(group, hairMaterial, 0, 1.44, 0.1, 0.06, 1.02, 1, 1.16);
+    addHairOrb(group, hairMaterial, 0.16, 1.42, 0.06, 0.05, 0.95, 1, 1.1);
+    const crest = box(0.2, 0.08, 0.1, hair.color, 0, 1.48, 0.13);
+    crest.rotation.z = 0.28;
+    group.add(crest);
+    return;
+  }
+
+  if (hairStyle === 'swept-back') {
+    addBaseCap(1, 0.42, 0.88, 1.33);
+    const cap = new Group();
+    const wedgeA = box(0.34, 0.09, 0.2, hair.color, -0.08, 1.42, 0.12);
+    wedgeA.rotation.z = -0.25;
+    const wedgeB = box(0.24, 0.07, 0.18, hair.color, 0.13, 1.36, 0.17);
+    wedgeB.rotation.z = -0.55;
+    cap.add(wedgeA, wedgeB);
     group.add(cap);
     return;
   }
 
-  if (appearance.hair === 'bantu-knots') {
-    const cap = new Mesh(new IcosahedronGeometry(0.23, 0), hairMaterial);
-    cap.scale.set(1.02, 0.32, 0.86);
-    cap.position.set(0, 1.3, -0.03);
-    group.add(cap);
-
-    const knots = [
-      [-0.22, 1.43, 0.04],
-      [0, 1.49, 0.02],
-      [0.22, 1.43, 0.04],
-      [-0.12, 1.42, -0.18],
-      [0.12, 1.42, -0.18]
-    ];
-
-    for (const knot of knots) {
-      addHairOrb(group, hairMaterial, knot[0], knot[1], knot[2], 0.085, 1, 1.08, 1);
-    }
-
+  if (hairStyle === 'bangs') {
+    addBaseCap(1.0, 0.4, 0.84, 1.34);
+    const front = box(0.32, 0.06, 0.2, hair.color, 0, 1.38, 0.22);
+    front.rotation.z = -0.18;
+    const lock = box(0.12, 0.055, 0.1, hair.color, -0.1, 1.44, 0.11);
+    lock.rotation.z = 0.25;
+    group.add(front, lock);
     return;
   }
 
-  if (
-    appearance.hair === 'locs' ||
-    appearance.hair === 'short-locs' ||
-    appearance.hair === 'twists' ||
-    appearance.hair === 'box-braids'
-  ) {
-    const cap = new Mesh(new IcosahedronGeometry(0.25, 0), hairMaterial);
-    cap.scale.set(1.05, 0.36, 0.9);
-    cap.position.set(0, 1.31, -0.03);
-    group.add(cap);
-    const long = appearance.hair === 'locs' || appearance.hair === 'box-braids';
-    const thick = appearance.hair === 'twists' ? 0.045 : 0.035;
+  if (hairStyle === 'locs' || hairStyle === 'twists' || hairStyle === 'braids') {
+    addBaseCap(1.05, 0.36, 0.9, 1.31);
+    const isTwists = hairStyle === 'twists';
+    const isBraids = hairStyle === 'braids';
+    const long = isTwists || isBraids;
+    const thick = isTwists ? 0.045 : 0.035;
     const length = long ? 0.42 : 0.24;
     const sideXs = [-0.28, -0.18, -0.08, 0.08, 0.18, 0.28];
 
@@ -1055,40 +1272,47 @@ function addPlayerHair(group: Group, appearance: PlayerAppearance): void {
       addHairLock(group, hair.color, x, y, z, length, thick, x < 0 ? 0.16 : -0.16);
     }
 
-    if (appearance.hair === 'box-braids') {
+    if (isBraids) {
       for (let i = 0; i < 4; i += 1) {
         addHairLock(group, hair.color, -0.18 + i * 0.12, 1.08, -0.18, 0.38, 0.03, 0);
+      }
+    }
+
+    if (isTwists) {
+      for (let i = 0; i < 2; i += 1) {
+        addHairLock(group, hair.color, 0.05 + i * 0.18, 1.25, -0.25, 0.31, 0.028, 0.06);
       }
     }
 
     return;
   }
 
-  if (appearance.hair === 'cornrows') {
-    const cap = new Mesh(new IcosahedronGeometry(0.24, 0), hairMaterial);
-    cap.scale.set(1.02, 0.28, 0.86);
-    cap.position.set(0, 1.3, -0.03);
-    group.add(cap);
+  if (hairStyle === 'long-straight' || hairStyle === 'long-wavy') {
+    addBaseCap(1.04, 0.4, 0.86, isWoman ? 1.3 : 1.32);
+    const backMass = new Mesh(new IcosahedronGeometry(0.22, 0), hairMaterial);
+    backMass.scale.set(1.16, 1.08, isWoman ? 1.05 : 0.98);
+    backMass.position.set(0, 1.24, -0.2);
+    const backLock = cylinder(0.16, 0.16, 0.52, hair.color, 5);
+    backLock.rotation.z = 0.18;
+    backLock.position.set(0, 0.88, -0.15);
+    group.add(backMass, backLock);
 
-    for (let i = 0; i < 6; i += 1) {
-      const row = box(0.035, 0.035, 0.46, hair.color, -0.18 + i * 0.072, 1.38, -0.02);
-      row.rotation.x = -0.25;
-      group.add(row);
+    if (hairStyle === 'long-wavy') {
+      addHairOrb(group, hairMaterial, -0.16, 1.22, -0.12, 0.1, 1.4, 0.92, 1.06);
+      addHairOrb(group, hairMaterial, 0.16, 1.22, -0.12, 0.1, 1.35, 0.92, 1.06);
     }
 
     return;
   }
-
-  const sweep = new Group();
-  const cap = new Mesh(new IcosahedronGeometry(0.25, 0), hairMaterial);
-  cap.scale.set(1.0, 0.42, 0.88);
-  cap.position.set(0, 1.33, -0.02);
+  // Default is a polished swept-back fallback.
+  addBaseCap(1, 0.42, 0.88, 1.33);
+  const cap = new Group();
   const wedgeA = box(0.34, 0.09, 0.2, hair.color, -0.08, 1.42, 0.12);
   wedgeA.rotation.z = -0.25;
   const wedgeB = box(0.24, 0.07, 0.18, hair.color, 0.13, 1.36, 0.17);
   wedgeB.rotation.z = -0.55;
-  sweep.add(cap, wedgeA, wedgeB);
-  group.add(sweep);
+  cap.add(wedgeA, wedgeB);
+  group.add(cap);
 }
 
 function addPlayerMuscleGeometry(
@@ -1097,38 +1321,48 @@ function addPlayerMuscleGeometry(
   skinColor: number,
   shirtAccent: number
 ): void {
-  const build = appearance.muscleBuild;
+  const build = resolveBuild(appearance.muscleBuild);
+  const bodyStyle = resolveBodyStyle(appearance.sex);
   const spec = MUSCLE_SPECS[build];
   const frame = FRAME_SPECS[appearance.frame];
   const sizing = getBodySize(appearance);
-  const shoulderScale = sizing.shoulders * frame.shoulderSpread;
+  const shoulderScale = sizing.shoulders * frame.shoulderSpread * bodyStyle.shoulderWidth;
   const armScale = sizing.arms;
   const legScale = sizing.legs;
   const torsoScale = sizing.torso;
-  const hipScale = frame.hipSpread;
+  const hipScale = frame.hipSpread * bodyStyle.hipWidth;
   const chestScale = sizing.chest;
   const wingsScale = sizing.wings;
-  const gluteScale = sizing.glutes;
-  const thighScale = sizing.thighs;
-  const calfScale = sizing.calfs;
+  const gluteScale = sizing.glutes * bodyStyle.gluteDepth;
+  const calfScale = sizing.calfs * bodyStyle.calfMass;
+  const thighScale = sizing.thighs * bodyStyle.thighMass;
   const shoulderOffset = 0.39 * shoulderScale;
-  const armOffset = 0.47 * shoulderScale;
+  const armOffset = 0.47 * shoulderScale * bodyStyle.armLength;
   const legOffset = 0.16 * frame.legSpread * hipScale;
-  const leftShoulder = new Mesh(new IcosahedronGeometry(spec.shoulder, 0), standardMaterial(skinColor));
-  leftShoulder.scale.set(1.2 * sizing.shoulders, 0.72, 0.9);
+  const leftShoulder = new Mesh(
+    new IcosahedronGeometry(spec.shoulder * bodyStyle.shoulderDepth, 0),
+    standardMaterial(skinColor)
+  );
+  leftShoulder.scale.set(1.2 * sizing.shoulders, 0.72 * bodyStyle.armMass, 0.9);
   leftShoulder.position.set(-shoulderOffset, 0.96, 0.04);
   const rightShoulder = leftShoulder.clone();
   rightShoulder.position.x = shoulderOffset;
   group.add(leftShoulder, rightShoulder);
 
-  const leftBicep = new Mesh(new IcosahedronGeometry(spec.arm * 1.35, 0), standardMaterial(skinColor));
+  const leftBicep = new Mesh(
+    new IcosahedronGeometry(spec.arm * 1.35 * bodyStyle.armMass, 0),
+    standardMaterial(skinColor)
+  );
   leftBicep.scale.set(0.9 * armScale, 1.2 * armScale, 0.78 * armScale);
   leftBicep.position.set(-armOffset, 0.72, 0.08);
   const rightBicep = leftBicep.clone();
   rightBicep.position.x = armOffset;
   group.add(leftBicep, rightBicep);
 
-  const leftQuad = new Mesh(new IcosahedronGeometry(spec.leg * 1.25, 0), standardMaterial(0x1b2f43));
+  const leftQuad = new Mesh(
+    new IcosahedronGeometry(spec.leg * 1.25 * bodyStyle.thighMass, 0),
+    standardMaterial(0x1b2f43)
+  );
   leftQuad.scale.set(0.8 * legScale, 1.25 * legScale, 0.72 * legScale);
   leftQuad.position.set(-legOffset, 0.42, 0.09);
   const rightQuad = leftQuad.clone();
@@ -1212,13 +1446,13 @@ function addPlayerMuscleGeometry(
   );
   group.add(gluteLeft, gluteRight, gluteTop, legRibbon);
 
-  if (build === 'lean') {
+  if (build === 'beginner') {
     const chestLineA = box(0.08 * torsoScale, 0.025, 0.28, shirtAccent, -0.1 * torsoScale, 0.93, 0.32);
     chestLineA.rotation.z = 0.35;
     const chestLineB = chestLineA.clone();
     chestLineB.position.x = 0.1 * torsoScale;
     chestLineB.rotation.z = -0.35;
-    const core = createFlatHex(0.06, shirtAccent);
+    const core = createFlatHex(0.06 * bodyStyle.chestLift, shirtAccent);
     core.position.set(0, 0.72, 0.35);
     const obliqueLeft = box(0.044, 0.16 * (0.84 + (calfScale - 1) * 0.08), 0.045, skinColor, -0.2 * torsoScale, 0.74, 0.34);
     obliqueLeft.rotation.z = -0.34;
@@ -1248,18 +1482,18 @@ function addPlayerMuscleGeometry(
   pecRight.rotation.z = -0.12;
   group.add(pecLeft, pecRight);
 
-  const abRows = build === 'sculpted' ? 3 : 2;
+  const abRows = build === 'muscular' || build === 'bodybuilder' || build === 'elite' ? 3 : 2;
 
   for (let row = 0; row < abRows; row += 1) {
     for (let col = 0; col < 2; col += 1) {
-      const ab = createFlatHex(build === 'sculpted' ? 0.055 : 0.045, 0x5dd29a);
+      const ab = createFlatHex(build === 'muscular' || build === 'bodybuilder' || build === 'elite' ? 0.055 : 0.045, 0x5dd29a);
       ab.position.set(col === 0 ? -0.055 * torsoScale : 0.055 * torsoScale, 0.76 - row * 0.075, 0.36);
       ab.scale.set(0.82, 1, 1);
       group.add(ab);
     }
   }
 
-  if (build === 'sculpted') {
+  if (build === 'muscular' || build === 'bodybuilder' || build === 'elite') {
     const obliqueLeft = box(0.045, 0.18, 0.05, 0xffc55c, -0.21 * torsoScale * hipScale, 0.73, 0.34);
     obliqueLeft.rotation.z = -0.35;
     const obliqueRight = obliqueLeft.clone();
@@ -1272,24 +1506,31 @@ function addPlayerMuscleGeometry(
 export function createPlayerMesh(appearance = DEFAULT_PLAYER_APPEARANCE): Group {
   const group = new Group();
   const skinColor = getSkinToneOption(appearance.skinTone).color;
-  const spec = MUSCLE_SPECS[appearance.muscleBuild];
+  const build = resolveBuild(appearance.muscleBuild);
+  const spec = MUSCLE_SPECS[build];
+  const bodyStyle = resolveBodyStyle(appearance.sex);
   const frame = FRAME_SPECS[appearance.frame];
   const sizing = getBodySize(appearance);
   const torsoScale = sizing.torso;
-  const shoulderScale = sizing.shoulders * frame.shoulderSpread;
+  const shoulderScale = sizing.shoulders * frame.shoulderSpread * bodyStyle.shoulderWidth;
   const armScale = sizing.arms;
   const legScale = sizing.legs;
-  const hipScale = frame.hipSpread;
+  const hipScale = frame.hipSpread * bodyStyle.hipWidth;
   const chestScale = sizing.chest;
-  const gluteScale = sizing.glutes;
+  const gluteScale = sizing.glutes * bodyStyle.gluteDepth;
   const thighScale = sizing.thighs;
-  const calfScale = sizing.calfs;
+  const calfScale = sizing.calfs * bodyStyle.calfMass;
   const shouldersDepth = 1 + (chestScale - 1) * 0.2;
   const torsoPecks = 1 + (chestScale - 1) * 0.22;
   const gluteDepth = 1 + (gluteScale - 1) * 0.18;
   const chest = cylinder(
-    spec.torsoTop * frame.torsoTopScale * torsoScale * torsoPecks,
-    spec.torsoBottom * 0.88 * frame.torsoTopScale * torsoScale * (0.96 + shouldersDepth * 0.08),
+    spec.torsoTop * frame.torsoTopScale * torsoScale * torsoPecks * bodyStyle.shoulderDepth,
+    spec.torsoBottom *
+      0.88 *
+      frame.torsoTopScale *
+      torsoScale *
+      (0.96 + shouldersDepth * 0.08) *
+      bodyStyle.chestLift,
     0.48,
     0x24445f,
     7
@@ -1297,13 +1538,13 @@ export function createPlayerMesh(appearance = DEFAULT_PLAYER_APPEARANCE): Group 
   chest.scale.z = frame.torsoDepth * shouldersDepth;
   chest.position.y = 0.84;
   const hips = cylinder(
-    spec.torsoBottom * 0.72 * frame.torsoBottomScale * torsoScale,
-    spec.torsoBottom * frame.torsoBottomScale * torsoScale * gluteScale,
+    spec.torsoBottom * 0.72 * frame.torsoBottomScale * torsoScale * bodyStyle.hipWidth,
+    spec.torsoBottom * frame.torsoBottomScale * torsoScale * gluteScale * bodyStyle.hipDepth,
     0.26,
     0x1b2f43,
     7
   );
-  hips.scale.z = frame.torsoDepth * 0.95 * gluteDepth;
+  hips.scale.z = frame.torsoDepth * 0.95 * gluteDepth * bodyStyle.torsoDepth;
   hips.position.y = 0.52;
   const waistGap = box(0.48 * torsoScale * hipScale, 0.04, 0.1, 0xf9f7ef, 0, 0.64, 0.35);
 
@@ -1340,19 +1581,32 @@ export function createPlayerMesh(appearance = DEFAULT_PLAYER_APPEARANCE): Group 
 
   const head = new Mesh(new IcosahedronGeometry(0.25, 0), standardMaterial(skinColor));
   head.position.y = 1.2;
+  head.scale.set(bodyStyle.shoulderWidth, bodyStyle.armMass, bodyStyle.torsoDepth);
   const headband = box(0.36, 0.055, 0.3, 0xff705c, 0, 1.29, 0.06);
 
   const shoulderOffset = 0.38 * shoulderScale;
   const armOffset = 0.45 * shoulderScale;
   const upperArmHeight = 0.3 * armScale;
   const forearmHeight = 0.27 * armScale;
-  const leftUpperArm = cylinder(spec.arm * 1.08 * armScale, spec.arm * 0.92 * armScale, upperArmHeight, skinColor, 5);
+  const leftUpperArm = cylinder(
+    spec.arm * 1.08 * armScale * bodyStyle.armMass,
+    spec.arm * 0.92 * armScale * bodyStyle.armMass * 0.92,
+    upperArmHeight,
+    skinColor,
+    5
+  );
   leftUpperArm.position.set(-armOffset, 0.78, 0.04);
   leftUpperArm.rotation.z = 0.25;
   const rightUpperArm = leftUpperArm.clone();
   rightUpperArm.position.x = armOffset;
   rightUpperArm.rotation.z = -0.25;
-  const leftForearm = cylinder(spec.forearm * 1.02 * armScale, spec.forearm * 0.9 * armScale, forearmHeight, skinColor, 5);
+  const leftForearm = cylinder(
+    spec.forearm * 1.02 * armScale * bodyStyle.armMass,
+    spec.forearm * 0.9 * armScale * bodyStyle.armMass,
+    forearmHeight,
+    skinColor,
+    5
+  );
   leftForearm.position.set(-armOffset - 0.04, 0.52, 0.04);
   leftForearm.rotation.z = 0.12;
   const rightForearm = leftForearm.clone();
@@ -1369,8 +1623,8 @@ export function createPlayerMesh(appearance = DEFAULT_PLAYER_APPEARANCE): Group 
   const thighDepthScale = 0.75 + 0.5 * Math.max(0.7, thighScale);
   const calfHeightScale = 0.7 + 0.5 * Math.max(0.7, calfScale);
   const leftThigh = cylinder(
-    spec.leg * 1.08 * legScale * thighDepthScale,
-    spec.leg * 0.95 * legScale * thighDepthScale,
+    spec.leg * 1.08 * legScale * thighDepthScale * bodyStyle.thighMass,
+    spec.leg * 0.95 * legScale * thighDepthScale * bodyStyle.thighMass,
     0.29 * legScale,
     0x1b2f43,
     5
@@ -1383,7 +1637,7 @@ export function createPlayerMesh(appearance = DEFAULT_PLAYER_APPEARANCE): Group 
   rightKnee.position.x = legOffset;
   const leftCalf = cylinder(
     spec.leg * 0.82 * legScale * calfScale,
-    spec.leg * 0.76 * legScale * calfHeightScale,
+    spec.leg * 0.76 * legScale * calfHeightScale * bodyStyle.calfMass,
     0.25 * legScale,
     0x1b2f43,
     5

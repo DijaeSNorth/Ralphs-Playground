@@ -6,25 +6,56 @@ export type Vec2 = {
 export type BuddyArchetype = 'yogi' | 'runner' | 'lifter' | 'spinner' | 'climber';
 
 export type HairStyle =
-  | 'crop'
+  | 'buzz-cut'
+  | 'fade'
+  | 'short-curls'
+  | 'medium-curls'
   | 'bun'
+  | 'ponytail'
+  | 'high-puff'
+  | 'long-straight'
+  | 'long-wavy'
+  | 'bangs'
+  | 'side-part'
+  | 'undercut'
+  | 'mohawk'
+  | 'spiky'
+  | 'swept-back'
   | 'sweep'
   | 'afro'
-  | 'coils'
-  | 'tapered-fade'
   | 'waves'
-  | 'high-top'
   | 'locs'
+  | 'braids'
   | 'short-locs'
   | 'twists'
   | 'cornrows'
   | 'box-braids'
   | 'bantu-knots'
-  | 'puff';
+  | 'puff'
+  | 'high-top'
+  | 'tapered-fade'
+  | 'coils'
+  | 'crop'
+  | 'ponytail-tail'
+  | 'spiky-hair'
+  | 'buzz'
+  | 'sweptback';
+
+export type CharacterSex = 'man' | 'woman';
 
 export type SkinTone = 'light' | 'warm' | 'deep';
 
-export type MuscleBuild = 'lean' | 'power' | 'sculpted';
+export type MuscleBuild =
+  | 'lean'
+  | 'beginner'
+  | 'average'
+  | 'power'
+  | 'toned'
+  | 'athletic'
+  | 'sculpted'
+  | 'muscular'
+  | 'bodybuilder'
+  | 'elite';
 
 export type BodyFrame =
   | 'balanced'
@@ -54,6 +85,7 @@ export type BuddyBodyTraits = Record<BuddyBodyTraitKey, number>;
 export type BodySizing = Record<BodySizeKey, number>;
 
 export type PlayerAppearance = {
+  sex: CharacterSex;
   hair: HairStyle;
   skinTone: SkinTone;
   muscleBuild: MuscleBuild;
