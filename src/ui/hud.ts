@@ -631,7 +631,17 @@ export class GameHud {
       this.crewList.innerHTML = crewMarkup;
       this.renderedCrewMarkup = crewMarkup;
     }
-    this.updateFreeWeightPrompt(snapshot);
+    const nearbyStationBusy = this.isWorkoutStationInUse(this.nearbyStation, snapshot);
+    this.updateWorkoutStation(this.nearbyStation, nearbyStationBusy);
+
+    if (nearbyStationBusy) {
+      this.setHidden(this.freeWeightPrompt, true);
+      this.setHidden(this.vendingPrompt, true);
+      this.setHidden(this.workoutPrompt, true);
+    } else {
+      this.updateFreeWeightPrompt(snapshot);
+    }
+
     this.updateSpotCallout(snapshot);
     this.updateBossPanel(snapshot.activeBoss);
     this.updateVendingPanel(snapshot);
@@ -787,7 +797,7 @@ export class GameHud {
     return true;
   }
 
-  updateWorkoutStation(station?: WorkoutStation): void {
+  updateWorkoutStation(station?: WorkoutStation, stationInUse = false): void {
     this.nearbyStation = station;
 
     if (!station) {
@@ -805,6 +815,7 @@ export class GameHud {
       this.activeVending ||
       this.root.classList.contains('game-root--creating') ||
       !station ||
+      stationInUse ||
       promptSuppressed
     ) {
       this.setHidden(this.workoutPrompt, true);
@@ -822,6 +833,16 @@ export class GameHud {
       station.name
     );
     this.setHidden(this.workoutPrompt, false);
+  }
+
+  private isWorkoutStationInUse(station: WorkoutStation | undefined, snapshot: WorldSnapshot): boolean {
+    if (!station) {
+      return false;
+    }
+
+    return snapshot.roster.some(
+      (entry) => entry.taskStationId === station.id && entry.status !== 'ready'
+    );
   }
 
   updateVendingMachine(machine?: VendingMachine): void {
@@ -953,7 +974,7 @@ export class GameHud {
     this.spotCalloutButton.addEventListener('click', () => {
       const targetRosterId = this.spotTargetRosterId;
 
-      if (!this.activeWorkout || targetRosterId === undefined) {
+      if (this.activeWorkout || targetRosterId === undefined) {
         return;
       }
 
