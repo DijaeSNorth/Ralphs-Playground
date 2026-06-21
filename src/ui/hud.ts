@@ -40,9 +40,9 @@ const CONTROL_HINTS: Record<InputMode, string> = {
   'keyboard-mouse': 'WASD Move / Shift Sprint / Left Click Catch or Throw / Right Click Use',
   touch: 'Virtual joystick to move / Sprint / Catch while moving'
 };
-const INPUT_MODE_BUTTON_LABELS: Record<InputMode, string> = {
-  'keyboard-mouse': 'Keyboard + Mouse',
-  touch: 'Touch Controls'
+const SWITCH_MODE_BUTTON_LABELS: Record<InputMode, string> = {
+  'keyboard-mouse': 'Switch to Touch Controls',
+  touch: 'Switch to Keyboard + Mouse'
 };
 
 export class GameHud {
@@ -742,7 +742,7 @@ export class GameHud {
     const isTouch = this.inputMode === 'touch';
     this.root.classList.toggle('game-root--touch-input', isTouch);
     this.controlHint.textContent = CONTROL_HINTS[this.inputMode];
-    this.inputModeButton.textContent = INPUT_MODE_BUTTON_LABELS[this.inputMode];
+    this.inputModeButton.textContent = SWITCH_MODE_BUTTON_LABELS[this.inputMode];
     this.inputModeButton.setAttribute(
       'aria-label',
       isTouch ? 'Switch to Keyboard + Mouse controls' : 'Switch to Touch controls'

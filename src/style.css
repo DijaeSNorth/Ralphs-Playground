@@ -498,6 +498,7 @@ button {
   position: absolute;
   left: 18px;
   bottom: 50px;
+  pointer-events: auto;
   min-height: 30px;
   border: 1px solid rgba(23, 36, 54, 0.16);
   border-radius: 7px;
