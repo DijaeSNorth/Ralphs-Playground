@@ -943,10 +943,24 @@ export class GameHud {
   }
 
   private bindInputModeUi(): void {
-    this.inputModeButton.addEventListener('click', () => {
+    this.bindMobilePress(this.inputModeButton, () => {
       const nextMode: InputMode = this.inputMode === 'keyboard-mouse' ? 'touch' : 'keyboard-mouse';
       this.setInputMode(nextMode);
     });
+  }
+
+  private bindMobilePress(button: HTMLButtonElement, handler: () => void): void {
+    const run = (event?: Event) => {
+      if (button.disabled) {
+        return;
+      }
+
+      event?.preventDefault();
+      handler();
+    };
+
+    button.addEventListener('click', run);
+    button.addEventListener('touchend', run);
   }
 
   private rotatePreview(delta: number): void {
@@ -981,14 +995,7 @@ export class GameHud {
       this.rosterSpotListeners.forEach((callback) => callback(targetRosterId));
     };
 
-    this.spotCalloutButton.addEventListener('click', () => {
-      attemptSpot();
-    });
-    this.spotCalloutButton.addEventListener('pointerup', (event) => {
-      if (event.pointerType === 'touch') {
-        event.preventDefault();
-      }
-
+    this.bindMobilePress(this.spotCalloutButton, () => {
       attemptSpot();
     });
 

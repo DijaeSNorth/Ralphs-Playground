@@ -1457,6 +1457,8 @@ button {
   .vending-prompt button,
   .spot-callout button {
     font-size: 0.72rem;
+    min-height: 42px;
+    min-width: 74px;
   }
 
   .touch-controls {
