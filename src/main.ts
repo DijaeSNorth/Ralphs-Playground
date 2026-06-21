@@ -1,4 +1,6 @@
 import './style.css';
+import { getCharacterAssetManifest } from './game/content/characterAssetManifest';
+import { preloadCharacterAssetTextures } from './render/objects/lowPolyFactory';
 
 const app = document.querySelector<HTMLDivElement>('#app');
 
@@ -17,6 +19,8 @@ appRoot.innerHTML = `
 
 async function boot(): Promise<void> {
   await new Promise((resolve) => requestAnimationFrame(resolve));
+  await getCharacterAssetManifest();
+  await preloadCharacterAssetTextures();
   const { createGymBuddyGame } = await import('./render/app/createGymBuddyGame');
   createGymBuddyGame(appRoot);
 }

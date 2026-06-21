@@ -5,10 +5,15 @@ import {
   IcosahedronGeometry,
   Mesh,
   MeshBasicMaterial,
+  PlaneGeometry,
   MeshStandardMaterial,
   Object3D,
+  DoubleSide,
   RingGeometry,
-  TorusGeometry
+  SRGBColorSpace,
+  TorusGeometry,
+  TextureLoader,
+  type Texture
 } from 'three';
 import {
   DEFAULT_PLAYER_APPEARANCE,
@@ -17,6 +22,12 @@ import {
   getHairOption,
   getSkinToneOption
 } from '../../game/content/playerAppearance';
+import {
+  getCharacterAssetManifest,
+  getCachedCharacterAssetManifest,
+  resolveBodyMeshPath,
+  resolveHairMeshPath
+} from '../../game/content/characterAssetManifest';
 import type {
   BossDefinition,
   BuddyDefinition,
@@ -30,6 +41,108 @@ import type {
 
 const standardMaterialCache = new Map<string, MeshStandardMaterial>();
 const basicMaterialCache = new Map<string, MeshBasicMaterial>();
+const textureLoader = new TextureLoader();
+const spritePlaneGeometry = new PlaneGeometry(1, 1);
+const spriteTextureStateCache = new Map<
+  string,
+  { status: 'loading' | 'ready' | 'failed'; texture?: Texture; promise?: Promise<Texture | null> }
+>();
+const spriteMaterialCache = new Map<string, MeshBasicMaterial>();
+
+type SpriteMaterialColorKey = `${number}`;
+
+function normalizeAssetUrl(url: string): string {
+  return url.trim();
+}
+
+function requestSpriteTexture(url: string): Promise<Texture | null> {
+  const resolvedUrl = normalizeAssetUrl(url);
+  const state = spriteTextureStateCache.get(resolvedUrl);
+
+  if (state?.status === 'ready') {
+    return Promise.resolve(state.texture ?? null);
+  }
+
+  if (state?.status === 'loading' && state.promise) {
+    return state.promise;
+  }
+
+  const promise = new Promise<Texture | null>((resolve) => {
+    textureLoader.load(
+      resolvedUrl,
+      (texture) => {
+        texture.colorSpace = SRGBColorSpace;
+        spriteTextureStateCache.set(resolvedUrl, { status: 'ready', texture });
+        resolve(texture);
+      },
+      undefined,
+      () => {
+        spriteTextureStateCache.set(resolvedUrl, { status: 'failed' });
+        resolve(null);
+      }
+    );
+  });
+
+  spriteTextureStateCache.set(resolvedUrl, { status: 'loading', promise });
+  return promise;
+}
+
+function getSpriteMaterial(url: string, tint: number): MeshBasicMaterial | null {
+  const resolvedUrl = normalizeAssetUrl(url);
+  const state = spriteTextureStateCache.get(resolvedUrl);
+
+  if (!state || state.status !== 'ready' || !state.texture) {
+    return null;
+  }
+
+  const materialKey: string = `${resolvedUrl}:${String(tint) as SpriteMaterialColorKey}`;
+  const cachedMaterial = spriteMaterialCache.get(materialKey);
+
+  if (cachedMaterial) {
+    return cachedMaterial;
+  }
+
+  const material = new MeshBasicMaterial({
+    map: state.texture,
+    color: tint,
+    transparent: true,
+    alphaTest: 0.01,
+    depthWrite: false,
+    side: DoubleSide
+  });
+  spriteMaterialCache.set(materialKey, material);
+  return material;
+}
+
+function addSpriteOverlay(
+  group: Group,
+  material: MeshBasicMaterial,
+  width: number,
+  height: number,
+  x: number,
+  y: number,
+  z: number
+): void {
+  const sprite = new Mesh(spritePlaneGeometry, material);
+  sprite.scale.set(width, height, 1);
+  sprite.position.set(x, y, z);
+  group.add(sprite);
+}
+
+export async function preloadCharacterAssetTextures(): Promise<void> {
+  const manifest = getCachedCharacterAssetManifest() ?? (await getCharacterAssetManifest().catch(() => null));
+
+  if (!manifest) {
+    return;
+  }
+
+  const textureUrls = [
+    manifest.bodyMeshes.man.base,
+    manifest.bodyMeshes.woman.base,
+    ...manifest.hairMeshes.map((entry) => entry.file)
+  ];
+  await Promise.all(textureUrls.map((url) => requestSpriteTexture(url)));
+}
 
 function standardMaterial(color: number, roughness = 0.78): MeshStandardMaterial {
   const key = `${color}:${roughness}`;
@@ -1505,7 +1618,13 @@ function addPlayerMuscleGeometry(
 
 export function createPlayerMesh(appearance = DEFAULT_PLAYER_APPEARANCE): Group {
   const group = new Group();
+  const manifest = getCachedCharacterAssetManifest();
   const skinColor = getSkinToneOption(appearance.skinTone).color;
+  const hair = getHairOption(normalizeHairStyle(appearance.hair));
+  const hairMeshUrl = resolveHairMeshPath(appearance.hair, manifest);
+  const bodyMeshUrl = resolveBodyMeshPath(appearance.sex, manifest);
+  const bodySprite = bodyMeshUrl ? getSpriteMaterial(bodyMeshUrl, skinColor) : null;
+  const hairSprite = hairMeshUrl ? getSpriteMaterial(hairMeshUrl, hair.color) : null;
   const build = resolveBuild(appearance.muscleBuild);
   const spec = MUSCLE_SPECS[build];
   const bodyStyle = resolveBodyStyle(appearance.sex);
@@ -1684,7 +1803,17 @@ export function createPlayerMesh(appearance = DEFAULT_PLAYER_APPEARANCE): Group 
   const shoulderBridge = box(0.5 * shoulderScale, 0.08, 0.14, skinColor, 0, 1.0, 0.03);
   const hipBridge = box(0.38 * hipScale * torsoScale, 0.08, 0.12, 0x1b2f43, 0, 0.43, 0.02);
   group.add(shoulderBridge, hipBridge);
-  addPlayerHair(group, appearance);
+
+  if (bodySprite) {
+    addSpriteOverlay(group, bodySprite, 0.7, 1.0, 0, 0.64, 0.22);
+  }
+
+  if (hairSprite) {
+    addSpriteOverlay(group, hairSprite, 0.66, 0.48, 0, 1.32, 0.23);
+  } else {
+    addPlayerHair(group, appearance);
+  }
+
   addPlayerMuscleGeometry(group, appearance, skinColor, 0xff705c);
   group.scale.set(spec.baseScale, spec.baseScale * sizing.height * frame.heightScale, spec.baseScale);
   return markShadows(group) as Group;

@@ -1,4 +1,5 @@
 import { getBuddyDefinition } from '../game/content/buddies';
+import { normalizeManifestHairId, normalizeManifestSex } from '../game/content/characterAssetManifest';
 import {
   BODY_SIZE_CONTROLS,
   SEX_OPTIONS,
@@ -1602,9 +1603,18 @@ export class GameHud {
   }
 
   private setAppearance(appearance: Partial<PlayerAppearance>): void {
+    const normalizedHair = appearance.hair
+      ? normalizeManifestHairId(appearance.hair)
+      : undefined;
+    const normalizedSex = appearance.sex
+      ? normalizeManifestSex(appearance.sex)
+      : undefined;
+
     this.appearance = {
       ...this.appearance,
       ...appearance,
+      sex: normalizedSex ?? this.appearance.sex,
+      hair: normalizedHair ?? this.appearance.hair,
       body: {
         ...this.appearance.body,
         ...(appearance.body ?? {})
