@@ -180,6 +180,10 @@ export class GameHud {
           <span data-freeweight-prompt-name>Free Weight</span>
           <button type="button" data-freeweight-action>Pick Up</button>
         </div>
+        <div class="spot-callout spot-callout--floating" data-spot-callout hidden>
+          <span data-spot-callout-text>Buddy needs a spot.</span>
+          <button type="button" data-spot-buddy-now>Spot</button>
+        </div>
         <div class="vending-prompt" data-vending-prompt hidden>
           <span data-vending-prompt-name>Fuel Vending</span>
           <button type="button" data-vending-open>Use</button>
@@ -206,10 +210,6 @@ export class GameHud {
             <button type="button" data-workout-close aria-label="Close workout">Close</button>
           </div>
           <div class="workout-instruction" data-workout-instruction></div>
-          <div class="spot-callout" data-spot-callout hidden>
-            <span data-spot-callout-text>Buddy needs a spot.</span>
-            <button type="button" data-spot-buddy-now>Spot</button>
-          </div>
           <div class="workout-meter" aria-hidden="true">
             <div class="workout-meter-fill" data-workout-meter-fill></div>
             <div class="workout-cursor" data-workout-cursor></div>
@@ -941,9 +941,13 @@ export class GameHud {
   }
 
   private updateSpotCallout(snapshot: WorldSnapshot): void {
-    const target = this.activeWorkout
-      ? snapshot.roster.find((entry) => entry.status === 'needs-spot')
-      : undefined;
+    if (this.root.classList.contains('game-root--creating') || this.activeVending) {
+      this.setHidden(this.spotCallout, true);
+      this.spotTargetRosterId = undefined;
+      return;
+    }
+
+    const target = this.findNearbySpotTarget(snapshot);
 
     this.spotTargetRosterId = target?.rosterId;
 
@@ -960,7 +964,8 @@ export class GameHud {
       ? Math.hypot(snapshot.player.position.x - station.position.x, snapshot.player.position.z - station.position.z)
       : undefined;
     const stationName = station?.name ?? target.taskLabel ?? 'their set';
-    const nearSpot = stationDistance === undefined || stationDistance <= ROSTER_SPOT_RANGE;
+    const spotRange = this.getSpotRange(station);
+    const nearSpot = stationDistance === undefined || stationDistance <= spotRange;
     this.spotCalloutButton.disabled = !nearSpot;
     const text = `${targetName} needs a spot on ${stationName} (${Math.ceil(target.taskTimer)}s)${
       stationDistance !== undefined ? ` - ${stationDistance.toFixed(1)}m` : ''
@@ -972,6 +977,65 @@ export class GameHud {
     );
     this.spotCalloutButton.textContent = nearSpot ? 'Spot' : 'Move Closer';
     this.setHidden(this.spotCallout, false);
+  }
+
+  trySpotBuddy(snapshot: WorldSnapshot): boolean {
+    const target = this.findNearbySpotTarget(snapshot);
+
+    if (!target || !target.taskStationId) {
+      return false;
+    }
+
+    const station = WORKOUT_STATIONS.find((candidate) => candidate.id === target.taskStationId);
+    const stationDistance = station
+      ? Math.hypot(
+          snapshot.player.position.x - station.position.x,
+          snapshot.player.position.z - station.position.z
+        )
+      : Infinity;
+    const spotRange = this.getSpotRange(station);
+
+    if (stationDistance > spotRange) {
+      return false;
+    }
+
+    this.rosterSpotListeners.forEach((callback) => callback(target.rosterId));
+    return true;
+  }
+
+  private getSpotRange(station?: WorkoutStation): number {
+    return station ? Math.max(ROSTER_SPOT_RANGE, station.radius - 0.45) : ROSTER_SPOT_RANGE;
+  }
+
+  hasSpotTarget(snapshot: WorldSnapshot): boolean {
+    return Boolean(this.findNearbySpotTarget(snapshot));
+  }
+
+  private findNearbySpotTarget(snapshot: WorldSnapshot): BuddyRosterEntry | undefined {
+    let nearest: { target: BuddyRosterEntry; distance: number } | undefined;
+
+    for (const entry of snapshot.roster) {
+      if (entry.status !== 'needs-spot' || !entry.taskStationId) {
+        continue;
+      }
+
+      const station = WORKOUT_STATIONS.find((candidate) => candidate.id === entry.taskStationId);
+
+      if (!station) {
+        continue;
+      }
+
+      const stationDistance = Math.hypot(
+        snapshot.player.position.x - station.position.x,
+        snapshot.player.position.z - station.position.z
+      );
+
+      if (!nearest || stationDistance < nearest.distance) {
+        nearest = { target: entry, distance: stationDistance };
+      }
+    }
+
+    return nearest?.target;
   }
 
   private updateBossPanel(boss?: BossState): void {

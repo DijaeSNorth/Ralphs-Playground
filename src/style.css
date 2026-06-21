@@ -805,6 +805,16 @@ button {
   font-weight: 880;
 }
 
+.spot-callout--floating {
+  position: absolute;
+  left: 50%;
+  bottom: 202px;
+  max-width: min(360px, calc(100vw - 36px));
+  width: fit-content;
+  transform: translateX(-50%);
+  z-index: 3;
+}
+
 .workout-meter {
   position: relative;
   height: 28px;

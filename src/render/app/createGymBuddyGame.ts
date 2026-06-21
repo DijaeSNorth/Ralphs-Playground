@@ -733,10 +733,18 @@ export function createGymBuddyGame(root: HTMLElement): void {
 
     const inputActions = input.read();
     const movementActions = createCameraRelativeActions(inputActions, renderer.getMovementBasis());
-    if (gameStarted && !hud.isInteractionActive() && inputActions.interactPressed) {
-      refreshNearbyPrompts(world.getSnapshot().player.position);
+    const preUpdateSnapshot = world.getSnapshot();
 
-      if (!world.interactWithFreeWeight() && !hud.tryStartNearbyVending()) {
+    if (gameStarted && !hud.isInteractionActive() && inputActions.interactPressed) {
+      refreshNearbyPrompts(preUpdateSnapshot.player.position);
+      const hasSpotTarget = hud.hasSpotTarget(preUpdateSnapshot);
+
+      if (
+        !world.interactWithFreeWeight() &&
+        !hud.tryStartNearbyVending() &&
+        !hud.trySpotBuddy(preUpdateSnapshot) &&
+        !hasSpotTarget
+      ) {
         hud.tryStartNearbyWorkout();
       }
     }
