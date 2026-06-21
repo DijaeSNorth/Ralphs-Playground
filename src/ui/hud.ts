@@ -153,7 +153,7 @@ export class GameHud {
         </section>
         <div class="toast" data-toast></div>
         <div class="input-status" data-input-status>Keyboard + Mouse</div>
-        <div class="control-hint">WASD Move / Left Click Catch / Right Click Use</div>
+        <div class="control-hint">WASD Move / Shift Sprint / Left Click Catch / Right Click Use</div>
         <div class="workout-prompt" data-workout-prompt hidden>
           <span data-workout-prompt-name>Workout station</span>
           <button type="button" data-workout-start>Use</button>

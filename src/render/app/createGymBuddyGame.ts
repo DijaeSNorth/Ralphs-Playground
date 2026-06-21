@@ -50,6 +50,11 @@ type RenderCullable = {
   center: Vec2;
 };
 
+type MovementBasis = {
+  forward: Vec2;
+  right: Vec2;
+};
+
 const BUDDY_RENDER_DISTANCE = 24;
 const BUDDY_RENDER_DISTANCE_TOUCH = 18;
 const DEFAULT_STATION_RENDER_DISTANCE = 25;
@@ -145,6 +150,25 @@ class GymBuddyRenderer {
     this.player.position.copy(position);
     this.player.rotation.y = rotationY;
     this.scene.add(this.player);
+  }
+
+  getMovementBasis(): MovementBasis {
+    const direction = new Vector3();
+    this.camera.getWorldDirection(direction);
+    direction.y = 0;
+
+    if (direction.lengthSq() < 0.0001) {
+      return {
+        forward: { x: 0, z: -1 },
+        right: { x: 1, z: 0 }
+      };
+    }
+
+    direction.normalize();
+    return {
+      forward: { x: direction.x, z: direction.z },
+      right: { x: -direction.z, z: direction.x }
+    };
   }
 
   private addLights(): void {
@@ -391,6 +415,29 @@ function createPausedActions(actions: ActionState): ActionState {
   };
 }
 
+function createCameraRelativeActions(actions: ActionState, basis: MovementBasis): ActionState {
+  const localMagnitude = Math.min(1, Math.hypot(actions.moveX, actions.moveZ));
+
+  if (localMagnitude <= 0.001) {
+    return actions;
+  }
+
+  let moveX = basis.right.x * actions.moveX + basis.forward.x * -actions.moveZ;
+  let moveZ = basis.right.z * actions.moveX + basis.forward.z * -actions.moveZ;
+  const worldMagnitude = Math.hypot(moveX, moveZ);
+
+  if (worldMagnitude > 0.001) {
+    moveX = moveX / worldMagnitude * localMagnitude;
+    moveZ = moveZ / worldMagnitude * localMagnitude;
+  }
+
+  return {
+    ...actions,
+    moveX,
+    moveZ
+  };
+}
+
 export function createGymBuddyGame(root: HTMLElement): void {
   const hud = new GameHud(root);
   const input = new InputController();
@@ -468,6 +515,7 @@ export function createGymBuddyGame(root: HTMLElement): void {
     lastTime = now;
 
     const inputActions = input.read();
+    const movementActions = createCameraRelativeActions(inputActions, renderer.getMovementBasis());
     if (gameStarted && !hud.isInteractionActive() && inputActions.interactPressed) {
       refreshNearbyPrompts(world.getSnapshot().player.position);
 
@@ -477,7 +525,7 @@ export function createGymBuddyGame(root: HTMLElement): void {
     }
 
     const canSimulate = gameStarted && !hud.isInteractionActive();
-    const actions = canSimulate ? inputActions : createPausedActions(inputActions);
+    const actions = canSimulate ? movementActions : createPausedActions(movementActions);
     world.update(canSimulate ? deltaSeconds : 0, actions);
     const events = world.drainEvents();
     const snapshot = world.getSnapshot();

@@ -23,6 +23,9 @@ const ACTIVE_BUDDIES = 6;
 const MAX_ROSTER_SIZE = 4;
 const WALK_SPEED = 5.2;
 const SPRINT_SPEED = 7.8;
+const PLAYER_ACCELERATION = 34;
+const PLAYER_DECELERATION = 42;
+const PLAYER_TURN_SPEED = 13;
 const BUDDY_WANDER_SPEED = 0.95;
 const BUDDY_DODGE_SPEED = 4.4;
 const TRAINING_DURATION = 10;
@@ -35,6 +38,28 @@ let nextBossId = 1;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+function approach(current: number, target: number, maxDelta: number): number {
+  if (Math.abs(target - current) <= maxDelta) {
+    return target;
+  }
+
+  return current + Math.sign(target - current) * maxDelta;
+}
+
+function angleDifference(from: number, to: number): number {
+  return Math.atan2(Math.sin(to - from), Math.cos(to - from));
+}
+
+function rotateToward(current: number, target: number, maxDelta: number): number {
+  const delta = angleDifference(current, target);
+
+  if (Math.abs(delta) <= maxDelta) {
+    return target;
+  }
+
+  return current + Math.sign(delta) * maxDelta;
 }
 
 function distance(a: Vec2, b: Vec2): number {
@@ -87,6 +112,7 @@ function weightedBuddyDefinitionId(): string {
 export class GymBuddyWorld {
   private player = {
     position: { x: 0, z: 5 },
+    velocity: { x: 0, z: 0 },
     heading: Math.PI,
     stamina: MAX_STAMINA,
     proteinShakers: STARTING_PROTEIN_SHAKERS,
@@ -110,6 +136,7 @@ export class GymBuddyWorld {
   reset(): void {
     this.player = {
       position: { x: 0, z: 5 },
+      velocity: { x: 0, z: 0 },
       heading: Math.PI,
       stamina: MAX_STAMINA,
       proteinShakers: STARTING_PROTEIN_SHAKERS,
@@ -396,17 +423,42 @@ export class GymBuddyWorld {
   }
 
   private updatePlayer(dt: number, actions: ActionState): void {
-    const moving = Math.hypot(actions.moveX, actions.moveZ) > 0.01;
+    const inputMagnitude = Math.min(1, Math.hypot(actions.moveX, actions.moveZ));
+    const moving = inputMagnitude > 0.01;
     const canSprint = actions.sprintHeld && this.player.stamina > 5 && moving;
     const speed = canSprint ? SPRINT_SPEED : WALK_SPEED;
+    const targetVelocity = {
+      x: moving ? actions.moveX * speed : 0,
+      z: moving ? actions.moveZ * speed : 0
+    };
+    const acceleration = moving ? PLAYER_ACCELERATION : PLAYER_DECELERATION;
+
+    this.player.velocity.x = approach(
+      this.player.velocity.x,
+      targetVelocity.x,
+      acceleration * dt
+    );
+    this.player.velocity.z = approach(
+      this.player.velocity.z,
+      targetVelocity.z,
+      acceleration * dt
+    );
+
+    const currentSpeed = Math.hypot(this.player.velocity.x, this.player.velocity.z);
+
+    if (currentSpeed > 0.02) {
+      const targetHeading = Math.atan2(this.player.velocity.x, this.player.velocity.z);
+      this.player.heading = rotateToward(this.player.heading, targetHeading, PLAYER_TURN_SPEED * dt);
+      this.player.position.x += this.player.velocity.x * dt;
+      this.player.position.z += this.player.velocity.z * dt;
+    } else {
+      this.player.velocity.x = 0;
+      this.player.velocity.z = 0;
+    }
 
     if (moving) {
-      this.player.heading = Math.atan2(actions.moveX, actions.moveZ);
-      this.player.position.x += actions.moveX * speed * dt;
-      this.player.position.z += actions.moveZ * speed * dt;
-
       this.player.stamina = clamp(
-        this.player.stamina - (canSprint ? 24 : 7) * dt,
+        this.player.stamina - (canSprint ? 24 : 7) * inputMagnitude * dt,
         0,
         MAX_STAMINA
       );
@@ -420,6 +472,17 @@ export class GymBuddyWorld {
       const scale = (ARENA_RADIUS - 1.25) / radius;
       this.player.position.x *= scale;
       this.player.position.z *= scale;
+      const normal = {
+        x: this.player.position.x / (ARENA_RADIUS - 1.25),
+        z: this.player.position.z / (ARENA_RADIUS - 1.25)
+      };
+      const outwardVelocity =
+        this.player.velocity.x * normal.x + this.player.velocity.z * normal.z;
+
+      if (outwardVelocity > 0) {
+        this.player.velocity.x -= normal.x * outwardVelocity;
+        this.player.velocity.z -= normal.z * outwardVelocity;
+      }
     }
   }
 

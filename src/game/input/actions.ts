@@ -7,20 +7,27 @@ const TOUCH_DEAD_ZONE = 0.08;
 const TOUCH_STICK_RADIUS = 54;
 const DESKTOP_INPUT_LABEL = 'Keyboard + Mouse';
 
-function applyDeadZone(value: number): number {
-  return Math.abs(value) < DEAD_ZONE ? 0 : value;
-}
-
-function applyTouchDeadZone(value: number): number {
-  return Math.abs(value) < TOUCH_DEAD_ZONE ? 0 : value;
-}
-
 function clampAxis(value: number): number {
   return Math.max(-1, Math.min(1, value));
 }
 
 function hasMoveInput(x: number, z: number): boolean {
   return Math.hypot(x, z) > 0.01;
+}
+
+function applyRadialDeadZone(x: number, z: number, deadZone: number): { x: number; z: number } {
+  const magnitude = Math.hypot(x, z);
+
+  if (magnitude <= deadZone) {
+    return { x: 0, z: 0 };
+  }
+
+  const scaledMagnitude = Math.min(1, (magnitude - deadZone) / (1 - deadZone));
+  const scale = scaledMagnitude / magnitude;
+  return {
+    x: x * scale,
+    z: z * scale
+  };
 }
 
 export class InputController {
@@ -138,10 +145,11 @@ export class InputController {
         const x = rawX * scale;
         const y = rawY * scale;
 
-        this.virtualAxis = {
-          x: applyTouchDeadZone(x / TOUCH_STICK_RADIUS),
-          z: applyTouchDeadZone(y / TOUCH_STICK_RADIUS)
-        };
+        this.virtualAxis = applyRadialDeadZone(
+          x / TOUCH_STICK_RADIUS,
+          y / TOUCH_STICK_RADIUS,
+          TOUCH_DEAD_ZONE
+        );
         joystickKnob.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
         this.lastInputLabel = 'Touch';
       };
@@ -279,8 +287,11 @@ export class InputController {
       this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') || this.virtualSprintHeld;
 
     if (gamepad) {
-      let gamepadMoveX = applyDeadZone(gamepad.axes[0] ?? 0);
-      let gamepadMoveZ = applyDeadZone(gamepad.axes[1] ?? 0);
+      let { x: gamepadMoveX, z: gamepadMoveZ } = applyRadialDeadZone(
+        gamepad.axes[0] ?? 0,
+        gamepad.axes[1] ?? 0,
+        DEAD_ZONE
+      );
 
       if (!hasMoveInput(gamepadMoveX, gamepadMoveZ)) {
         gamepadMoveX = 0;
