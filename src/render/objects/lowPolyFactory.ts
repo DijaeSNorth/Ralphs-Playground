@@ -812,6 +812,24 @@ const FRAME_SPECS: Record<
     torsoDepth: 1.12,
     legSpread: 1.02,
     heightScale: 0.94
+  },
+  voluptuous: {
+    shoulderSpread: 0.95,
+    hipSpread: 1.38,
+    torsoTopScale: 0.92,
+    torsoBottomScale: 1.26,
+    torsoDepth: 1.18,
+    legSpread: 1.14,
+    heightScale: 0.95
+  },
+  pear: {
+    shoulderSpread: 0.92,
+    hipSpread: 1.45,
+    torsoTopScale: 0.9,
+    torsoBottomScale: 1.32,
+    torsoDepth: 1.22,
+    legSpread: 1.2,
+    heightScale: 0.93
   }
 };
 

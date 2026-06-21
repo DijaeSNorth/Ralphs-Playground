@@ -928,9 +928,20 @@ button {
 
 .creator-preview {
   position: relative;
+}
+
+.creator-preview-wrap {
+  position: relative;
   grid-column: 2;
   justify-self: end;
   align-self: center;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  width: fit-content;
+}
+
+.creator-preview-wrap .creator-preview {
   width: clamp(170px, 34vw, 420px);
   height: clamp(190px, 58vh, 590px);
   pointer-events: none;
@@ -938,7 +949,25 @@ button {
   animation: creator-preview-float 3.8s ease-in-out infinite;
 }
 
-.creator-preview canvas {
+.creator-preview-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  width: min(100%, clamp(170px, 34vw, 420px));
+}
+
+.creator-preview-rotate {
+  min-height: 30px;
+  border: 1px solid rgba(23, 36, 54, 0.14);
+  border-radius: 8px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.82);
+  font-size: 0.68rem;
+  font-weight: 820;
+  cursor: pointer;
+}
+
+.creator-preview-wrap .creator-preview canvas {
   position: relative;
   z-index: 1;
   display: block;
@@ -1291,20 +1320,32 @@ button {
   }
 
   .creator-preview {
+    pointer-events: none;
+  }
+
+  .creator-preview-wrap {
     position: absolute;
     grid-column: 1;
     top: 8px;
     right: 8px;
     width: clamp(140px, 43vw, 214px);
+    gap: 5px;
+  }
+
+  .creator-preview-wrap .creator-preview {
     height: clamp(168px, 34vh, 250px);
     opacity: 0.94;
   }
 
-  .creator-preview::after {
+  .creator-preview-wrap .creator-preview::after {
     right: 18%;
     bottom: 7%;
     left: 18%;
     height: 14px;
+  }
+
+  .creator-preview-controls {
+    width: clamp(140px, 43vw, 214px);
   }
 
   .creator-panel {
@@ -1429,6 +1470,10 @@ button {
   .creator-preview {
     width: clamp(128px, 40vw, 168px);
     height: clamp(140px, 28vh, 198px);
+  }
+
+  .creator-preview-controls {
+    width: clamp(128px, 40vw, 168px);
   }
 }
 

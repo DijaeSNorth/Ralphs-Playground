@@ -41,7 +41,9 @@ export const FRAME_OPTIONS: Array<{ id: BodyFrame; label: string }> = [
   { id: 'balanced', label: 'Balanced' },
   { id: 'tapered', label: 'Tapered' },
   { id: 'curved', label: 'Curved' },
-  { id: 'compact', label: 'Compact' }
+  { id: 'compact', label: 'Compact' },
+  { id: 'voluptuous', label: 'Voluptuous' },
+  { id: 'pear', label: 'Pear Heavy' }
 ];
 
 export const BODY_SIZE_CONTROLS: Array<{ id: BodySizeKey; label: string; min: number; max: number; step: number }> = [

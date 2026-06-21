@@ -63,6 +63,9 @@ export class GameHud {
   private readonly vendingPrompt: HTMLDivElement;
   private readonly vendingPromptName: HTMLSpanElement;
   private readonly vendingPanel: HTMLDivElement;
+  private readonly previewRotateLeft: HTMLButtonElement;
+  private readonly previewRotateRight: HTMLButtonElement;
+  private readonly previewRotateReset: HTMLButtonElement;
   private readonly vendingTitle: HTMLHeadingElement;
   private readonly vendingEnergyMeta: HTMLSpanElement;
   private readonly vendingSnackMeta: HTMLSpanElement;
@@ -88,6 +91,7 @@ export class GameHud {
   private readonly rosterSpotListeners: Array<(rosterId: number) => void> = [];
   private readonly rosterRemoveListeners: Array<(rosterId: number) => void> = [];
   private readonly bossChallengeListeners: Array<() => void> = [];
+  private readonly previewRotationListeners: Array<(rotation: number) => void> = [];
   private appearance: PlayerAppearance = { ...DEFAULT_PLAYER_APPEARANCE };
   private nearbyStation?: WorkoutStation;
   private nearbyVending?: VendingMachine;
@@ -122,6 +126,7 @@ export class GameHud {
   private renderedWorkoutMeterWidth = '';
   private renderedWorkoutCursorLeft = '';
   private spotTargetRosterId?: number;
+  private previewRotation = -0.45;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -219,7 +224,14 @@ export class GameHud {
           <div class="workout-buttons" data-workout-buttons></div>
         </section>
         <section class="character-creator" data-character-creator aria-label="Character creation">
-          <div class="creator-preview" data-character-preview aria-hidden="true"></div>
+            <div class="creator-preview-wrap">
+              <div class="creator-preview" data-character-preview aria-hidden="true"></div>
+              <div class="creator-preview-controls">
+                <button type="button" class="creator-preview-rotate" data-preview-rotate-left>Rotate Left</button>
+                <button type="button" class="creator-preview-rotate" data-preview-rotate-reset>Reset</button>
+                <button type="button" class="creator-preview-rotate" data-preview-rotate-right>Rotate Right</button>
+              </div>
+            </div>
           <div class="creator-panel">
             <div class="creator-head">
               <h1>Create your catcher</h1>
@@ -330,6 +342,9 @@ export class GameHud {
     const touchControls = root.querySelector<HTMLDivElement>('[data-touch-controls]');
     const characterCreator = root.querySelector<HTMLDivElement>('[data-character-creator]');
     const creatorPreviewMount = root.querySelector<HTMLDivElement>('[data-character-preview]');
+    const previewRotateLeft = root.querySelector<HTMLButtonElement>('[data-preview-rotate-left]');
+    const previewRotateRight = root.querySelector<HTMLButtonElement>('[data-preview-rotate-right]');
+    const previewRotateReset = root.querySelector<HTMLButtonElement>('[data-preview-rotate-reset]');
     const workoutPrompt = root.querySelector<HTMLDivElement>('[data-workout-prompt]');
     const workoutPromptName = root.querySelector<HTMLSpanElement>('[data-workout-prompt-name]');
     const freeWeightPrompt = root.querySelector<HTMLDivElement>('[data-freeweight-prompt]');
@@ -382,6 +397,9 @@ export class GameHud {
       !vendingPromptName ||
       !vendingPanel ||
       !vendingTitle ||
+      !previewRotateLeft ||
+      !previewRotateRight ||
+      !previewRotateReset ||
       !vendingEnergyMeta ||
       !vendingSnackMeta ||
       !vendingEnergyButton ||
@@ -427,6 +445,9 @@ export class GameHud {
     this.vendingPromptName = vendingPromptName;
     this.vendingPanel = vendingPanel;
     this.vendingTitle = vendingTitle;
+    this.previewRotateLeft = previewRotateLeft;
+    this.previewRotateRight = previewRotateRight;
+    this.previewRotateReset = previewRotateReset;
     this.vendingEnergyMeta = vendingEnergyMeta;
     this.vendingSnackMeta = vendingSnackMeta;
     this.vendingEnergyButton = vendingEnergyButton;
@@ -617,6 +638,10 @@ export class GameHud {
     this.bossChallengeListeners.push(callback);
   }
 
+  onPreviewRotationChange(callback: (rotation: number) => void): void {
+    this.previewRotationListeners.push(callback);
+  }
+
   isWorkoutActive(): boolean {
     return Boolean(this.activeWorkout);
   }
@@ -757,6 +782,18 @@ export class GameHud {
       });
     });
 
+    this.previewRotateLeft.addEventListener('click', () => {
+      this.rotatePreview(-Math.PI / 10);
+    });
+
+    this.previewRotateRight.addEventListener('click', () => {
+      this.rotatePreview(Math.PI / 10);
+    });
+
+    this.previewRotateReset.addEventListener('click', () => {
+      this.setPreviewRotation(-0.45);
+    });
+
     this.characterCreator.querySelectorAll<HTMLInputElement>('[data-body-size]').forEach((input) => {
       input.addEventListener('input', () => {
         this.setBodySize(input.dataset.bodySize as BodySizeKey, Number(input.value));
@@ -767,6 +804,17 @@ export class GameHud {
       this.closeCharacterCreator();
       this.startListeners.forEach((callback) => callback());
     });
+  }
+
+  private rotatePreview(delta: number): void {
+    this.setPreviewRotation(this.previewRotation + delta);
+  }
+
+  private setPreviewRotation(rotation: number): void {
+    const twoPi = Math.PI * 2;
+    const normalized = ((rotation % twoPi) + twoPi) % twoPi;
+    this.previewRotation = normalized;
+    this.previewRotationListeners.forEach((callback) => callback(this.previewRotation));
   }
 
   private bindWorkoutUi(): void {

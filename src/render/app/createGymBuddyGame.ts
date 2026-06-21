@@ -72,6 +72,7 @@ class CharacterPreviewRenderer {
   private elapsed = 0;
   private width = 1;
   private height = 1;
+  private previewRotation = -0.45;
 
   constructor(private readonly container: HTMLElement) {
     this.renderer = new WebGLRenderer({
@@ -116,9 +117,13 @@ class CharacterPreviewRenderer {
 
     this.elapsed += deltaSeconds;
     this.anchor.position.y = 0.08 + Math.sin(this.elapsed * 1.4) * 0.05;
-    this.anchor.rotation.y = -0.45 + Math.sin(this.elapsed * 0.75) * 0.22;
+    this.anchor.rotation.y = this.previewRotation + Math.sin(this.elapsed * 0.75) * 0.22;
     this.platform.rotation.z += deltaSeconds * 0.28;
     this.renderer.render(this.scene, this.camera);
+  }
+
+  setRotation(rotation: number): void {
+    this.previewRotation = rotation;
   }
 
   private addLights(): void {
@@ -660,6 +665,9 @@ export function createGymBuddyGame(root: HTMLElement): void {
   hud.onAppearanceChange((appearance) => {
     renderer.updatePlayerAppearance(appearance);
     previewRenderer.updateAppearance(appearance);
+  });
+  hud.onPreviewRotationChange((rotation) => {
+    previewRenderer.setRotation(rotation);
   });
   hud.onStart(() => {
     gameStarted = true;

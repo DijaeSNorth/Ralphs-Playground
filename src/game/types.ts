@@ -26,7 +26,13 @@ export type SkinTone = 'light' | 'warm' | 'deep';
 
 export type MuscleBuild = 'lean' | 'power' | 'sculpted';
 
-export type BodyFrame = 'balanced' | 'tapered' | 'curved' | 'compact';
+export type BodyFrame =
+  | 'balanced'
+  | 'tapered'
+  | 'curved'
+  | 'compact'
+  | 'voluptuous'
+  | 'pear';
 
 export type BuddyGender = 'man' | 'woman';
 
