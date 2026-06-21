@@ -36,6 +36,7 @@ type ActiveWorkout = {
 
 const WORKOUT_GOAL = 5;
 const ROSTER_SPOT_RANGE = 1.95;
+const PREVIEW_ROTATE_STEP = Math.PI / 12;
 const CONTROL_HINTS: Record<InputMode, string> = {
   'keyboard-mouse': 'WASD Move / Shift Sprint / Left Click Catch or Throw / Right Click Use',
   touch: 'Virtual joystick to move / Sprint / Catch while moving'
@@ -897,11 +898,11 @@ export class GameHud {
     });
 
     this.previewRotateLeft.addEventListener('click', () => {
-      this.rotatePreview(-Math.PI / 10);
+      this.rotatePreview(-PREVIEW_ROTATE_STEP);
     });
 
     this.previewRotateRight.addEventListener('click', () => {
-      this.rotatePreview(Math.PI / 10);
+      this.rotatePreview(PREVIEW_ROTATE_STEP);
     });
 
     this.previewRotateReset.addEventListener('click', () => {
