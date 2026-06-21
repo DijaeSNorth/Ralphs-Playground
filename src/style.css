@@ -793,6 +793,9 @@ button {
   gap: 8px;
   align-items: center;
   padding: 9px;
+  pointer-events: auto;
+  touch-action: manipulation;
+  z-index: 5;
   border: 1px solid rgba(232, 92, 79, 0.24);
   border-radius: 8px;
   background: rgba(232, 92, 79, 0.1);
@@ -813,6 +816,8 @@ button {
 }
 
 .spot-callout button {
+  pointer-events: auto;
+  touch-action: manipulation;
   min-width: 70px;
   min-height: 34px;
   color: #ffffff;

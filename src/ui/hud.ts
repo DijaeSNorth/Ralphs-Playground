@@ -971,7 +971,7 @@ export class GameHud {
       this.closeWorkout();
     });
 
-    this.spotCalloutButton.addEventListener('click', () => {
+    const attemptSpot = () => {
       const targetRosterId = this.spotTargetRosterId;
 
       if (this.activeWorkout || targetRosterId === undefined) {
@@ -979,6 +979,17 @@ export class GameHud {
       }
 
       this.rosterSpotListeners.forEach((callback) => callback(targetRosterId));
+    };
+
+    this.spotCalloutButton.addEventListener('click', () => {
+      attemptSpot();
+    });
+    this.spotCalloutButton.addEventListener('pointerup', (event) => {
+      if (event.pointerType === 'touch') {
+        event.preventDefault();
+      }
+
+      attemptSpot();
     });
 
     this.workoutButtons.addEventListener('click', (event) => {
