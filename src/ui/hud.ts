@@ -37,6 +37,7 @@ type ActiveWorkout = {
 const WORKOUT_GOAL = 5;
 const ROSTER_SPOT_RANGE = 1.95;
 const PREVIEW_ROTATE_STEP = Math.PI / 12;
+const SPOT_HOLD_DURATION = 0.55;
 const CONTROL_HINTS: Record<InputMode, string> = {
   'keyboard-mouse': 'WASD Move / Shift Sprint / Left Click Catch or Throw / Right Click Use',
   touch: 'Virtual joystick to move / Sprint / Catch while moving'
@@ -91,6 +92,7 @@ export class GameHud {
   private readonly spotCallout: HTMLDivElement;
   private readonly spotCalloutText: HTMLSpanElement;
   private readonly spotCalloutButton: HTMLButtonElement;
+  private readonly spotCalloutMeterFill: HTMLDivElement;
   private readonly workoutMeterFill: HTMLDivElement;
   private readonly workoutCursor: HTMLDivElement;
   private readonly workoutScore: HTMLDivElement;
@@ -141,7 +143,11 @@ export class GameHud {
   private renderedVendingSnackMeta = '';
   private renderedWorkoutMeterWidth = '';
   private renderedWorkoutCursorLeft = '';
+  private renderedSpotMeterWidth = '';
   private spotTargetRosterId?: number;
+  private spotHoldProgress = 0;
+  private spotHoldActive = false;
+  private spotHoldTargetId?: number;
   private previewRotation = -0.45;
   private readonly creatorHairButtons: NodeListOf<HTMLButtonElement>;
   private readonly creatorSkinButtons: NodeListOf<HTMLButtonElement>;
@@ -212,7 +218,12 @@ export class GameHud {
         </div>
         <div class="spot-callout spot-callout--floating" data-spot-callout hidden>
           <span data-spot-callout-text>Buddy needs a spot.</span>
-          <button type="button" data-spot-buddy-now>Spot</button>
+          <div class="spot-meter-stack">
+            <button type="button" data-spot-buddy-now>Hold to Spot</button>
+            <div class="spot-meter" aria-hidden="true">
+              <div class="spot-meter-fill" data-spot-callout-meter-fill></div>
+            </div>
+          </div>
         </div>
         <div class="vending-prompt" data-vending-prompt hidden>
           <span data-vending-prompt-name>Fuel Vending</span>
@@ -403,6 +414,7 @@ export class GameHud {
     const spotCallout = root.querySelector<HTMLDivElement>('[data-spot-callout]');
     const spotCalloutText = root.querySelector<HTMLSpanElement>('[data-spot-callout-text]');
     const spotCalloutButton = root.querySelector<HTMLButtonElement>('[data-spot-buddy-now]');
+    const spotCalloutMeterFill = root.querySelector<HTMLDivElement>('[data-spot-callout-meter-fill]');
     const workoutMeterFill = root.querySelector<HTMLDivElement>('[data-workout-meter-fill]');
     const workoutCursor = root.querySelector<HTMLDivElement>('[data-workout-cursor]');
     const workoutScore = root.querySelector<HTMLDivElement>('[data-workout-score]');
@@ -457,6 +469,7 @@ export class GameHud {
       !spotCallout ||
       !spotCalloutText ||
       !spotCalloutButton ||
+      !spotCalloutMeterFill ||
       !workoutMeterFill ||
       !workoutCursor ||
       !workoutScore ||
@@ -513,6 +526,7 @@ export class GameHud {
     this.spotCallout = spotCallout;
     this.spotCalloutText = spotCalloutText;
     this.spotCalloutButton = spotCalloutButton;
+    this.spotCalloutMeterFill = spotCalloutMeterFill;
     this.workoutMeterFill = workoutMeterFill;
     this.workoutCursor = workoutCursor;
     this.workoutScore = workoutScore;
@@ -643,6 +657,7 @@ export class GameHud {
     }
 
     this.updateSpotCallout(snapshot);
+    this.updateSpotHoldInteraction(deltaSeconds);
     this.updateBossPanel(snapshot.activeBoss);
     this.updateVendingPanel(snapshot);
 
@@ -985,18 +1000,50 @@ export class GameHud {
       this.closeWorkout();
     });
 
-    const attemptSpot = () => {
-      const targetRosterId = this.spotTargetRosterId;
-
-      if (this.activeWorkout || targetRosterId === undefined) {
+    const startSpotHold = () => {
+      if (
+        this.activeWorkout ||
+        this.spotCallout.hidden ||
+        this.spotCalloutButton.disabled ||
+        this.spotTargetRosterId === undefined
+      ) {
         return;
       }
 
-      this.rosterSpotListeners.forEach((callback) => callback(targetRosterId));
+      this.spotHoldActive = true;
+      this.spotHoldProgress = 0;
+      this.spotHoldTargetId = this.spotTargetRosterId;
+      this.updateSpotMeterFill(0);
     };
 
-    this.bindMobilePress(this.spotCalloutButton, () => {
-      attemptSpot();
+    const endSpotHold = () => {
+      this.stopSpotHold();
+    };
+
+    this.spotCalloutButton.addEventListener('pointerdown', (event) => {
+      if (event.button !== undefined && event.button !== 0) {
+        return;
+      }
+
+      event.preventDefault();
+      this.spotCalloutButton.setPointerCapture(event.pointerId);
+      startSpotHold();
+    });
+
+    this.spotCalloutButton.addEventListener('pointerup', (event) => {
+      if (this.spotCalloutButton.hasPointerCapture(event.pointerId)) {
+        this.spotCalloutButton.releasePointerCapture(event.pointerId);
+      }
+
+      endSpotHold();
+    });
+
+    this.spotCalloutButton.addEventListener('pointercancel', () => {
+      endSpotHold();
+    });
+
+    this.spotCalloutButton.addEventListener('pointerleave', () => {
+      endSpotHold();
     });
 
     this.workoutButtons.addEventListener('click', (event) => {
@@ -1012,6 +1059,54 @@ export class GameHud {
         this.handleWorkoutAction(action);
       }
     });
+  }
+
+  private attemptSpot(targetRosterId?: number): void {
+    if (this.activeWorkout || targetRosterId === undefined) {
+      return;
+    }
+
+    this.rosterSpotListeners.forEach((callback) => callback(targetRosterId));
+  }
+
+  private updateSpotMeterFill(progress: number): void {
+    const width = `${Math.round(progress * 100)}%`;
+    if (this.renderedSpotMeterWidth !== width) {
+      this.spotCalloutMeterFill.style.width = width;
+      this.renderedSpotMeterWidth = width;
+    }
+  }
+
+  private stopSpotHold(): void {
+    this.spotHoldActive = false;
+    this.spotHoldProgress = 0;
+    this.spotHoldTargetId = undefined;
+    this.updateSpotMeterFill(0);
+  }
+
+  private updateSpotHoldInteraction(deltaSeconds: number): void {
+    if (!this.spotHoldActive) {
+      return;
+    }
+
+    if (
+      this.activeWorkout ||
+      this.spotCallout.hidden ||
+      this.spotCalloutButton.disabled ||
+      this.spotHoldTargetId === undefined ||
+      this.spotHoldTargetId !== this.spotTargetRosterId
+    ) {
+      this.stopSpotHold();
+      return;
+    }
+
+    this.spotHoldProgress = Math.min(1, this.spotHoldProgress + deltaSeconds / SPOT_HOLD_DURATION);
+    this.updateSpotMeterFill(this.spotHoldProgress);
+
+    if (this.spotHoldProgress >= 1) {
+      this.attemptSpot(this.spotHoldTargetId);
+      this.stopSpotHold();
+    }
   }
 
   private bindFreeWeightUi(): void {
@@ -1153,6 +1248,7 @@ export class GameHud {
     if (this.root.classList.contains('game-root--creating') || this.activeVending) {
       this.setHidden(this.spotCallout, true);
       this.spotTargetRosterId = undefined;
+      this.stopSpotHold();
       return;
     }
 
@@ -1162,6 +1258,7 @@ export class GameHud {
 
     if (!target) {
       this.setHidden(this.spotCallout, true);
+      this.stopSpotHold();
       return;
     }
 
@@ -1176,6 +1273,9 @@ export class GameHud {
     const spotRange = this.getSpotRange(station);
     const nearSpot = stationDistance === undefined || stationDistance <= spotRange;
     this.spotCalloutButton.disabled = !nearSpot;
+    if (this.spotHoldActive && (!nearSpot || this.spotHoldTargetId !== target.rosterId)) {
+      this.stopSpotHold();
+    }
     const text = `${targetName} needs a spot on ${stationName} (${Math.ceil(target.taskTimer)}s)${
       stationDistance !== undefined ? ` - ${stationDistance.toFixed(1)}m` : ''
     }`;
@@ -1184,7 +1284,7 @@ export class GameHud {
       this.renderedSpotCalloutText,
       text
     );
-    this.spotCalloutButton.textContent = nearSpot ? 'Spot' : 'Move Closer';
+    this.spotCalloutButton.textContent = nearSpot ? 'Hold to Spot' : 'Move Closer';
     this.setHidden(this.spotCallout, false);
   }
 

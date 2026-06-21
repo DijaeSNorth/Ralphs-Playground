@@ -815,6 +815,13 @@ button {
   white-space: nowrap;
 }
 
+.spot-meter-stack {
+  display: flex;
+  min-width: 104px;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .spot-callout button {
   pointer-events: auto;
   touch-action: manipulation;
@@ -825,6 +832,24 @@ button {
   background: var(--coral);
   font-size: 0.76rem;
   font-weight: 880;
+}
+
+.spot-meter {
+  position: relative;
+  height: 5px;
+  overflow: hidden;
+  border: 1px solid rgba(23, 36, 54, 0.22);
+  border-radius: 999px;
+  background: #dce5df;
+}
+
+.spot-meter-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--gold), var(--coral));
+  transition: width 60ms linear;
 }
 
 .spot-callout--floating {
