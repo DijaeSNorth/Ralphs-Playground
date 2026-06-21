@@ -1,4 +1,5 @@
 import { getBuddyDefinition } from '../game/content/buddies';
+import type { InputMode } from '../game/input/actions';
 import { normalizeManifestHairId, normalizeManifestSex } from '../game/content/characterAssetManifest';
 import {
   BODY_SIZE_CONTROLS,
@@ -35,6 +36,14 @@ type ActiveWorkout = {
 
 const WORKOUT_GOAL = 5;
 const ROSTER_SPOT_RANGE = 1.95;
+const CONTROL_HINTS: Record<InputMode, string> = {
+  'keyboard-mouse': 'WASD Move / Shift Sprint / Left Click Catch or Throw / Right Click Use',
+  touch: 'Virtual joystick to move / Sprint / Catch while moving'
+};
+const INPUT_MODE_BUTTON_LABELS: Record<InputMode, string> = {
+  'keyboard-mouse': 'Keyboard + Mouse',
+  touch: 'Touch Controls'
+};
 
 export class GameHud {
   readonly canvasMount: HTMLDivElement;
@@ -57,6 +66,8 @@ export class GameHud {
   private readonly bossTimer: HTMLSpanElement;
   private readonly toast: HTMLDivElement;
   private readonly inputStatus: HTMLDivElement;
+  private readonly controlHint: HTMLDivElement;
+  private readonly inputModeButton: HTMLButtonElement;
   private readonly workoutPrompt: HTMLDivElement;
   private readonly workoutPromptName: HTMLSpanElement;
   private readonly freeWeightPrompt: HTMLDivElement;
@@ -94,6 +105,8 @@ export class GameHud {
   private readonly rosterRemoveListeners: Array<(rosterId: number) => void> = [];
   private readonly bossChallengeListeners: Array<() => void> = [];
   private readonly previewRotationListeners: Array<(rotation: number) => void> = [];
+  private readonly inputModeListeners: Array<(mode: InputMode) => void> = [];
+  private inputMode: InputMode = 'keyboard-mouse';
   private appearance: PlayerAppearance = { ...DEFAULT_PLAYER_APPEARANCE };
   private nearbyStation?: WorkoutStation;
   private nearbyVending?: VendingMachine;
@@ -186,7 +199,8 @@ export class GameHud {
         </section>
         <div class="toast" data-toast></div>
         <div class="input-status" data-input-status>Keyboard + Mouse</div>
-        <div class="control-hint">WASD Move / Shift Sprint / Left Click Catch or Throw / Right Click Use</div>
+        <button type="button" class="input-mode-toggle" data-input-mode>Keyboard + Mouse</button>
+        <div class="control-hint" data-control-hint>WASD Move / Shift Sprint / Left Click Catch or Throw / Right Click Use</div>
         <div class="workout-prompt" data-workout-prompt hidden>
           <span data-workout-prompt-name>Workout station</span>
           <button type="button" data-workout-start>Use</button>
@@ -361,6 +375,8 @@ export class GameHud {
     const bossTimer = root.querySelector<HTMLSpanElement>('[data-boss-timer]');
     const toast = root.querySelector<HTMLDivElement>('[data-toast]');
     const inputStatus = root.querySelector<HTMLDivElement>('[data-input-status]');
+    const controlHint = root.querySelector<HTMLDivElement>('[data-control-hint]');
+    const inputModeButton = root.querySelector<HTMLButtonElement>('[data-input-mode]');
     const touchControls = root.querySelector<HTMLDivElement>('[data-touch-controls]');
     const characterCreator = root.querySelector<HTMLDivElement>('[data-character-creator]');
     const creatorPreviewMount = root.querySelector<HTMLDivElement>('[data-character-preview]');
@@ -413,6 +429,8 @@ export class GameHud {
       !bossTimer ||
       !toast ||
       !inputStatus ||
+      !controlHint ||
+      !inputModeButton ||
       !touchControls ||
       !characterCreator ||
       !creatorPreviewMount ||
@@ -469,6 +487,8 @@ export class GameHud {
     this.bossTimer = bossTimer;
     this.toast = toast;
     this.inputStatus = inputStatus;
+    this.controlHint = controlHint;
+    this.inputModeButton = inputModeButton;
     this.touchControls = touchControls;
     this.workoutPrompt = workoutPrompt;
     this.workoutPromptName = workoutPromptName;
@@ -521,6 +541,8 @@ export class GameHud {
     this.bindVendingUi();
     this.bindCrewUi();
     this.bindBossUi();
+    this.bindInputModeUi();
+    this.applyInputMode();
     this.syncCreatorControls();
   }
 
@@ -695,6 +717,39 @@ export class GameHud {
     this.previewRotationListeners.push(callback);
   }
 
+  onInputModeChange(callback: (mode: InputMode) => void): void {
+    this.inputModeListeners.push(callback);
+  }
+
+  getInputMode(): InputMode {
+    return this.inputMode;
+  }
+
+  private setInputMode(mode: InputMode, notify = true): void {
+    if (this.inputMode === mode) {
+      return;
+    }
+
+    this.inputMode = mode;
+    this.applyInputMode();
+
+    if (notify) {
+      this.inputModeListeners.forEach((callback) => callback(mode));
+    }
+  }
+
+  private applyInputMode(): void {
+    const isTouch = this.inputMode === 'touch';
+    this.root.classList.toggle('game-root--touch-input', isTouch);
+    this.controlHint.textContent = CONTROL_HINTS[this.inputMode];
+    this.inputModeButton.textContent = INPUT_MODE_BUTTON_LABELS[this.inputMode];
+    this.inputModeButton.setAttribute(
+      'aria-label',
+      isTouch ? 'Switch to Keyboard + Mouse controls' : 'Switch to Touch controls'
+    );
+    this.inputModeButton.setAttribute('aria-pressed', String(isTouch));
+  }
+
   isWorkoutActive(): boolean {
     return Boolean(this.activeWorkout);
   }
@@ -862,6 +917,13 @@ export class GameHud {
     this.characterCreator.querySelector<HTMLButtonElement>('[data-start-game]')?.addEventListener('click', () => {
       this.closeCharacterCreator();
       this.startListeners.forEach((callback) => callback());
+    });
+  }
+
+  private bindInputModeUi(): void {
+    this.inputModeButton.addEventListener('click', () => {
+      const nextMode: InputMode = this.inputMode === 'keyboard-mouse' ? 'touch' : 'keyboard-mouse';
+      this.setInputMode(nextMode);
     });
   }
 

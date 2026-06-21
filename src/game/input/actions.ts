@@ -6,6 +6,10 @@ const DEAD_ZONE = 0.18;
 const TOUCH_DEAD_ZONE = 0.08;
 const TOUCH_STICK_RADIUS = 54;
 const DESKTOP_INPUT_LABEL = 'Keyboard + Mouse';
+const TOUCH_INPUT_LABEL = 'Touch';
+const KEYBOARD_INPUT_LABEL = 'Keyboard + Mouse';
+
+export type InputMode = 'keyboard-mouse' | 'touch';
 
 function clampAxis(value: number): number {
   return Math.max(-1, Math.min(1, value));
@@ -42,9 +46,14 @@ export class InputController {
   private previousGamepadInteract = false;
   private previousGamepadReset = false;
   private lastInputLabel = DESKTOP_INPUT_LABEL;
+  private mode: InputMode = 'keyboard-mouse';
 
   constructor() {
     window.addEventListener('keydown', (event) => {
+      if (this.mode !== 'keyboard-mouse') {
+        return;
+      }
+
       this.keys.add(event.code);
 
       if (event.code === 'Space' && !event.repeat) {
@@ -82,6 +91,10 @@ export class InputController {
     });
 
     window.addEventListener('keyup', (event) => {
+      if (this.mode !== 'keyboard-mouse') {
+        return;
+      }
+
       this.keys.delete(event.code);
     });
 
@@ -101,6 +114,10 @@ export class InputController {
 
   bindMouseControls(surface: HTMLElement): void {
     surface.addEventListener('pointerdown', (event) => {
+      if (this.mode !== 'keyboard-mouse') {
+        return;
+      }
+
       if (event.pointerType !== 'mouse') {
         return;
       }
@@ -134,6 +151,10 @@ export class InputController {
       };
 
       const updateJoystick = (event: PointerEvent) => {
+        if (this.mode !== 'touch') {
+          return;
+        }
+
         event.preventDefault();
         const rect = joystick.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
@@ -155,11 +176,19 @@ export class InputController {
       };
 
       const activate = (event: PointerEvent) => {
+        if (this.mode !== 'touch') {
+          return;
+        }
+
         joystick.setPointerCapture(event.pointerId);
         updateJoystick(event);
       };
 
       const release = (event: PointerEvent) => {
+        if (this.mode !== 'touch') {
+          return;
+        }
+
         event.preventDefault();
         resetJoystick();
 
@@ -178,12 +207,20 @@ export class InputController {
       const direction = button.dataset.move as MoveDirection;
 
       const activate = (event: PointerEvent) => {
+        if (this.mode !== 'touch') {
+          return;
+        }
+
         event.preventDefault();
         this.virtualDirections.add(direction);
         button.setPointerCapture(event.pointerId);
       };
 
       const release = (event: PointerEvent) => {
+        if (this.mode !== 'touch') {
+          return;
+        }
+
         event.preventDefault();
         this.virtualDirections.delete(direction);
 
@@ -200,6 +237,10 @@ export class InputController {
 
     root.querySelectorAll<HTMLButtonElement>('[data-catch]').forEach((button) => {
       button.addEventListener('pointerdown', (event) => {
+        if (this.mode !== 'touch') {
+          return;
+        }
+
         event.preventDefault();
         this.catchQueued = true;
         this.lastInputLabel = 'Touch';
@@ -208,6 +249,10 @@ export class InputController {
 
     root.querySelectorAll<HTMLButtonElement>('[data-sprint]').forEach((button) => {
       const activate = (event: PointerEvent) => {
+        if (this.mode !== 'touch') {
+          return;
+        }
+
         event.preventDefault();
         this.virtualSprintHeld = true;
         this.lastInputLabel = 'Touch';
@@ -215,6 +260,10 @@ export class InputController {
       };
 
       const release = (event: PointerEvent) => {
+        if (this.mode !== 'touch') {
+          return;
+        }
+
         event.preventDefault();
         this.virtualSprintHeld = false;
 
@@ -228,6 +277,29 @@ export class InputController {
       button.addEventListener('pointercancel', release);
       button.addEventListener('pointerleave', release);
     });
+  }
+
+  setInputMode(mode: InputMode): void {
+    if (this.mode === mode) {
+      return;
+    }
+
+    this.mode = mode;
+    this.keys.clear();
+    this.virtualDirections.clear();
+    this.virtualAxis = { x: 0, z: 0 };
+    this.virtualSprintHeld = false;
+    this.catchQueued = false;
+    this.interactQueued = false;
+    this.resetQueued = false;
+    this.lastInputLabel = mode === 'touch' ? TOUCH_INPUT_LABEL : KEYBOARD_INPUT_LABEL;
+    this.previousGamepadCatch = false;
+    this.previousGamepadInteract = false;
+    this.previousGamepadReset = false;
+  }
+
+  getInputMode(): InputMode {
+    return this.mode;
   }
 
   read(): ActionState {
@@ -276,8 +348,9 @@ export class InputController {
 
     const keyboardMoving = hasMoveInput(keyboardX, keyboardZ);
     const touchMoving = hasMoveInput(touchX, touchZ);
-    let moveX = touchMoving ? touchX : keyboardX;
-    let moveZ = touchMoving ? touchZ : keyboardZ;
+    const touchMode = this.mode === 'touch';
+    let moveX = touchMode && touchMoving ? touchX : keyboardX;
+    let moveZ = touchMode && touchMoving ? touchZ : keyboardZ;
     const gamepad = this.getPrimaryGamepad();
     const gamepadConnected = Boolean(gamepad);
     let gamepadCatch = false;
@@ -320,13 +393,13 @@ export class InputController {
       gamepadInteract = gamepad.buttons[2]?.pressed === true;
       gamepadReset = gamepad.buttons[8]?.pressed === true;
 
-      if (gamepadMoving && !keyboardMoving && !touchMoving) {
+      if (gamepadMoving && !(touchMode ? touchMoving : keyboardMoving)) {
         moveX = gamepadMoveX;
         moveZ = gamepadMoveZ;
         this.lastInputLabel = gamepad.id || 'Gamepad';
       }
 
-      if (gamepadSprint && !keyboardMoving && !touchMoving) {
+      if (gamepadSprint && !(touchMode ? touchMoving : keyboardMoving)) {
         sprintHeld = true;
         this.lastInputLabel = gamepad.id || 'Gamepad';
       }

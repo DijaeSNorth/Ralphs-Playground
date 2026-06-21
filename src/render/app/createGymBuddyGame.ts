@@ -16,7 +16,7 @@ import {
 } from 'three';
 import { getNearestWorkoutStation, WORKOUT_STATIONS } from '../../game/content/equipment';
 import { getNearestVendingMachine, VENDING_MACHINES } from '../../game/content/vending';
-import { InputController } from '../../game/input/actions';
+import { InputController, type InputMode } from '../../game/input/actions';
 import { GymBuddyWorld } from '../../game/simulation/world';
 import type { ActionState, PlayerAppearance, Vec2, WorldEvent, WorldSnapshot } from '../../game/types';
 import { GameHud } from '../../ui/hud';
@@ -654,6 +654,7 @@ function createCameraRelativeActions(actions: ActionState, basis: MovementBasis)
 export function createGymBuddyGame(root: HTMLElement): void {
   const hud = new GameHud(root);
   const input = new InputController();
+  input.setInputMode(hud.getInputMode());
   const world = new GymBuddyWorld();
   const initialSnapshot = world.getSnapshot();
   const renderer = new GymBuddyRenderer(hud.canvasMount, initialSnapshot);
@@ -696,6 +697,9 @@ export function createGymBuddyGame(root: HTMLElement): void {
   });
   hud.onBossChallenge(() => {
     world.challengeBoss();
+  });
+  hud.onInputModeChange((mode: InputMode) => {
+    input.setInputMode(mode);
   });
   renderer.updatePlayerAppearance(hud.getAppearance());
   previewRenderer.updateAppearance(hud.getAppearance());

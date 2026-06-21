@@ -494,6 +494,22 @@ button {
   text-transform: uppercase;
 }
 
+.input-mode-toggle {
+  position: absolute;
+  left: 18px;
+  bottom: 50px;
+  min-height: 30px;
+  border: 1px solid rgba(23, 36, 54, 0.16);
+  border-radius: 7px;
+  padding: 8px 10px;
+  color: var(--ink);
+  background: var(--panel-strong);
+  font-size: 0.7rem;
+  font-weight: 820;
+  text-transform: none;
+  cursor: pointer;
+}
+
 .control-hint {
   position: absolute;
   left: 50%;
@@ -889,18 +905,19 @@ button {
 .game-root--creating .hud-cluster,
 .game-root--creating .repdex-panel,
 .game-root--creating .input-status,
+.game-root--creating .input-mode-toggle,
 .game-root--creating .crew-panel,
 .game-root--creating .boss-panel,
 .game-root--creating .freeweight-prompt,
 .game-root--creating .vending-prompt,
 .game-root--creating .vending-panel,
-.game-root--workout .touch-controls,
 .game-root--workout .control-hint,
+.game-root--workout .input-mode-toggle,
 .game-root--workout .repdex-panel,
 .game-root--workout .crew-panel,
 .game-root--workout .freeweight-prompt,
 .game-root--workout .vending-prompt,
-.game-root--vending .touch-controls,
+.game-root--vending .input-mode-toggle,
 .game-root--vending .control-hint,
 .game-root--vending .repdex-panel,
 .game-root--vending .crew-panel,
@@ -1143,7 +1160,16 @@ button {
 
 .game-root--creating .touch-controls,
 .game-root--creating .control-hint {
-  display: none;
+  display: none !important;
+}
+
+.game-root--touch-input .touch-controls {
+  display: flex;
+}
+
+.game-root--workout .touch-controls,
+.game-root--vending .touch-controls {
+  display: none !important;
 }
 
 .touch-controls {
@@ -1251,10 +1277,6 @@ button {
   .input-status,
   .control-hint {
     display: none;
-  }
-
-  .touch-controls {
-    display: flex;
   }
 
   .toast {
