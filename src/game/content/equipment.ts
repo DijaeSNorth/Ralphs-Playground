@@ -1,4 +1,4 @@
-import type { Vec2, WorkoutStation } from '../types';
+import type { FreeWeightPickup, Vec2, WorkoutStation } from '../types';
 
 export const WORKOUT_STATIONS: WorkoutStation[] = [
   {
@@ -150,6 +150,34 @@ export const WORKOUT_STATIONS: WorkoutStation[] = [
     radius: 3.0,
     staminaReward: 18,
     shakerReward: 2
+  }
+];
+
+export const FREE_WEIGHT_PICKUPS: FreeWeightPickup[] = [
+  {
+    id: 'rack-dumbbell-light',
+    name: 'Light Dumbbell',
+    position: { x: -15.4, z: 7.0 }
+  },
+  {
+    id: 'rack-dumbbell-heavy',
+    name: 'Heavy Dumbbell',
+    position: { x: -17.0, z: 7.9 }
+  },
+  {
+    id: 'bench-row-dumbbell',
+    name: 'Row Dumbbell',
+    position: { x: -8.0, z: 10.0 }
+  },
+  {
+    id: 'adjustable-bench-dumbbell',
+    name: 'Bench Dumbbell',
+    position: { x: -4.1, z: 12.8 }
+  },
+  {
+    id: 'heavy-bench-dumbbell',
+    name: 'Heavy Bench Dumbbell',
+    position: { x: 3.9, z: -15.4 }
   }
 ];
 

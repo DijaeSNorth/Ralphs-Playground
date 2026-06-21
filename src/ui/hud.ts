@@ -51,6 +51,9 @@ export class GameHud {
   private readonly inputStatus: HTMLDivElement;
   private readonly workoutPrompt: HTMLDivElement;
   private readonly workoutPromptName: HTMLSpanElement;
+  private readonly freeWeightPrompt: HTMLDivElement;
+  private readonly freeWeightPromptName: HTMLSpanElement;
+  private readonly freeWeightPromptButton: HTMLButtonElement;
   private readonly vendingPrompt: HTMLDivElement;
   private readonly vendingPromptName: HTMLSpanElement;
   private readonly vendingPanel: HTMLDivElement;
@@ -74,6 +77,7 @@ export class GameHud {
   private readonly workoutCompleteListeners: Array<(station: WorkoutStation) => void> = [];
   private readonly vendingEnergyListeners: Array<() => void> = [];
   private readonly vendingSnackListeners: Array<() => void> = [];
+  private readonly freeWeightInteractListeners: Array<() => void> = [];
   private readonly rosterTrainListeners: Array<(rosterId: number) => void> = [];
   private readonly rosterSpotListeners: Array<(rosterId: number) => void> = [];
   private readonly rosterRemoveListeners: Array<(rosterId: number) => void> = [];
@@ -100,6 +104,8 @@ export class GameHud {
   private renderedTargetReady = false;
   private renderedToastVisible = false;
   private renderedWorkoutPromptName = '';
+  private renderedFreeWeightPromptName = '';
+  private renderedFreeWeightPromptButton = '';
   private renderedVendingPromptName = '';
   private renderedBossName = '';
   private renderedBossStats = '';
@@ -159,10 +165,14 @@ export class GameHud {
         </section>
         <div class="toast" data-toast></div>
         <div class="input-status" data-input-status>Keyboard + Mouse</div>
-        <div class="control-hint">WASD Move / Shift Sprint / Left Click Catch / Right Click Use</div>
+        <div class="control-hint">WASD Move / Shift Sprint / Left Click Catch or Throw / Right Click Use</div>
         <div class="workout-prompt" data-workout-prompt hidden>
           <span data-workout-prompt-name>Workout station</span>
           <button type="button" data-workout-start>Use</button>
+        </div>
+        <div class="freeweight-prompt" data-freeweight-prompt hidden>
+          <span data-freeweight-prompt-name>Free Weight</span>
+          <button type="button" data-freeweight-action>Pick Up</button>
         </div>
         <div class="vending-prompt" data-vending-prompt hidden>
           <span data-vending-prompt-name>Fuel Vending</span>
@@ -281,6 +291,9 @@ export class GameHud {
     const characterCreator = root.querySelector<HTMLDivElement>('[data-character-creator]');
     const workoutPrompt = root.querySelector<HTMLDivElement>('[data-workout-prompt]');
     const workoutPromptName = root.querySelector<HTMLSpanElement>('[data-workout-prompt-name]');
+    const freeWeightPrompt = root.querySelector<HTMLDivElement>('[data-freeweight-prompt]');
+    const freeWeightPromptName = root.querySelector<HTMLSpanElement>('[data-freeweight-prompt-name]');
+    const freeWeightPromptButton = root.querySelector<HTMLButtonElement>('[data-freeweight-action]');
     const vendingPrompt = root.querySelector<HTMLDivElement>('[data-vending-prompt]');
     const vendingPromptName = root.querySelector<HTMLSpanElement>('[data-vending-prompt-name]');
     const vendingPanel = root.querySelector<HTMLDivElement>('[data-vending-panel]');
@@ -320,6 +333,9 @@ export class GameHud {
       !characterCreator ||
       !workoutPrompt ||
       !workoutPromptName ||
+      !freeWeightPrompt ||
+      !freeWeightPromptName ||
+      !freeWeightPromptButton ||
       !vendingPrompt ||
       !vendingPromptName ||
       !vendingPanel ||
@@ -361,6 +377,9 @@ export class GameHud {
     this.touchControls = touchControls;
     this.workoutPrompt = workoutPrompt;
     this.workoutPromptName = workoutPromptName;
+    this.freeWeightPrompt = freeWeightPrompt;
+    this.freeWeightPromptName = freeWeightPromptName;
+    this.freeWeightPromptButton = freeWeightPromptButton;
     this.vendingPrompt = vendingPrompt;
     this.vendingPromptName = vendingPromptName;
     this.vendingPanel = vendingPanel;
@@ -381,6 +400,7 @@ export class GameHud {
     this.workoutButtons = workoutButtons;
     this.bindCharacterCreator();
     this.bindWorkoutUi();
+    this.bindFreeWeightUi();
     this.bindVendingUi();
     this.bindCrewUi();
     this.bindBossUi();
@@ -418,10 +438,19 @@ export class GameHud {
       actions.inputLabel
     );
 
+    const carriedFreeWeight = snapshot.freeWeights.find((freeWeight) => freeWeight.status === 'carried');
     let targetText = 'No target';
     let objectiveText = 'Find a gym buddy and get close.';
     let targetReady = false;
-    if (snapshot.nearestBuddy) {
+    if (carriedFreeWeight) {
+      targetText = 'Free weight ready';
+      objectiveText = 'Left click to throw. Use again to set it down.';
+      targetReady = true;
+    } else if (snapshot.nearestFreeWeight) {
+      targetText = 'Free weight nearby';
+      objectiveText = 'Use it to pick up and throw a dumbbell.';
+      targetReady = true;
+    } else if (snapshot.nearestBuddy) {
       const definition = getBuddyDefinition(snapshot.nearestBuddy.buddy.definitionId);
       const distance = snapshot.nearestBuddy.distance;
       const inRange = distance <= snapshot.captureRange;
@@ -461,6 +490,7 @@ export class GameHud {
       this.crewList.innerHTML = crewMarkup;
       this.renderedCrewMarkup = crewMarkup;
     }
+    this.updateFreeWeightPrompt(snapshot);
     this.updateSpotCallout(snapshot);
     this.updateBossPanel(snapshot.activeBoss);
     this.updateVendingPanel(snapshot);
@@ -521,6 +551,10 @@ export class GameHud {
 
   onVendingProteinSnack(callback: () => void): void {
     this.vendingSnackListeners.push(callback);
+  }
+
+  onFreeWeightInteract(callback: () => void): void {
+    this.freeWeightInteractListeners.push(callback);
   }
 
   onRosterTrain(callback: (rosterId: number) => void): void {
@@ -715,6 +749,12 @@ export class GameHud {
     });
   }
 
+  private bindFreeWeightUi(): void {
+    this.freeWeightPromptButton.addEventListener('click', () => {
+      this.freeWeightInteractListeners.forEach((callback) => callback());
+    });
+  }
+
   private bindVendingUi(): void {
     this.root.querySelector<HTMLButtonElement>('[data-vending-open]')?.addEventListener('click', () => {
       if (this.nearbyVending) {
@@ -760,6 +800,39 @@ export class GameHud {
     this.root.querySelector<HTMLButtonElement>('[data-boss-challenge]')?.addEventListener('click', () => {
       this.bossChallengeListeners.forEach((callback) => callback());
     });
+  }
+
+  private updateFreeWeightPrompt(snapshot: WorldSnapshot): void {
+    const carried = snapshot.freeWeights.find((freeWeight) => freeWeight.status === 'carried');
+    const nearest = snapshot.nearestFreeWeight;
+    const shouldHide =
+      this.activeWorkout ||
+      this.activeVending ||
+      this.root.classList.contains('game-root--creating') ||
+      (!carried && !nearest);
+
+    if (shouldHide) {
+      this.setHidden(this.freeWeightPrompt, true);
+      return;
+    }
+
+    const label = carried
+      ? `${carried.name} loaded`
+      : nearest
+        ? `${nearest.freeWeight.name} ${nearest.distance.toFixed(1)}m`
+        : 'Free Weight';
+    const buttonText = carried ? 'Drop' : 'Pick Up';
+    this.renderedFreeWeightPromptName = this.setText(
+      this.freeWeightPromptName,
+      this.renderedFreeWeightPromptName,
+      label
+    );
+    this.renderedFreeWeightPromptButton = this.setText(
+      this.freeWeightPromptButton,
+      this.renderedFreeWeightPromptButton,
+      buttonText
+    );
+    this.setHidden(this.freeWeightPrompt, false);
   }
 
   private renderCrew(roster: BuddyRosterEntry[]): string {

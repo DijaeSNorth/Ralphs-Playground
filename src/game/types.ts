@@ -52,6 +52,27 @@ export type VendingMachine = {
   snackCooldown: number;
 };
 
+export type FreeWeightStatus = 'ground' | 'carried' | 'thrown';
+
+export type FreeWeightPickup = {
+  id: string;
+  name: string;
+  position: Vec2;
+};
+
+export type FreeWeightState = {
+  id: number;
+  pickupId: string;
+  name: string;
+  status: FreeWeightStatus;
+  position: Vec2;
+  spawnPosition: Vec2;
+  velocity: Vec2;
+  flightTimer: number;
+  pickupCooldown: number;
+  spin: number;
+};
+
 export type BuddyRosterStatus = 'ready' | 'training' | 'needs-spot';
 
 export type BuddyTrainingOutcome = 'success' | 'needs-spot';
@@ -102,6 +123,7 @@ export type BossState = {
   endurance: number;
   focus: number;
   timer: number;
+  ragdollTimer: number;
 };
 
 export type BuddyState = {
@@ -115,6 +137,7 @@ export type BuddyState = {
   respawnTimer: number;
   dodgeTimer: number;
   holdTimer: number;
+  ragdollTimer: number;
 };
 
 export type PlayerState = {
@@ -158,6 +181,11 @@ export type WorldEvent =
       type: 'boss';
       boss?: BossState;
       message: string;
+    }
+  | {
+      type: 'free-weight';
+      freeWeight?: FreeWeightState;
+      message: string;
     };
 
 export type ActionState = {
@@ -181,6 +209,12 @@ export type WorldSnapshot = {
   buddies: BuddyState[];
   roster: BuddyRosterEntry[];
   maxRosterSize: number;
+  freeWeights: FreeWeightState[];
+  carriedFreeWeightId?: number;
+  nearestFreeWeight?: {
+    freeWeight: FreeWeightState;
+    distance: number;
+  };
   vending: {
     snackCooldown: number;
   };

@@ -1258,6 +1258,24 @@ export function createProteinShakerProjectile(): Group {
   return markShadows(group) as Group;
 }
 
+export function createFreeWeightMesh(): Group {
+  const group = new Group();
+  const grip = cylinder(0.045, 0.045, 0.48, 0xf9f7ef, 8);
+  grip.rotation.z = Math.PI / 2;
+  const headA = cylinder(0.16, 0.16, 0.16, 0x303b4d, 6);
+  headA.rotation.z = Math.PI / 2;
+  headA.position.x = -0.34;
+  const headB = headA.clone();
+  headB.position.x = 0.34;
+  const rimA = cylinder(0.18, 0.18, 0.055, 0x59667a, 6);
+  rimA.rotation.z = Math.PI / 2;
+  rimA.position.x = -0.45;
+  const rimB = rimA.clone();
+  rimB.position.x = 0.45;
+  group.add(grip, headA, headB, rimA, rimB);
+  return markShadows(group) as Group;
+}
+
 export function createCaptureRing(color: number): Mesh {
   const material = new MeshBasicMaterial({
     color,

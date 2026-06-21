@@ -1,6 +1,6 @@
 import { BUDDY_DEFINITIONS, getBuddyDefinition } from '../content/buddies';
 import { BOSS_DEFINITIONS, getBossDefinition } from '../content/bosses';
-import { WORKOUT_STATIONS } from '../content/equipment';
+import { FREE_WEIGHT_PICKUPS, WORKOUT_STATIONS } from '../content/equipment';
 import { VENDING_MACHINES } from '../content/vending';
 import type {
   ActionState,
@@ -8,6 +8,7 @@ import type {
   BuddyArchetype,
   BuddyRosterEntry,
   BuddyState,
+  FreeWeightState,
   RepDexEntry,
   Vec2,
   WorkoutStation,
@@ -32,10 +33,19 @@ const BUDDY_DODGE_SPEED = 4.4;
 const TRAINING_DURATION = 12;
 const TRAINING_SPOT_WINDOW = 7;
 const BOSS_ACTIVE_DURATION = 26;
+const FREE_WEIGHT_PICKUP_RANGE = 2.15;
+const FREE_WEIGHT_THROW_SPEED = 11.8;
+const FREE_WEIGHT_THROW_DURATION = 1.12;
+const FREE_WEIGHT_HIT_RADIUS = 0.72;
+const BOSS_FREE_WEIGHT_HIT_RADIUS = 1.05;
+const FREE_WEIGHT_PICKUP_COOLDOWN = 0.65;
+const BUDDY_RAGDOLL_DURATION = 1.65;
+const BOSS_RAGDOLL_DURATION = 1.35;
 
 let nextBuddyId = 1;
 let nextRosterId = 1;
 let nextBossId = 1;
+let nextFreeWeightId = 1;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -122,9 +132,11 @@ export class GymBuddyWorld {
 
   private readonly buddies: BuddyState[] = [];
   private readonly roster: BuddyRosterEntry[] = [];
+  private readonly freeWeights: FreeWeightState[] = [];
   private readonly captured = new Map<string, number>();
   private readonly events: WorldEvent[] = [];
   private activeBoss?: BossState;
+  private carriedFreeWeightId?: number;
   private catchCooldown = 0;
   private shakerRechargeTimer = 0;
   private vendingSnackCooldown = 0;
@@ -145,9 +157,11 @@ export class GymBuddyWorld {
     };
     this.buddies.length = 0;
     this.roster.length = 0;
+    this.freeWeights.length = 0;
     this.captured.clear();
     this.events.length = 0;
     this.activeBoss = undefined;
+    this.carriedFreeWeightId = undefined;
     this.catchCooldown = 0;
     this.shakerRechargeTimer = 0;
     this.vendingSnackCooldown = 0;
@@ -165,6 +179,10 @@ export class GymBuddyWorld {
 
       this.buddies.push(buddy);
     }
+
+    for (const pickup of FREE_WEIGHT_PICKUPS) {
+      this.freeWeights.push(this.createFreeWeight(pickup));
+    }
   }
 
   update(deltaSeconds: number, actions: ActionState): void {
@@ -177,6 +195,7 @@ export class GymBuddyWorld {
 
     this.catchCooldown = Math.max(0, this.catchCooldown - dt);
     this.updatePlayer(dt, actions);
+    this.updateFreeWeights(dt);
     this.updateBuddies(dt);
     this.updateRoster(dt);
     this.updateBoss(dt);
@@ -184,12 +203,56 @@ export class GymBuddyWorld {
     this.updateVending(dt);
 
     if (actions.catchPressed) {
-      this.tryCapture();
+      if (!this.throwHeldFreeWeight()) {
+        this.tryCapture();
+      }
     }
   }
 
   drainEvents(): WorldEvent[] {
     return this.events.splice(0, this.events.length);
+  }
+
+  interactWithFreeWeight(): boolean {
+    const carried = this.getCarriedFreeWeight();
+
+    if (carried) {
+      const direction = headingVector(this.player.heading);
+      carried.status = 'ground';
+      carried.position = {
+        x: this.player.position.x + direction.x * 0.95,
+        z: this.player.position.z + direction.z * 0.95
+      };
+      carried.velocity = { x: 0, z: 0 };
+      carried.flightTimer = 0;
+      carried.pickupCooldown = FREE_WEIGHT_PICKUP_COOLDOWN;
+      this.carriedFreeWeightId = undefined;
+      this.events.push({
+        type: 'free-weight',
+        freeWeight: this.copyFreeWeight(carried),
+        message: `${carried.name} set down.`
+      });
+      return true;
+    }
+
+    const nearest = this.getNearestFreeWeight();
+
+    if (!nearest || nearest.distance > FREE_WEIGHT_PICKUP_RANGE) {
+      return false;
+    }
+
+    const freeWeight = nearest.freeWeight;
+    freeWeight.status = 'carried';
+    freeWeight.velocity = { x: 0, z: 0 };
+    freeWeight.flightTimer = 0;
+    freeWeight.pickupCooldown = 0;
+    this.carriedFreeWeightId = freeWeight.id;
+    this.events.push({
+      type: 'free-weight',
+      freeWeight: this.copyFreeWeight(freeWeight),
+      message: `${freeWeight.name} picked up. Left click to throw.`
+    });
+    return true;
   }
 
   completeWorkout(station: WorkoutStation): void {
@@ -402,6 +465,7 @@ export class GymBuddyWorld {
 
   getSnapshot(): WorldSnapshot {
     const nearest = this.getNearestBuddy();
+    const nearestFreeWeight = this.getNearestFreeWeight();
     const repDex: RepDexEntry[] = BUDDY_DEFINITIONS.map((definition) => ({
       definition,
       count: this.captured.get(definition.id) ?? 0
@@ -421,6 +485,14 @@ export class GymBuddyWorld {
       })),
       roster: this.roster.map((entry) => ({ ...entry })),
       maxRosterSize: MAX_ROSTER_SIZE,
+      freeWeights: this.freeWeights.map((freeWeight) => this.copyFreeWeight(freeWeight)),
+      carriedFreeWeightId: this.carriedFreeWeightId,
+      nearestFreeWeight: nearestFreeWeight
+        ? {
+            freeWeight: this.copyFreeWeight(nearestFreeWeight.freeWeight),
+            distance: nearestFreeWeight.distance
+          }
+        : undefined,
       vending: {
         snackCooldown: this.vendingSnackCooldown
       },
@@ -502,9 +574,60 @@ export class GymBuddyWorld {
     }
   }
 
+  private updateFreeWeights(dt: number): void {
+    const carried = this.getCarriedFreeWeight();
+
+    for (const freeWeight of this.freeWeights) {
+      freeWeight.pickupCooldown = Math.max(0, freeWeight.pickupCooldown - dt);
+
+      if (freeWeight.status === 'carried') {
+        if (freeWeight !== carried) {
+          this.landFreeWeight(freeWeight);
+          continue;
+        }
+
+        const direction = headingVector(this.player.heading);
+        freeWeight.position = {
+          x: this.player.position.x + direction.x * 0.82,
+          z: this.player.position.z + direction.z * 0.82
+        };
+        freeWeight.velocity = { x: 0, z: 0 };
+        freeWeight.spin = this.player.heading;
+        continue;
+      }
+
+      if (freeWeight.status !== 'thrown') {
+        continue;
+      }
+
+      freeWeight.flightTimer = Math.max(0, freeWeight.flightTimer - dt);
+      freeWeight.position.x += freeWeight.velocity.x * dt;
+      freeWeight.position.z += freeWeight.velocity.z * dt;
+      freeWeight.spin += dt * 12;
+
+      if (this.tryResolveFreeWeightHit(freeWeight)) {
+        continue;
+      }
+
+      const radius = Math.hypot(freeWeight.position.x, freeWeight.position.z);
+
+      if (freeWeight.flightTimer <= 0 || radius > ARENA_RADIUS - 1.2) {
+        if (radius > ARENA_RADIUS - 1.2) {
+          const scale = (ARENA_RADIUS - 1.2) / radius;
+          freeWeight.position.x *= scale;
+          freeWeight.position.z *= scale;
+        }
+
+        this.landFreeWeight(freeWeight);
+      }
+    }
+  }
+
   private updateBuddies(dt: number): void {
     for (let index = 0; index < this.buddies.length; index += 1) {
       const buddy = this.buddies[index];
+
+      buddy.ragdollTimer = Math.max(0, buddy.ragdollTimer - dt);
 
       if (buddy.captured) {
         buddy.respawnTimer -= dt;
@@ -518,6 +641,10 @@ export class GymBuddyWorld {
           });
         }
 
+        continue;
+      }
+
+      if (buddy.ragdollTimer > 0) {
         continue;
       }
 
@@ -628,6 +755,7 @@ export class GymBuddyWorld {
   private updateBoss(dt: number): void {
     if (this.activeBoss) {
       this.activeBoss.timer -= dt;
+      this.activeBoss.ragdollTimer = Math.max(0, this.activeBoss.ragdollTimer - dt);
 
       if (this.activeBoss.timer <= 0) {
         this.events.push({
@@ -740,6 +868,91 @@ export class GymBuddyWorld {
     });
   }
 
+  private throwHeldFreeWeight(): boolean {
+    const freeWeight = this.getCarriedFreeWeight();
+
+    if (!freeWeight) {
+      return false;
+    }
+
+    const direction = headingVector(this.player.heading);
+    freeWeight.status = 'thrown';
+    freeWeight.position = {
+      x: this.player.position.x + direction.x * 1.05,
+      z: this.player.position.z + direction.z * 1.05
+    };
+    freeWeight.velocity = {
+      x: direction.x * FREE_WEIGHT_THROW_SPEED,
+      z: direction.z * FREE_WEIGHT_THROW_SPEED
+    };
+    freeWeight.flightTimer = FREE_WEIGHT_THROW_DURATION;
+    freeWeight.pickupCooldown = FREE_WEIGHT_PICKUP_COOLDOWN;
+    freeWeight.spin = this.player.heading;
+    this.carriedFreeWeightId = undefined;
+    this.events.push({
+      type: 'free-weight',
+      freeWeight: this.copyFreeWeight(freeWeight),
+      message: `${freeWeight.name} thrown.`
+    });
+    return true;
+  }
+
+  private tryResolveFreeWeightHit(freeWeight: FreeWeightState): boolean {
+    for (const buddy of this.buddies) {
+      if (buddy.captured || buddy.ragdollTimer > 0) {
+        continue;
+      }
+
+      if (distance(freeWeight.position, buddy.position) > FREE_WEIGHT_HIT_RADIUS) {
+        continue;
+      }
+
+      const definition = getBuddyDefinition(buddy.definitionId);
+      buddy.ragdollTimer = BUDDY_RAGDOLL_DURATION;
+      buddy.holdTimer = 0;
+      buddy.dodgeTimer = 0;
+      buddy.wanderHeading = Math.atan2(
+        buddy.position.x - this.player.position.x,
+        buddy.position.z - this.player.position.z
+      );
+      this.landFreeWeight(freeWeight);
+      this.events.push({
+        type: 'free-weight',
+        freeWeight: this.copyFreeWeight(freeWeight),
+        message: `${definition.name} got clipped by a dumbbell and shook it off.`
+      });
+      return true;
+    }
+
+    if (
+      this.activeBoss &&
+      this.activeBoss.ragdollTimer <= 0 &&
+      distance(freeWeight.position, this.activeBoss.position) <= BOSS_FREE_WEIGHT_HIT_RADIUS
+    ) {
+      this.activeBoss.ragdollTimer = BOSS_RAGDOLL_DURATION;
+      this.landFreeWeight(freeWeight);
+      this.events.push({
+        type: 'free-weight',
+        freeWeight: this.copyFreeWeight(freeWeight),
+        message: `${this.activeBoss.name} got knocked off balance by a free weight.`
+      });
+      return true;
+    }
+
+    return false;
+  }
+
+  private landFreeWeight(freeWeight: FreeWeightState): void {
+    freeWeight.status = 'ground';
+    freeWeight.velocity = { x: 0, z: 0 };
+    freeWeight.flightTimer = 0;
+    freeWeight.pickupCooldown = FREE_WEIGHT_PICKUP_COOLDOWN;
+
+    if (this.carriedFreeWeightId === freeWeight.id) {
+      this.carriedFreeWeightId = undefined;
+    }
+  }
+
   private createRosterEntry(definitionId: string): BuddyRosterEntry {
     const definition = getBuddyDefinition(definitionId);
     const base = this.getBaseStats(definition.archetype);
@@ -769,6 +982,60 @@ export class GymBuddyWorld {
 
   private getRandomWorkoutStation(): WorkoutStation {
     return WORKOUT_STATIONS[Math.floor(Math.random() * WORKOUT_STATIONS.length)];
+  }
+
+  private getCarriedFreeWeight(): FreeWeightState | undefined {
+    if (this.carriedFreeWeightId === undefined) {
+      return undefined;
+    }
+
+    return this.freeWeights.find((freeWeight) => freeWeight.id === this.carriedFreeWeightId);
+  }
+
+  private getNearestFreeWeight(): { freeWeight: FreeWeightState; distance: number } | undefined {
+    let nearest: { freeWeight: FreeWeightState; distance: number } | undefined;
+
+    for (const freeWeight of this.freeWeights) {
+      if (freeWeight.status !== 'ground' || freeWeight.pickupCooldown > 0) {
+        continue;
+      }
+
+      const freeWeightDistance = distance(this.player.position, freeWeight.position);
+
+      if (freeWeightDistance > FREE_WEIGHT_PICKUP_RANGE) {
+        continue;
+      }
+
+      if (!nearest || freeWeightDistance < nearest.distance) {
+        nearest = { freeWeight, distance: freeWeightDistance };
+      }
+    }
+
+    return nearest;
+  }
+
+  private createFreeWeight(pickup: { id: string; name: string; position: Vec2 }): FreeWeightState {
+    return {
+      id: nextFreeWeightId++,
+      pickupId: pickup.id,
+      name: pickup.name,
+      status: 'ground',
+      position: copyVec2(pickup.position),
+      spawnPosition: copyVec2(pickup.position),
+      velocity: { x: 0, z: 0 },
+      flightTimer: 0,
+      pickupCooldown: 0,
+      spin: Math.random() * Math.PI * 2
+    };
+  }
+
+  private copyFreeWeight(freeWeight: FreeWeightState): FreeWeightState {
+    return {
+      ...freeWeight,
+      position: copyVec2(freeWeight.position),
+      spawnPosition: copyVec2(freeWeight.spawnPosition),
+      velocity: copyVec2(freeWeight.velocity)
+    };
   }
 
   private getBaseStats(archetype: BuddyArchetype): Pick<BuddyRosterEntry, 'strength' | 'endurance' | 'focus'> {
@@ -841,7 +1108,8 @@ export class GymBuddyWorld {
       strength: definition.strength,
       endurance: definition.endurance,
       focus: definition.focus,
-      timer: BOSS_ACTIVE_DURATION
+      timer: BOSS_ACTIVE_DURATION,
+      ragdollTimer: 0
     };
     this.events.push({
       type: 'boss',
@@ -896,7 +1164,8 @@ export class GymBuddyWorld {
       captured: false,
       respawnTimer: 0,
       dodgeTimer: 0,
-      holdTimer: 0
+      holdTimer: 0,
+      ragdollTimer: 0
     };
   }
 }

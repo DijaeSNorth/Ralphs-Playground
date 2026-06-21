@@ -139,6 +139,7 @@ button {
 .repdex-panel,
 .crew-panel,
 .boss-panel,
+.freeweight-prompt,
 .vending-prompt,
 .vending-panel {
   border: 1px solid var(--line);
@@ -526,10 +527,25 @@ button {
   transform: translateX(-50%);
 }
 
-.vending-prompt {
+.freeweight-prompt {
   position: absolute;
   left: 50%;
   bottom: 106px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(360px, calc(100vw - 36px));
+  padding: 8px 8px 8px 12px;
+  color: var(--ink);
+  background: var(--panel-strong);
+  pointer-events: auto;
+  transform: translateX(-50%);
+}
+
+.vending-prompt {
+  position: absolute;
+  left: 50%;
+  bottom: 154px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -545,11 +561,24 @@ button {
   display: none;
 }
 
+.freeweight-prompt[hidden] {
+  display: none;
+}
+
 .vending-prompt[hidden] {
   display: none;
 }
 
 .workout-prompt span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+  font-weight: 820;
+}
+
+.freeweight-prompt span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -568,6 +597,7 @@ button {
 }
 
 .workout-prompt button,
+.freeweight-prompt button,
 .vending-prompt button,
 .vending-head button,
 .vending-option,
@@ -588,6 +618,15 @@ button {
   background: var(--teal);
   font-size: 0.78rem;
   font-weight: 840;
+}
+
+.freeweight-prompt button {
+  min-width: 72px;
+  min-height: 34px;
+  color: #ffffff;
+  background: var(--gold);
+  font-size: 0.78rem;
+  font-weight: 860;
 }
 
 .vending-prompt button {
@@ -839,17 +878,20 @@ button {
 
 .game-root--creating .crew-panel,
 .game-root--creating .boss-panel,
+.game-root--creating .freeweight-prompt,
 .game-root--creating .vending-prompt,
 .game-root--creating .vending-panel,
 .game-root--workout .touch-controls,
 .game-root--workout .control-hint,
 .game-root--workout .repdex-panel,
 .game-root--workout .crew-panel,
+.game-root--workout .freeweight-prompt,
 .game-root--workout .vending-prompt,
 .game-root--vending .touch-controls,
 .game-root--vending .control-hint,
 .game-root--vending .repdex-panel,
 .game-root--vending .crew-panel,
+.game-root--vending .freeweight-prompt,
 .game-root--vending .workout-prompt {
   display: none;
 }
@@ -1111,8 +1153,12 @@ button {
     bottom: 156px;
   }
 
-  .vending-prompt {
+  .freeweight-prompt {
     bottom: 210px;
+  }
+
+  .vending-prompt {
+    bottom: 264px;
   }
 
   .workout-panel {
@@ -1179,6 +1225,7 @@ button {
 
   .workout-buttons button,
   .workout-prompt button,
+  .freeweight-prompt button,
   .vending-prompt button,
   .spot-callout button {
     font-size: 0.72rem;

@@ -25,6 +25,7 @@ import {
   createBuddyMesh,
   createCaptureRing,
   createBossMesh,
+  createFreeWeightMesh,
   createGymProps,
   createProteinShakerProjectile,
   createPlayerMesh,
@@ -86,6 +87,7 @@ class GymBuddyRenderer {
   private bossMesh?: Group;
   private bossDefinitionId?: string;
   private readonly buddyMeshes = new Map<number, Group>();
+  private readonly freeWeightMeshes = new Map<number, Group>();
   private readonly effects: CaptureEffect[] = [];
   private readonly clockShadowTarget = new Object3D();
   private lastCullPosition?: Vec2;
@@ -134,6 +136,7 @@ class GymBuddyRenderer {
     this.syncPlayer(snapshot);
     this.syncBuddies(snapshot);
     this.syncBoss(snapshot);
+    this.syncFreeWeights(snapshot);
     this.handleEvents(events);
     this.updateCamera(snapshot, deltaSeconds);
     this.updateEffects(deltaSeconds);
@@ -227,12 +230,20 @@ class GymBuddyRenderer {
         buddy.position.z - snapshot.player.position.z
       );
       const renderDistance = this.touchOptimized ? BUDDY_RENDER_DISTANCE_TOUCH : BUDDY_RENDER_DISTANCE;
+      const ragdolled = buddy.ragdollTimer > 0;
       mesh.visible = !buddy.captured && playerDistance <= renderDistance;
       mesh.position.set(buddy.position.x, 0, buddy.position.z);
-      mesh.rotation.y = buddy.heading;
+      mesh.rotation.set(0, buddy.heading, 0);
 
       const idleScale = 0.9 + Math.sin(performance.now() * 0.004 + buddy.id) * 0.018;
-      mesh.scale.setScalar(idleScale);
+      if (ragdolled) {
+        mesh.position.y = 0.18;
+        mesh.rotation.x = -1.12;
+        mesh.rotation.z = Math.sin(performance.now() * 0.018 + buddy.id) * 0.18;
+        mesh.scale.setScalar(0.82);
+      } else {
+        mesh.scale.setScalar(idleScale);
+      }
     }
   }
 
@@ -262,7 +273,53 @@ class GymBuddyRenderer {
     }
 
     this.bossMesh.position.set(boss.position.x, 0, boss.position.z);
-    this.bossMesh.rotation.y += 0.01;
+    if (boss.ragdollTimer > 0) {
+      this.bossMesh.position.y = 0.22;
+      this.bossMesh.rotation.x = -1.05;
+      this.bossMesh.rotation.z = 0.32 + Math.sin(performance.now() * 0.014) * 0.12;
+    } else {
+      this.bossMesh.rotation.x = 0;
+      this.bossMesh.rotation.z = 0;
+      this.bossMesh.rotation.y += 0.01;
+    }
+  }
+
+  private syncFreeWeights(snapshot: WorldSnapshot): void {
+    const activeIds = new Set(snapshot.freeWeights.map((freeWeight) => freeWeight.id));
+
+    for (const [id, mesh] of this.freeWeightMeshes) {
+      if (!activeIds.has(id)) {
+        this.scene.remove(mesh);
+        this.disposeObject(mesh);
+        this.freeWeightMeshes.delete(id);
+      }
+    }
+
+    for (const freeWeight of snapshot.freeWeights) {
+      let mesh = this.freeWeightMeshes.get(freeWeight.id);
+
+      if (!mesh) {
+        mesh = createFreeWeightMesh();
+        this.freeWeightMeshes.set(freeWeight.id, mesh);
+        this.scene.add(mesh);
+      }
+
+      const thrownLift = freeWeight.status === 'thrown'
+        ? 0.34 + Math.abs(Math.sin(freeWeight.spin * 1.4)) * 0.28
+        : 0;
+      const carriedLift = freeWeight.status === 'carried' ? 1.03 : 0.18;
+      mesh.position.set(
+        freeWeight.position.x,
+        freeWeight.status === 'thrown' ? thrownLift : carriedLift,
+        freeWeight.position.z
+      );
+      mesh.rotation.set(
+        freeWeight.status === 'ground' ? 0.05 : freeWeight.spin,
+        freeWeight.spin,
+        freeWeight.status === 'thrown' ? freeWeight.spin * 1.6 : 0
+      );
+      mesh.scale.setScalar(freeWeight.status === 'carried' ? 1.08 : 1);
+    }
   }
 
   private handleEvents(events: WorldEvent[]): void {
@@ -464,6 +521,9 @@ export function createGymBuddyGame(root: HTMLElement): void {
   hud.onVendingProteinSnack(() => {
     world.grabProteinSnack();
   });
+  hud.onFreeWeightInteract(() => {
+    world.interactWithFreeWeight();
+  });
   hud.onRosterTrain((rosterId) => {
     world.sendBuddyToWorkout(rosterId);
   });
@@ -522,7 +582,7 @@ export function createGymBuddyGame(root: HTMLElement): void {
     if (gameStarted && !hud.isInteractionActive() && inputActions.interactPressed) {
       refreshNearbyPrompts(world.getSnapshot().player.position);
 
-      if (!hud.tryStartNearbyVending()) {
+      if (!world.interactWithFreeWeight() && !hud.tryStartNearbyVending()) {
         hud.tryStartNearbyWorkout();
       }
     }
