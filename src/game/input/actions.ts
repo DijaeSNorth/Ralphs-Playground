@@ -5,6 +5,8 @@ type MoveDirection = 'up' | 'down' | 'left' | 'right';
 const DEAD_ZONE = 0.18;
 const TOUCH_DEAD_ZONE = 0.08;
 const TOUCH_STICK_RADIUS = 54;
+const TOUCH_MOVE_LERP_IN = 0.16;
+const TOUCH_MOVE_LERP_OUT = 0.22;
 const DESKTOP_INPUT_LABEL = 'Keyboard + Mouse';
 const TOUCH_INPUT_LABEL = 'Touch';
 const KEYBOARD_INPUT_LABEL = 'Keyboard + Mouse';
@@ -39,6 +41,7 @@ export class InputController {
   private readonly virtualDirections = new Set<MoveDirection>();
   private virtualAxis = { x: 0, z: 0 };
   private virtualSprintHeld = false;
+  private smoothedTouchAxis = { x: 0, z: 0 };
   private catchQueued = false;
   private interactQueued = false;
   private resetQueued = false;
@@ -292,10 +295,15 @@ export class InputController {
     this.catchQueued = false;
     this.interactQueued = false;
     this.resetQueued = false;
+    this.smoothedTouchAxis = { x: 0, z: 0 };
     this.lastInputLabel = mode === 'touch' ? TOUCH_INPUT_LABEL : KEYBOARD_INPUT_LABEL;
     this.previousGamepadCatch = false;
     this.previousGamepadInteract = false;
     this.previousGamepadReset = false;
+  }
+
+  private approach(current: number, target: number, amount: number): number {
+    return current + (target - current) * clampAxis(amount);
   }
 
   getInputMode(): InputMode {
@@ -356,6 +364,7 @@ export class InputController {
     let gamepadCatch = false;
     let gamepadInteract = false;
     let gamepadReset = false;
+    let gamepadMoving = false;
     let sprintHeld =
       this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') || this.virtualSprintHeld;
 
@@ -387,11 +396,11 @@ export class InputController {
         gamepadMoveZ += 1;
       }
 
-      const gamepadMoving = hasMoveInput(gamepadMoveX, gamepadMoveZ);
       const gamepadSprint = (gamepad.buttons[7]?.value ?? 0) > 0.35 || gamepad.buttons[5]?.pressed === true;
       gamepadCatch = gamepad.buttons[0]?.pressed === true || (gamepad.buttons[6]?.value ?? 0) > 0.5;
       gamepadInteract = gamepad.buttons[2]?.pressed === true;
       gamepadReset = gamepad.buttons[8]?.pressed === true;
+      gamepadMoving = hasMoveInput(gamepadMoveX, gamepadMoveZ);
 
       if (gamepadMoving && !(touchMode ? touchMoving : keyboardMoving)) {
         moveX = gamepadMoveX;
@@ -413,6 +422,20 @@ export class InputController {
     const interactPressed =
       this.interactQueued || (gamepadInteract && !this.previousGamepadInteract);
     const resetPressed = this.resetQueued || (gamepadReset && !this.previousGamepadReset);
+    const isTouchInput = this.mode === 'touch';
+    const isTouchMove = this.mode === 'touch' && hasMoveInput(touchX, touchZ);
+    const touchLerp = isTouchMove ? TOUCH_MOVE_LERP_IN : TOUCH_MOVE_LERP_OUT;
+    const shouldUseTouchMovement = isTouchInput && !(gamepadMoving && !(touchMode ? touchMoving : keyboardMoving));
+
+    if (shouldUseTouchMovement) {
+      this.smoothedTouchAxis = {
+        x: this.approach(this.smoothedTouchAxis.x, isTouchMove ? touchX : 0, touchLerp),
+        z: this.approach(this.smoothedTouchAxis.z, isTouchMove ? touchZ : 0, touchLerp)
+      };
+
+      moveX = this.smoothedTouchAxis.x;
+      moveZ = this.smoothedTouchAxis.z;
+    }
 
     this.catchQueued = false;
     this.interactQueued = false;
@@ -435,6 +458,7 @@ export class InputController {
       interactPressed,
       sprintHeld,
       resetPressed,
+      isTouchInput,
       inputLabel: gamepadConnected ? 'Gamepad' : this.lastInputLabel,
       gamepadConnected
     };

@@ -29,6 +29,7 @@ const SPRINT_SPEED = 7.8;
 const PLAYER_ACCELERATION = 34;
 const PLAYER_DECELERATION = 42;
 const PLAYER_TURN_SPEED = 10.5;
+const PLAYER_TURN_SPEED_TOUCH = 6;
 const BUDDY_WANDER_SPEED = 0.95;
 const BUDDY_DODGE_SPEED = 4.4;
 const TRAINING_DURATION = 12;
@@ -608,7 +609,8 @@ export class GymBuddyWorld {
 
     if (currentSpeed > 0.02) {
       const targetHeading = Math.atan2(this.player.velocity.x, this.player.velocity.z);
-      this.player.heading = rotateToward(this.player.heading, targetHeading, PLAYER_TURN_SPEED * dt);
+      const turnSpeed = actions.isTouchInput ? PLAYER_TURN_SPEED_TOUCH : PLAYER_TURN_SPEED;
+      this.player.heading = rotateToward(this.player.heading, targetHeading, turnSpeed * dt);
       this.player.position.x += this.player.velocity.x * dt;
       this.player.position.z += this.player.velocity.z * dt;
     } else {

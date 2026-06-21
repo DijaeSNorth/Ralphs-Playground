@@ -278,6 +278,7 @@ export type ActionState = {
   interactPressed: boolean;
   sprintHeld: boolean;
   resetPressed: boolean;
+  isTouchInput: boolean;
   inputLabel: string;
   gamepadConnected: boolean;
 };
