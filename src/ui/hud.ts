@@ -1,12 +1,15 @@
 import { getBuddyDefinition } from '../game/content/buddies';
 import {
+  BODY_SIZE_CONTROLS,
   DEFAULT_PLAYER_APPEARANCE,
+  FRAME_OPTIONS,
   HAIR_OPTIONS,
   MUSCLE_BUILD_OPTIONS,
   SKIN_TONE_OPTIONS
 } from '../game/content/playerAppearance';
 import type {
   ActionState,
+  BodySizeKey,
   BossState,
   BuddyRosterEntry,
   PlayerAppearance,
@@ -252,6 +255,39 @@ export class GameHud {
                     <button type="button" class="creator-choice creator-choice--muscle" data-muscle="${option.id}" aria-pressed="false">
                       <span>${option.label}</span>
                     </button>
+                  `
+                ).join('')}
+              </div>
+            </div>
+            <div class="creator-group" aria-label="Frame">
+              <div class="creator-label">Frame</div>
+              <div class="creator-options creator-options--frame">
+                ${FRAME_OPTIONS.map(
+                  (option) => `
+                    <button type="button" class="creator-choice creator-choice--frame" data-frame="${option.id}" aria-pressed="false">
+                      <span>${option.label}</span>
+                    </button>
+                  `
+                ).join('')}
+              </div>
+            </div>
+            <div class="creator-group" aria-label="Body sizing">
+              <div class="creator-label">Body Scale</div>
+              <div class="creator-sliders">
+                ${BODY_SIZE_CONTROLS.map(
+                  (control) => `
+                    <label class="creator-slider">
+                      <span>${control.label}</span>
+                      <input
+                        type="range"
+                        min="${control.min}"
+                        max="${control.max}"
+                        step="${control.step}"
+                        value="${DEFAULT_PLAYER_APPEARANCE.body[control.id]}"
+                        data-body-size="${control.id}"
+                      />
+                      <strong data-body-size-value="${control.id}">100%</strong>
+                    </label>
                   `
                 ).join('')}
               </div>
@@ -704,6 +740,18 @@ export class GameHud {
     this.characterCreator.querySelectorAll<HTMLButtonElement>('[data-muscle]').forEach((button) => {
       button.addEventListener('click', () => {
         this.setAppearance({ muscleBuild: button.dataset.muscle as PlayerAppearance['muscleBuild'] });
+      });
+    });
+
+    this.characterCreator.querySelectorAll<HTMLButtonElement>('[data-frame]').forEach((button) => {
+      button.addEventListener('click', () => {
+        this.setAppearance({ frame: button.dataset.frame as PlayerAppearance['frame'] });
+      });
+    });
+
+    this.characterCreator.querySelectorAll<HTMLInputElement>('[data-body-size]').forEach((input) => {
+      input.addEventListener('input', () => {
+        this.setBodySize(input.dataset.bodySize as BodySizeKey, Number(input.value));
       });
     });
 
@@ -1363,10 +1411,30 @@ export class GameHud {
   }
 
   private setAppearance(appearance: Partial<PlayerAppearance>): void {
-    this.appearance = { ...this.appearance, ...appearance };
+    this.appearance = {
+      ...this.appearance,
+      ...appearance,
+      body: {
+        ...this.appearance.body,
+        ...(appearance.body ?? {})
+      }
+    };
     this.syncCreatorControls();
     const snapshot = this.getAppearance();
     this.appearanceListeners.forEach((callback) => callback(snapshot));
+  }
+
+  private setBodySize(key: BodySizeKey, value: number): void {
+    if (!key || !Number.isFinite(value)) {
+      return;
+    }
+
+    this.setAppearance({
+      body: {
+        ...this.appearance.body,
+        [key]: value
+      }
+    });
   }
 
   private syncCreatorControls(): void {
@@ -1386,6 +1454,28 @@ export class GameHud {
       const selected = button.dataset.muscle === this.appearance.muscleBuild;
       button.classList.toggle('creator-choice--selected', selected);
       button.setAttribute('aria-pressed', String(selected));
+    });
+
+    this.characterCreator.querySelectorAll<HTMLButtonElement>('[data-frame]').forEach((button) => {
+      const selected = button.dataset.frame === this.appearance.frame;
+      button.classList.toggle('creator-choice--selected', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
+
+    this.characterCreator.querySelectorAll<HTMLInputElement>('[data-body-size]').forEach((input) => {
+      const key = input.dataset.bodySize as BodySizeKey;
+      const value = this.appearance.body[key] ?? 1;
+      const nextValue = value.toFixed(2);
+
+      if (input.value !== nextValue) {
+        input.value = nextValue;
+      }
+
+      const output = this.characterCreator.querySelector<HTMLElement>(`[data-body-size-value="${key}"]`);
+
+      if (output) {
+        output.textContent = `${Math.round(value * 100)}%`;
+      }
     });
   }
 }

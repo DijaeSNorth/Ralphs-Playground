@@ -912,9 +912,11 @@ button {
 }
 
 .creator-panel {
-  width: min(390px, calc(100vw - 36px));
+  width: min(560px, calc(100vw - 36px));
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
   display: grid;
-  gap: 14px;
+  gap: 12px;
   padding: 16px;
   border: 1px solid rgba(255, 255, 255, 0.58);
   border-radius: 8px;
@@ -956,6 +958,14 @@ button {
   gap: 7px;
 }
 
+.creator-group[aria-label="Hair"] .creator-options {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.creator-options--frame {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .creator-choice,
 .creator-start {
   min-height: 42px;
@@ -974,9 +984,12 @@ button {
   justify-content: center;
   gap: 7px;
   padding: 8px;
+  overflow: hidden;
+  text-align: center;
 }
 
-.creator-choice--muscle {
+.creator-choice--muscle,
+.creator-choice--frame {
   min-height: 46px;
 }
 
@@ -999,6 +1012,42 @@ button {
 .creator-start {
   color: #ffffff;
   background: var(--coral);
+}
+
+.creator-sliders {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.creator-slider {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid rgba(23, 36, 54, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.creator-slider span,
+.creator-slider strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 840;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.creator-slider strong {
+  color: var(--ink);
+}
+
+.creator-slider input {
+  width: 100%;
+  accent-color: var(--coral);
 }
 
 .game-root--creating .touch-controls,
@@ -1182,6 +1231,16 @@ button {
     width: min(430px, calc(100vw - 24px));
     gap: 11px;
     padding: 13px;
+  }
+
+  .creator-group[aria-label="Hair"] .creator-options,
+  .creator-options,
+  .creator-options--frame {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .creator-sliders {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .creator-head h1 {

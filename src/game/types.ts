@@ -5,16 +5,39 @@ export type Vec2 = {
 
 export type BuddyArchetype = 'yogi' | 'runner' | 'lifter' | 'spinner' | 'climber';
 
-export type HairStyle = 'crop' | 'bun' | 'sweep';
+export type HairStyle =
+  | 'crop'
+  | 'bun'
+  | 'sweep'
+  | 'afro'
+  | 'coils'
+  | 'tapered-fade'
+  | 'waves'
+  | 'high-top'
+  | 'locs'
+  | 'short-locs'
+  | 'twists'
+  | 'cornrows'
+  | 'box-braids'
+  | 'bantu-knots'
+  | 'puff';
 
 export type SkinTone = 'light' | 'warm' | 'deep';
 
 export type MuscleBuild = 'lean' | 'power' | 'sculpted';
 
+export type BodyFrame = 'balanced' | 'tapered' | 'curved' | 'compact';
+
+export type BodySizeKey = 'height' | 'shoulders' | 'torso' | 'arms' | 'legs';
+
+export type BodySizing = Record<BodySizeKey, number>;
+
 export type PlayerAppearance = {
   hair: HairStyle;
   skinTone: SkinTone;
   muscleBuild: MuscleBuild;
+  frame: BodyFrame;
+  body: BodySizing;
 };
 
 export type WorkoutType =
