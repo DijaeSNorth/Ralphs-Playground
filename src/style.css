@@ -316,6 +316,16 @@ button {
   background: rgba(255, 255, 255, 0.62);
 }
 
+.crew-row--training {
+  border-color: rgba(39, 164, 168, 0.26);
+  background: rgba(39, 164, 168, 0.12);
+}
+
+.crew-row--needs-spot {
+  border-color: rgba(232, 92, 79, 0.34);
+  background: rgba(232, 92, 79, 0.12);
+}
+
 .crew-main,
 .crew-stats,
 .crew-actions {
@@ -394,6 +404,10 @@ button {
 .crew-actions button:disabled {
   color: rgba(23, 36, 54, 0.36);
   cursor: default;
+}
+
+.crew-actions .crew-remove {
+  color: var(--coral);
 }
 
 .boss-panel {
@@ -558,6 +572,7 @@ button {
 .vending-head button,
 .vending-option,
 .workout-head button,
+.spot-callout button,
 .workout-buttons button {
   border: 1px solid rgba(23, 36, 54, 0.14);
   border-radius: 8px;
@@ -714,6 +729,41 @@ button {
   font-size: 0.82rem;
   font-weight: 760;
   line-height: 1.3;
+}
+
+.spot-callout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 9px;
+  border: 1px solid rgba(232, 92, 79, 0.24);
+  border-radius: 8px;
+  background: rgba(232, 92, 79, 0.1);
+}
+
+.spot-callout[hidden] {
+  display: none;
+}
+
+.spot-callout span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.76rem;
+  font-weight: 840;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spot-callout button {
+  min-width: 70px;
+  min-height: 34px;
+  color: #ffffff;
+  border-color: transparent;
+  background: var(--coral);
+  font-size: 0.76rem;
+  font-weight: 880;
 }
 
 .workout-meter {
@@ -1129,7 +1179,8 @@ button {
 
   .workout-buttons button,
   .workout-prompt button,
-  .vending-prompt button {
+  .vending-prompt button,
+  .spot-callout button {
     font-size: 0.72rem;
   }
 

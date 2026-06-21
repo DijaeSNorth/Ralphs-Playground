@@ -470,6 +470,9 @@ export function createGymBuddyGame(root: HTMLElement): void {
   hud.onRosterSpot((rosterId) => {
     world.spotBuddy(rosterId);
   });
+  hud.onRosterRemove((rosterId) => {
+    world.removeBuddy(rosterId);
+  });
   hud.onBossChallenge(() => {
     world.challengeBoss();
   });

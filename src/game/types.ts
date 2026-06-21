@@ -52,7 +52,9 @@ export type VendingMachine = {
   snackCooldown: number;
 };
 
-export type BuddyRosterStatus = 'ready' | 'training' | 'spotting';
+export type BuddyRosterStatus = 'ready' | 'training' | 'needs-spot';
+
+export type BuddyTrainingOutcome = 'success' | 'needs-spot';
 
 export type BuddyDefinition = {
   id: string;
@@ -76,6 +78,7 @@ export type BuddyRosterEntry = {
   energy: number;
   status: BuddyRosterStatus;
   taskLabel?: string;
+  taskOutcome?: BuddyTrainingOutcome;
   taskTimer: number;
   taskDuration: number;
 };

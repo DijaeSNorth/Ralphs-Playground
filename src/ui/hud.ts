@@ -62,6 +62,9 @@ export class GameHud {
   private readonly workoutPanel: HTMLDivElement;
   private readonly workoutTitle: HTMLHeadingElement;
   private readonly workoutInstruction: HTMLDivElement;
+  private readonly spotCallout: HTMLDivElement;
+  private readonly spotCalloutText: HTMLSpanElement;
+  private readonly spotCalloutButton: HTMLButtonElement;
   private readonly workoutMeterFill: HTMLDivElement;
   private readonly workoutCursor: HTMLDivElement;
   private readonly workoutScore: HTMLDivElement;
@@ -73,6 +76,7 @@ export class GameHud {
   private readonly vendingSnackListeners: Array<() => void> = [];
   private readonly rosterTrainListeners: Array<(rosterId: number) => void> = [];
   private readonly rosterSpotListeners: Array<(rosterId: number) => void> = [];
+  private readonly rosterRemoveListeners: Array<(rosterId: number) => void> = [];
   private readonly bossChallengeListeners: Array<() => void> = [];
   private appearance: PlayerAppearance = { ...DEFAULT_PLAYER_APPEARANCE };
   private nearbyStation?: WorkoutStation;
@@ -100,10 +104,12 @@ export class GameHud {
   private renderedBossName = '';
   private renderedBossStats = '';
   private renderedBossTimer = '';
+  private renderedSpotCalloutText = '';
   private renderedVendingEnergyMeta = '';
   private renderedVendingSnackMeta = '';
   private renderedWorkoutMeterWidth = '';
   private renderedWorkoutCursorLeft = '';
+  private spotTargetRosterId?: number;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -184,6 +190,10 @@ export class GameHud {
             <button type="button" data-workout-close aria-label="Close workout">Close</button>
           </div>
           <div class="workout-instruction" data-workout-instruction></div>
+          <div class="spot-callout" data-spot-callout hidden>
+            <span data-spot-callout-text>Buddy needs a spot.</span>
+            <button type="button" data-spot-buddy-now>Spot</button>
+          </div>
           <div class="workout-meter" aria-hidden="true">
             <div class="workout-meter-fill" data-workout-meter-fill></div>
             <div class="workout-cursor" data-workout-cursor></div>
@@ -282,6 +292,9 @@ export class GameHud {
     const workoutPanel = root.querySelector<HTMLDivElement>('[data-workout-panel]');
     const workoutTitle = root.querySelector<HTMLHeadingElement>('[data-workout-title]');
     const workoutInstruction = root.querySelector<HTMLDivElement>('[data-workout-instruction]');
+    const spotCallout = root.querySelector<HTMLDivElement>('[data-spot-callout]');
+    const spotCalloutText = root.querySelector<HTMLSpanElement>('[data-spot-callout-text]');
+    const spotCalloutButton = root.querySelector<HTMLButtonElement>('[data-spot-buddy-now]');
     const workoutMeterFill = root.querySelector<HTMLDivElement>('[data-workout-meter-fill]');
     const workoutCursor = root.querySelector<HTMLDivElement>('[data-workout-cursor]');
     const workoutScore = root.querySelector<HTMLDivElement>('[data-workout-score]');
@@ -318,6 +331,9 @@ export class GameHud {
       !workoutPanel ||
       !workoutTitle ||
       !workoutInstruction ||
+      !spotCallout ||
+      !spotCalloutText ||
+      !spotCalloutButton ||
       !workoutMeterFill ||
       !workoutCursor ||
       !workoutScore ||
@@ -356,6 +372,9 @@ export class GameHud {
     this.workoutPanel = workoutPanel;
     this.workoutTitle = workoutTitle;
     this.workoutInstruction = workoutInstruction;
+    this.spotCallout = spotCallout;
+    this.spotCalloutText = spotCalloutText;
+    this.spotCalloutButton = spotCalloutButton;
     this.workoutMeterFill = workoutMeterFill;
     this.workoutCursor = workoutCursor;
     this.workoutScore = workoutScore;
@@ -442,6 +461,7 @@ export class GameHud {
       this.crewList.innerHTML = crewMarkup;
       this.renderedCrewMarkup = crewMarkup;
     }
+    this.updateSpotCallout(snapshot);
     this.updateBossPanel(snapshot.activeBoss);
     this.updateVendingPanel(snapshot);
 
@@ -509,6 +529,10 @@ export class GameHud {
 
   onRosterSpot(callback: (rosterId: number) => void): void {
     this.rosterSpotListeners.push(callback);
+  }
+
+  onRosterRemove(callback: (rosterId: number) => void): void {
+    this.rosterRemoveListeners.push(callback);
   }
 
   onBossChallenge(callback: () => void): void {
@@ -666,6 +690,16 @@ export class GameHud {
       this.closeWorkout();
     });
 
+    this.spotCalloutButton.addEventListener('click', () => {
+      const targetRosterId = this.spotTargetRosterId;
+
+      if (!this.activeWorkout || targetRosterId === undefined) {
+        return;
+      }
+
+      this.rosterSpotListeners.forEach((callback) => callback(targetRosterId));
+    });
+
     this.workoutButtons.addEventListener('click', (event) => {
       const target = event.target;
 
@@ -710,14 +744,14 @@ export class GameHud {
       }
 
       const trainId = target.dataset.trainBuddy;
-      const spotId = target.dataset.spotBuddy;
+      const removeId = target.dataset.removeBuddy;
 
       if (trainId) {
         this.rosterTrainListeners.forEach((callback) => callback(Number(trainId)));
       }
 
-      if (spotId) {
-        this.rosterSpotListeners.forEach((callback) => callback(Number(spotId)));
+      if (removeId) {
+        this.rosterRemoveListeners.forEach((callback) => callback(Number(removeId)));
       }
     });
   }
@@ -741,13 +775,18 @@ export class GameHud {
           entry.taskDuration > 0
             ? Math.round(Math.max(0, Math.min(100, 100 - entry.taskTimer / entry.taskDuration * 100)))
             : Math.round(entry.energy);
-        const status =
-          entry.status === 'ready'
-            ? `Energy ${Math.round(entry.energy)}`
-            : `${entry.taskLabel ?? entry.status} ${Math.ceil(entry.taskTimer)}s`;
+        let status = `Energy ${Math.round(entry.energy)}`;
+
+        if (entry.status === 'training') {
+          status = `${entry.taskLabel ?? 'Training'} ${Math.ceil(entry.taskTimer)}s`;
+        }
+
+        if (entry.status === 'needs-spot') {
+          status = `Needs spot ${Math.ceil(entry.taskTimer)}s`;
+        }
 
         return `
-          <div class="crew-row">
+          <div class="crew-row crew-row--${entry.status}">
             <div class="crew-main">
               <span>${definition.name}</span>
               <strong>Lv ${entry.level}</strong>
@@ -762,13 +801,35 @@ export class GameHud {
             </div>
             <div class="crew-actions">
               <span>${status}</span>
-              <button type="button" data-spot-buddy="${entry.rosterId}" ${busy ? 'disabled' : ''}>Spot</button>
               <button type="button" data-train-buddy="${entry.rosterId}" ${busy ? 'disabled' : ''}>Train</button>
+              <button type="button" class="crew-remove" data-remove-buddy="${entry.rosterId}">Remove</button>
             </div>
           </div>
         `;
       })
       .join('');
+  }
+
+  private updateSpotCallout(snapshot: WorldSnapshot): void {
+    const target = this.activeWorkout
+      ? snapshot.roster.find((entry) => entry.status === 'needs-spot')
+      : undefined;
+
+    this.spotTargetRosterId = target?.rosterId;
+
+    if (!target) {
+      this.setHidden(this.spotCallout, true);
+      return;
+    }
+
+    const definition = getBuddyDefinition(target.definitionId);
+    const text = `${definition.name} needs a spot on ${target.taskLabel ?? 'their set'} (${Math.ceil(target.taskTimer)}s)`;
+    this.renderedSpotCalloutText = this.setText(
+      this.spotCalloutText,
+      this.renderedSpotCalloutText,
+      text
+    );
+    this.setHidden(this.spotCallout, false);
   }
 
   private updateBossPanel(boss?: BossState): void {
@@ -873,6 +934,8 @@ export class GameHud {
 
   private closeWorkout(): void {
     this.activeWorkout = undefined;
+    this.spotTargetRosterId = undefined;
+    this.setHidden(this.spotCallout, true);
     this.root.classList.remove('game-root--workout');
     this.setHidden(this.workoutPanel, true);
   }

@@ -1,5 +1,6 @@
 import { BUDDY_DEFINITIONS, getBuddyDefinition } from '../content/buddies';
 import { BOSS_DEFINITIONS, getBossDefinition } from '../content/bosses';
+import { WORKOUT_STATIONS } from '../content/equipment';
 import { VENDING_MACHINES } from '../content/vending';
 import type {
   ActionState,
@@ -28,8 +29,8 @@ const PLAYER_DECELERATION = 42;
 const PLAYER_TURN_SPEED = 13;
 const BUDDY_WANDER_SPEED = 0.95;
 const BUDDY_DODGE_SPEED = 4.4;
-const TRAINING_DURATION = 10;
-const SPOTTING_DURATION = 6;
+const TRAINING_DURATION = 12;
+const TRAINING_SPOT_WINDOW = 7;
 const BOSS_ACTIVE_DURATION = 26;
 
 let nextBuddyId = 1;
@@ -296,12 +297,13 @@ export class GymBuddyWorld {
 
     buddy.energy = clamp(buddy.energy - 15, 0, 100);
     buddy.status = 'training';
-    buddy.taskLabel = 'Workout';
+    buddy.taskLabel = this.getRandomWorkoutStation().name;
+    buddy.taskOutcome = Math.random() < 0.5 ? 'success' : 'needs-spot';
     buddy.taskTimer = TRAINING_DURATION;
     buddy.taskDuration = TRAINING_DURATION;
     this.events.push({
       type: 'roster',
-      message: `${getBuddyDefinition(buddy.definitionId).name} headed to a workout station.`
+      message: `${getBuddyDefinition(buddy.definitionId).name} started ${buddy.taskLabel}. Be ready to spot.`
     });
   }
 
@@ -312,10 +314,10 @@ export class GymBuddyWorld {
       return;
     }
 
-    if (buddy.status !== 'ready') {
+    if (buddy.status !== 'needs-spot') {
       this.events.push({
         type: 'roster',
-        message: `${getBuddyDefinition(buddy.definitionId).name} cannot spot while busy.`
+        message: `${getBuddyDefinition(buddy.definitionId).name} does not need a spot right now.`
       });
       return;
     }
@@ -328,14 +330,28 @@ export class GymBuddyWorld {
       return;
     }
 
-    buddy.energy = clamp(buddy.energy - 10, 0, 100);
-    buddy.status = 'spotting';
-    buddy.taskLabel = 'Spotting';
-    buddy.taskTimer = SPOTTING_DURATION;
-    buddy.taskDuration = SPOTTING_DURATION;
+    const definition = getBuddyDefinition(buddy.definitionId);
+    buddy.energy = clamp(buddy.energy - 8, 0, 100);
+    this.player.stamina = clamp(this.player.stamina - 5, 0, MAX_STAMINA);
+    this.applyTrainingResult(buddy, definition.archetype);
+    this.finishRosterTask(buddy);
     this.events.push({
       type: 'roster',
-      message: `${getBuddyDefinition(buddy.definitionId).name} is spotting your next set.`
+      message: `You spotted ${definition.name}. Their set passed and stats improved.`
+    });
+  }
+
+  removeBuddy(rosterId: number): void {
+    const index = this.roster.findIndex((entry) => entry.rosterId === rosterId);
+
+    if (index === -1) {
+      return;
+    }
+
+    const [buddy] = this.roster.splice(index, 1);
+    this.events.push({
+      type: 'roster',
+      message: `${getBuddyDefinition(buddy.definitionId).name} left your crew.`
     });
   }
 
@@ -574,31 +590,38 @@ export class GymBuddyWorld {
       buddy.taskTimer = Math.max(0, buddy.taskTimer - dt);
 
       if (buddy.taskTimer > 0) {
+        if (
+          buddy.status === 'training' &&
+          buddy.taskOutcome === 'needs-spot' &&
+          buddy.taskTimer <= TRAINING_SPOT_WINDOW
+        ) {
+          buddy.status = 'needs-spot';
+          this.events.push({
+            type: 'roster',
+            message: `${getBuddyDefinition(buddy.definitionId).name} needs a spot on ${buddy.taskLabel}.`
+          });
+        }
+
         continue;
       }
 
       const definition = getBuddyDefinition(buddy.definitionId);
 
-      if (buddy.status === 'training') {
+      if (buddy.status === 'training' && buddy.taskOutcome === 'success') {
         this.applyTrainingResult(buddy, definition.archetype);
         this.events.push({
           type: 'roster',
-          message: `${definition.name} finished training. Stats improved.`
+          message: `${definition.name} finished ${buddy.taskLabel}. Stats improved.`
         });
-      } else {
-        buddy.focus += 2;
-        this.addRosterXp(buddy, 18);
-        this.player.stamina = clamp(this.player.stamina + 6, 0, MAX_STAMINA);
+      } else if (buddy.status === 'needs-spot') {
+        buddy.energy = clamp(buddy.energy - 10, 0, 100);
         this.events.push({
           type: 'roster',
-          message: `${definition.name} spotted clean reps. +2 focus.`
+          message: `${definition.name} missed ${buddy.taskLabel}. Spot them sooner next time.`
         });
       }
 
-      buddy.status = 'ready';
-      buddy.taskLabel = undefined;
-      buddy.taskTimer = 0;
-      buddy.taskDuration = 0;
+      this.finishRosterTask(buddy);
     }
   }
 
@@ -650,7 +673,7 @@ export class GymBuddyWorld {
         type: 'capture',
         result: 'empty',
         start,
-        message: `Crew is full (${MAX_ROSTER_SIZE}/${MAX_ROSTER_SIZE}). Train or spot your buddies.`
+        message: `Crew is full (${MAX_ROSTER_SIZE}/${MAX_ROSTER_SIZE}). Remove a buddy to make room.`
       });
       return;
     }
@@ -734,6 +757,18 @@ export class GymBuddyWorld {
       taskTimer: 0,
       taskDuration: 0
     };
+  }
+
+  private finishRosterTask(buddy: BuddyRosterEntry): void {
+    buddy.status = 'ready';
+    buddy.taskLabel = undefined;
+    buddy.taskOutcome = undefined;
+    buddy.taskTimer = 0;
+    buddy.taskDuration = 0;
+  }
+
+  private getRandomWorkoutStation(): WorkoutStation {
+    return WORKOUT_STATIONS[Math.floor(Math.random() * WORKOUT_STATIONS.length)];
   }
 
   private getBaseStats(archetype: BuddyArchetype): Pick<BuddyRosterEntry, 'strength' | 'endurance' | 'focus'> {
