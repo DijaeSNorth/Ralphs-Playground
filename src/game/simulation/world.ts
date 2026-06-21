@@ -463,11 +463,11 @@ export class GymBuddyWorld {
     const definition = getBuddyDefinition(buddy.definitionId);
     buddy.energy = clamp(buddy.energy - 8, 0, 100);
     this.player.stamina = clamp(this.player.stamina - 5, 0, MAX_STAMINA);
-    this.applyTrainingResult(buddy, definition.archetype);
+    this.applyTrainingResult(buddy, definition.archetype, 0.5);
     this.finishRosterTask(buddy);
     this.events.push({
       type: 'roster',
-      message: `You spotted ${buddyName}. Their set passed and stats improved.`
+      message: `You spotted ${buddyName}. Successful rep: half credit XP gained.`
     });
   }
 
@@ -1139,7 +1139,11 @@ export class GymBuddyWorld {
     return { strength: 3, endurance: 5, focus: 8 };
   }
 
-  private applyTrainingResult(buddy: BuddyRosterEntry, archetype: BuddyArchetype): void {
+  private applyTrainingResult(
+    buddy: BuddyRosterEntry,
+    archetype: BuddyArchetype,
+    rewardMultiplier = 1
+  ): void {
     if (archetype === 'runner' || archetype === 'spinner') {
       buddy.endurance += 2;
       buddy.focus += 1;
@@ -1151,7 +1155,8 @@ export class GymBuddyWorld {
       buddy.endurance += 1;
     }
 
-    this.addRosterXp(buddy, 30);
+    const baseXp = 30 * rewardMultiplier;
+    this.addRosterXp(buddy, Math.round(baseXp));
   }
 
   private addRosterXp(buddy: BuddyRosterEntry, amount: number): void {
