@@ -6,6 +6,7 @@ import type {
   ActionState,
   BossState,
   BuddyArchetype,
+  BuddyBodyTraits,
   BuddyRosterEntry,
   BuddyState,
   FreeWeightState,
@@ -42,6 +43,22 @@ const BOSS_FREE_WEIGHT_HIT_RADIUS = 1.05;
 const FREE_WEIGHT_PICKUP_COOLDOWN = 0.65;
 const BUDDY_RAGDOLL_DURATION = 1.65;
 const BOSS_RAGDOLL_DURATION = 1.35;
+const BUDDY_BODY_TRAIT_RANGES: Record<keyof BuddyBodyTraits, { min: number; max: number }> = {
+  pecks: { min: 0.68, max: 1.36 },
+  breasts: { min: 0.68, max: 1.36 },
+  wings: { min: 0.6, max: 1.5 },
+  glutes: { min: 0.68, max: 1.36 },
+  thighs: { min: 0.8, max: 1.34 },
+  calfs: { min: 0.8, max: 1.34 }
+};
+
+const BUDDY_TRAIT_BIAS: Record<BuddyArchetype, Partial<Record<keyof BuddyBodyTraits, number>>> = {
+  yogi: { wings: 0.12, calfs: -0.04, thighs: -0.06 },
+  runner: { calfs: 0.12, thighs: 0.05, pecks: -0.06 },
+  lifter: { pecks: 0.2, breasts: 0.18, glutes: 0.16, thighs: 0.16, calfs: 0.1 },
+  spinner: { pecks: 0.04, glutes: -0.06 },
+  climber: { thighs: 0.14, calfs: 0.12, glutes: 0.08 }
+};
 
 let nextBuddyId = 1;
 let nextRosterId = 1;
@@ -101,6 +118,23 @@ function randomPoint(radius = ARENA_RADIUS - 2): Vec2 {
 
 function randomHeading(): number {
   return Math.random() * Math.PI * 2;
+}
+
+function randomTrait(range: { min: number; max: number }, bias = 0): number {
+  return clamp(Math.random() * (range.max - range.min) + range.min + bias, range.min, range.max);
+}
+
+function generateBuddyBodyTraits(archetype: BuddyArchetype): BuddyBodyTraits {
+  const traitBias = BUDDY_TRAIT_BIAS[archetype];
+
+  return {
+    pecks: randomTrait(BUDDY_BODY_TRAIT_RANGES.pecks, traitBias.pecks),
+    breasts: randomTrait(BUDDY_BODY_TRAIT_RANGES.breasts, traitBias.breasts),
+    wings: randomTrait(BUDDY_BODY_TRAIT_RANGES.wings, traitBias.wings),
+    glutes: randomTrait(BUDDY_BODY_TRAIT_RANGES.glutes, traitBias.glutes),
+    thighs: randomTrait(BUDDY_BODY_TRAIT_RANGES.thighs, traitBias.thighs),
+    calfs: randomTrait(BUDDY_BODY_TRAIT_RANGES.calfs, traitBias.calfs)
+  };
 }
 
 function randomBossDefinitionId(): string {
@@ -516,9 +550,10 @@ export class GymBuddyWorld {
       },
       buddies: this.buddies.map((buddy) => ({
         ...buddy,
-        position: copyVec2(buddy.position)
+        position: copyVec2(buddy.position),
+        bodyTraits: { ...buddy.bodyTraits }
       })),
-      roster: this.roster.map((entry) => ({ ...entry })),
+      roster: this.roster.map((entry) => ({ ...entry, bodyTraits: { ...entry.bodyTraits } })),
       maxRosterSize: MAX_ROSTER_SIZE,
       freeWeights: this.freeWeights.map((freeWeight) => this.copyFreeWeight(freeWeight)),
       carriedFreeWeightId: this.carriedFreeWeightId,
@@ -867,6 +902,7 @@ export class GymBuddyWorld {
 
     const buddy = nearest.buddy;
     const definition = getBuddyDefinition(buddy.definitionId);
+    const bodyTraits = { ...buddy.bodyTraits };
     const buddyDisplayName = buddy.displayName ?? definition.name;
     const staminaBonus = this.player.stamina / MAX_STAMINA * 0.12;
     const closenessBonus = (CAPTURE_RANGE - nearest.distance) / CAPTURE_RANGE * 0.16;
@@ -877,7 +913,7 @@ export class GymBuddyWorld {
       buddy.captured = true;
       buddy.respawnTimer = 1.45;
       this.player.capturedTotal += 1;
-      this.roster.push(this.createRosterEntry(definition.id, buddyDisplayName));
+      this.roster.push(this.createRosterEntry(definition.id, bodyTraits, buddyDisplayName));
       this.player.stamina = clamp(this.player.stamina + definition.staminaReward, 0, MAX_STAMINA);
       this.player.proteinShakers = clamp(
         this.player.proteinShakers + 1,
@@ -993,13 +1029,18 @@ export class GymBuddyWorld {
     }
   }
 
-  private createRosterEntry(definitionId: string, displayName?: string): BuddyRosterEntry {
+  private createRosterEntry(
+    definitionId: string,
+    bodyTraits: BuddyBodyTraits,
+    displayName?: string
+  ): BuddyRosterEntry {
     const definition = getBuddyDefinition(definitionId);
     const base = this.getBaseStats(definition.archetype);
 
     return {
       rosterId: nextRosterId++,
       definitionId,
+      bodyTraits: { ...bodyTraits },
       displayName: displayName ?? getRandomBuddyName(definitionId),
       level: 1,
       xp: 0,
@@ -1188,6 +1229,7 @@ export class GymBuddyWorld {
   private createBuddy(): BuddyState {
     let position = randomPoint();
     const definitionId = weightedBuddyDefinitionId();
+    const definition = getBuddyDefinition(definitionId);
 
     for (let attempts = 0; attempts < 8; attempts += 1) {
       if (distance(position, this.player.position) > 5) {
@@ -1200,6 +1242,7 @@ export class GymBuddyWorld {
     return {
       id: nextBuddyId++,
       definitionId,
+      bodyTraits: generateBuddyBodyTraits(definition.archetype),
       displayName: getRandomBuddyName(definitionId),
       position,
       heading: randomHeading(),

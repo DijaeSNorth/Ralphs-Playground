@@ -313,7 +313,7 @@ class GymBuddyRenderer {
       let mesh = this.buddyMeshes.get(buddy.id);
 
       if (!mesh) {
-        mesh = createBuddyMesh(getBuddyDefinition(buddy.definitionId));
+        mesh = createBuddyMesh(getBuddyDefinition(buddy.definitionId), buddy.bodyTraits);
         this.buddyMeshes.set(buddy.id, mesh);
         this.scene.add(mesh);
       }
@@ -361,7 +361,7 @@ class GymBuddyRenderer {
       let mesh = this.rosterBuddyMeshes.get(rosterEntry.rosterId);
 
       if (!mesh) {
-        mesh = createBuddyMesh(getBuddyDefinition(rosterEntry.definitionId));
+        mesh = createBuddyMesh(getBuddyDefinition(rosterEntry.definitionId), rosterEntry.bodyTraits);
         this.rosterBuddyMeshes.set(rosterEntry.rosterId, mesh);
         this.scene.add(mesh);
       }

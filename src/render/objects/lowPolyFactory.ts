@@ -18,6 +18,7 @@ import {
 import type {
   BossDefinition,
   BuddyDefinition,
+  BuddyBodyTraits,
   MuscleBuild,
   PlayerAppearance,
   VendingMachine,
@@ -846,6 +847,15 @@ function getBodySize(appearance: PlayerAppearance): PlayerAppearance['body'] {
   };
 }
 
+const DEFAULT_BUDDY_BODY_TRAITS: BuddyBodyTraits = {
+  pecks: 1,
+  breasts: 1,
+  wings: 1,
+  glutes: 1,
+  thighs: 1,
+  calfs: 1
+};
+
 function addHairOrb(
   group: Group,
   material: MeshStandardMaterial,
@@ -1411,51 +1421,136 @@ export function createPlayerMesh(appearance = DEFAULT_PLAYER_APPEARANCE): Group 
   return markShadows(group) as Group;
 }
 
-function addBuddyMuscleFeatures(group: Group, definition: BuddyDefinition): void {
+function addBuddyMuscleFeatures(
+  group: Group,
+  definition: BuddyDefinition,
+  traits: BuddyBodyTraits
+): void {
   const accent = definition.accent;
   const deepTone = definition.archetype === 'runner' ? 0x2d4054 : 0x1b2f43;
+  const pecksScale = traits.pecks;
+  const breastsScale = traits.breasts;
+  const wingsScale = traits.wings;
+  const gluteScale = traits.glutes;
+  const thighScale = traits.thighs;
+  const calfScale = traits.calfs;
+  const shoulderWidth = 1 + (pecksScale - 1) * 0.2;
+  const pecMass = 0.9 + (breastsScale - 1) * 0.3;
+  const quadMass = 0.82 + (thighScale - 1) * 0.34;
+  const calfMass = 0.8 + (calfScale - 1) * 0.35;
+  const obliqueMass = 0.74 + (gluteScale - 1) * 0.31;
 
-  const shoulderLeft = createFacetMuscle(0.16, accent, -0.43, 0.91, 0.04, 1.2, 0.72, 0.9);
+  const shoulderLeft = createFacetMuscle(
+    0.16 * shoulderWidth,
+    accent,
+    -0.43,
+    0.91,
+    0.04,
+    1.2 * shoulderWidth,
+    0.72,
+    0.9 + (pecksScale - 1) * 0.25
+  );
   const shoulderRight = shoulderLeft.clone();
   shoulderRight.position.x = 0.43;
-  const bicepLeft = createFacetMuscle(0.12, accent, -0.5, 0.68, 0.08, 0.9, 1.2, 0.8);
+  const bicepLeft = createFacetMuscle(
+    0.12 * pecMass,
+    accent,
+    -0.5,
+    0.68,
+    0.08,
+    0.9 * pecMass,
+    1.2 * pecMass,
+    0.8 + (pecksScale - 1) * 0.2
+  );
   const bicepRight = bicepLeft.clone();
   bicepRight.position.x = 0.5;
-  const forearmLeft = createFacetMuscle(0.095, accent, -0.46, 0.5, 0.08, 0.85, 1.15, 0.75);
+  const forearmLeft = createFacetMuscle(
+    0.095 * pecMass,
+    accent,
+    -0.46,
+    0.5,
+    0.08,
+    0.85 * pecMass,
+    1.15 * pecMass,
+    0.75 + (breastsScale - 1) * 0.2
+  );
   const forearmRight = forearmLeft.clone();
   forearmRight.position.x = 0.46;
   group.add(shoulderLeft, shoulderRight, bicepLeft, bicepRight, forearmLeft, forearmRight);
 
-  const pecLeft = box(0.18, 0.1, 0.08, accent, -0.11, 0.84, 0.41);
+  const pecLeft = box(
+    0.18 * pecMass,
+    0.1 * pecMass,
+    0.08,
+    accent,
+    -0.11,
+    0.84,
+    0.41
+  );
   pecLeft.rotation.z = 0.16;
   const pecRight = pecLeft.clone();
   pecRight.position.x = 0.11;
   pecRight.rotation.z = -0.16;
-  const trapLeft = box(0.18, 0.08, 0.1, 0xf9f7ef, -0.2, 1.01, 0.31);
+  const trapLeft = box(
+    0.18 * (0.9 + (breastsScale - 1) * 0.25),
+    0.08 * (0.88 + (pecksScale - 1) * 0.22),
+    0.1,
+    0xf9f7ef,
+    -0.2,
+    1.01,
+    0.31
+  );
   trapLeft.rotation.z = -0.28;
   const trapRight = trapLeft.clone();
   trapRight.position.x = 0.2;
   trapRight.rotation.z = 0.28;
   group.add(pecLeft, pecRight, trapLeft, trapRight);
 
-  for (let row = 0; row < 3; row += 1) {
+  const abRows = pecksScale > 1.2 ? 4 : 3;
+  for (let row = 0; row < abRows; row += 1) {
     for (let col = 0; col < 2; col += 1) {
-      const ab = createFlatHex(0.045, row === 1 ? 0xf9f7ef : accent);
+      const ab = createFlatHex(0.045 * pecMass, row === 1 ? 0xf9f7ef : accent);
       ab.position.set(col === 0 ? -0.06 : 0.06, 0.72 - row * 0.075, 0.43);
       ab.scale.set(0.82, 1, 1);
       group.add(ab);
     }
   }
 
-  const obliqueLeft = box(0.045, 0.2, 0.06, accent, -0.23, 0.66, 0.39);
+  const obliqueLeft = box(
+    0.045 * obliqueMass,
+    0.2 * obliqueMass,
+    0.06 * (0.75 + (breastsScale - 1) * 0.24),
+    accent,
+    -0.23,
+    0.66,
+    0.39
+  );
   obliqueLeft.rotation.z = -0.38;
   const obliqueRight = obliqueLeft.clone();
   obliqueRight.position.x = 0.23;
   obliqueRight.rotation.z = 0.38;
-  const quadLeft = createFacetMuscle(0.12, deepTone, -0.16, 0.32, 0.09, 0.85, 1.32, 0.72);
+  const quadLeft = createFacetMuscle(
+    0.12 * quadMass,
+    deepTone,
+    -0.16,
+    0.32,
+    0.09,
+    0.85 * quadMass,
+    1.32,
+    0.72
+  );
   const quadRight = quadLeft.clone();
   quadRight.position.x = 0.16;
-  const calfLeft = createFacetMuscle(0.085, accent, -0.18, 0.18, 0.08, 0.75, 1.3, 0.7);
+  const calfLeft = createFacetMuscle(
+    0.085 * calfMass,
+    accent,
+    -0.18,
+    0.18,
+    0.08,
+    0.75 + (calfScale - 1) * 0.4,
+    1.3 * calfMass,
+    0.7 * calfMass
+  );
   const calfRight = calfLeft.clone();
   calfRight.position.x = 0.18;
   group.add(obliqueLeft, obliqueRight, quadLeft, quadRight, calfLeft, calfRight);
@@ -1465,6 +1560,34 @@ function addBuddyMuscleFeatures(group: Group, definition: BuddyDefinition): void
   const rightMark = leftMark.clone();
   rightMark.position.x = 0.1;
   group.add(leftMark, rightMark);
+
+  if (wingsScale > 1.18) {
+    const wingSpread = 0.42 * (wingsScale - 1);
+    const backWingLeft = new Mesh(
+      new TorusGeometry(0.2 + wingSpread, 0.03, 6, 16),
+      standardMaterial(definition.accent)
+    );
+    backWingLeft.position.set(-0.4, 0.72, -0.18);
+    backWingLeft.rotation.z = Math.PI / 2;
+    backWingLeft.rotation.y = -0.38;
+    const backWingRight = backWingLeft.clone();
+    backWingRight.position.x = 0.4;
+    backWingRight.rotation.y = 0.38;
+    const ridgeLeft = box(
+      0.06 * (wingsScale - 0.5),
+      0.1 * (wingsScale - 0.6),
+      0.06,
+      definition.accent,
+      -0.3,
+      0.74,
+      -0.04
+    );
+    ridgeLeft.rotation.z = -0.35;
+    const ridgeRight = ridgeLeft.clone();
+    ridgeRight.position.x = 0.3;
+    ridgeRight.rotation.z = 0.35;
+    group.add(backWingLeft, backWingRight, ridgeLeft, ridgeRight);
+  }
 
   if (definition.archetype === 'yogi') {
     const coreRing = new Mesh(new TorusGeometry(0.18, 0.022, 5, 14), standardMaterial(accent));
@@ -1476,7 +1599,15 @@ function addBuddyMuscleFeatures(group: Group, definition: BuddyDefinition): void
   }
 
   if (definition.archetype === 'runner') {
-    const calfLeft = box(0.08, 0.18, 0.07, accent, -0.17, 0.26, 0.1);
+    const calfLeft = box(
+      0.08 * calfMass,
+      0.18 * (0.85 + (calfScale - 1) * 0.2),
+      0.07,
+      accent,
+      -0.17,
+      0.26,
+      0.1
+    );
     calfLeft.rotation.z = -0.3;
     const calfRight = calfLeft.clone();
     calfRight.position.x = 0.17;
@@ -1495,7 +1626,10 @@ function addBuddyMuscleFeatures(group: Group, definition: BuddyDefinition): void
   }
 
   if (definition.archetype === 'spinner') {
-    const shoulderRingA = new Mesh(new TorusGeometry(0.13, 0.025, 5, 12), standardMaterial(accent));
+    const shoulderRingA = new Mesh(
+      new TorusGeometry(0.13, 0.025, 5, 12),
+      standardMaterial(accent)
+    );
     shoulderRingA.position.set(-0.39, 0.92, 0.07);
     shoulderRingA.rotation.y = Math.PI / 2;
     const shoulderRingB = shoulderRingA.clone();
@@ -1506,7 +1640,7 @@ function addBuddyMuscleFeatures(group: Group, definition: BuddyDefinition): void
   }
 
   if (definition.archetype === 'climber') {
-    const forearmLeft = box(0.09, 0.24, 0.07, accent, -0.4, 0.82, 0.08);
+    const forearmLeft = box(0.09 * (0.82 + (calfScale - 1) * 0.1), 0.24, 0.07, accent, -0.4, 0.82, 0.08);
     forearmLeft.rotation.z = 0.45;
     const forearmRight = forearmLeft.clone();
     forearmRight.position.x = 0.4;
@@ -1517,24 +1651,59 @@ function addBuddyMuscleFeatures(group: Group, definition: BuddyDefinition): void
   }
 }
 
-export function createBuddyMesh(definition: BuddyDefinition): Group {
+export function createBuddyMesh(
+  definition: BuddyDefinition,
+  traits: BuddyBodyTraits = DEFAULT_BUDDY_BODY_TRAITS
+): Group {
+  const safeTraits = { ...DEFAULT_BUDDY_BODY_TRAITS, ...traits };
   const group = new Group();
-  const body = cylinder(0.4, 0.48, 0.84, definition.color, 7);
+  const torsoScale = 1 + (safeTraits.breasts - 1) * 0.16 + (safeTraits.pecks - 1) * 0.08;
+  const shoulderScale = 0.34 + (safeTraits.pecks - 1) * 0.03;
+  const thighScale = 1 + (safeTraits.thighs - 1) * 0.2;
+  const calfScale = 1 + (safeTraits.calfs - 1) * 0.17;
+  const body = cylinder(
+    0.4 * torsoScale,
+    0.48 * (0.9 + (safeTraits.breasts - 1) * 0.1),
+    0.84,
+    definition.color,
+    7
+  );
   body.position.y = 0.66;
   const head = new Mesh(new IcosahedronGeometry(0.28, 0), standardMaterial(0xffcf9a));
   head.position.y = 1.2;
   const accent = standardMaterial(definition.accent);
-  const leftLeg = cylinder(0.1, 0.15, 0.5, 0x1b2f43, 5);
-  leftLeg.position.set(-0.16, 0.3, 0);
+  body.scale.z = 0.95 + (safeTraits.breasts - 1) * 0.2;
+  const leftLeg = cylinder(
+    0.1 * thighScale,
+    0.15 * thighScale,
+    0.5 * thighScale,
+    0x1b2f43,
+    5
+  );
+  leftLeg.position.set(-0.16 * (0.9 + (safeTraits.thighs - 1) * 0.1), 0.3, 0);
   const rightLeg = leftLeg.clone();
-  rightLeg.position.x = 0.16;
-  const leftArm = cylinder(0.11, 0.14, 0.62, definition.accent, 5);
-  leftArm.position.set(-0.39, 0.68, 0.02);
+  rightLeg.position.x = 0.16 * (0.9 + (safeTraits.thighs - 1) * 0.1);
+  const leftArm = cylinder(
+    0.11 * (0.9 + (safeTraits.pecks - 1) * 0.1),
+    0.14 * (0.9 + (safeTraits.pecks - 1) * 0.1),
+    0.62,
+    definition.accent,
+    5
+  );
+  leftArm.position.set(-0.39 - shoulderScale, 0.68, 0.02);
   leftArm.rotation.z = 0.26;
   const rightArm = leftArm.clone();
-  rightArm.position.x = 0.39;
+  rightArm.position.x = 0.39 + shoulderScale;
   rightArm.rotation.z = -0.26;
-  const latLeft = box(0.12, 0.34, 0.1, definition.color, -0.35, 0.72, 0.24);
+  const latLeft = box(
+    0.12 * (1 + (safeTraits.breasts - 1) * 0.22),
+    0.34 * (1 + (safeTraits.breasts - 1) * 0.16),
+    0.1,
+    definition.color,
+    -0.35 - safeTraits.wings * 0.04,
+    0.72,
+    0.24
+  );
   latLeft.rotation.z = -0.2;
   const latRight = latLeft.clone();
   latRight.position.x = 0.35;
@@ -1592,7 +1761,7 @@ export function createBuddyMesh(definition: BuddyDefinition): Group {
     group.add(chalkBag, leftGrip, rightGrip);
   }
 
-  addBuddyMuscleFeatures(group, definition);
+  addBuddyMuscleFeatures(group, definition, safeTraits);
 
   return markShadows(group) as Group;
 }

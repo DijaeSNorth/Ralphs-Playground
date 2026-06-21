@@ -41,6 +41,9 @@ export type BodySizeKey =
   | 'thighs'
   | 'calfs';
 
+export type BuddyBodyTraitKey = 'pecks' | 'breasts' | 'wings' | 'glutes' | 'thighs' | 'calfs';
+export type BuddyBodyTraits = Record<BuddyBodyTraitKey, number>;
+
 export type BodySizing = Record<BodySizeKey, number>;
 
 export type PlayerAppearance = {
@@ -126,6 +129,7 @@ export type BuddyDefinition = {
 export type BuddyRosterEntry = {
   rosterId: number;
   definitionId: string;
+  bodyTraits: BuddyBodyTraits;
   displayName?: string;
   level: number;
   xp: number;
@@ -166,6 +170,7 @@ export type BossState = {
 export type BuddyState = {
   id: number;
   definitionId: string;
+  bodyTraits: BuddyBodyTraits;
   displayName?: string;
   position: Vec2;
   heading: number;
