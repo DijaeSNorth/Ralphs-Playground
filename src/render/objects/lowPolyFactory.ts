@@ -1079,6 +1079,12 @@ function addPlayerMuscleGeometry(
   const legScale = sizing.legs;
   const torsoScale = sizing.torso;
   const hipScale = frame.hipSpread;
+  const pecksScale = sizing.pecks;
+  const breastsScale = sizing.breasts;
+  const wingsScale = sizing.wings;
+  const gluteScale = sizing.glutes;
+  const thighScale = sizing.thighs;
+  const calfScale = sizing.calfs;
   const shoulderOffset = 0.39 * shoulderScale;
   const armOffset = 0.47 * shoulderScale;
   const legOffset = 0.16 * frame.legSpread * hipScale;
@@ -1103,6 +1109,83 @@ function addPlayerMuscleGeometry(
   rightQuad.position.x = legOffset;
   group.add(leftQuad, rightQuad);
 
+  const chestVolume = Math.max(0.48, 0.84 + (pecksScale - 1) * 0.16);
+  const breastVolume = Math.max(0.56, 0.9 + (breastsScale - 1) * 0.16);
+  const wingVolume = Math.max(0.24, wingsScale);
+
+  const pecLeftBase = box(
+    0.14 * torsoScale * chestVolume,
+    0.09,
+    0.065 * breastVolume,
+    shirtAccent,
+    -0.11 * torsoScale,
+    0.92,
+    0.34
+  );
+  pecLeftBase.scale.set(0.95 * chestVolume, 1, breastVolume);
+  pecLeftBase.rotation.z = 0.1;
+  const pecRightBase = pecLeftBase.clone();
+  pecRightBase.position.x = 0.11 * torsoScale;
+  pecRightBase.rotation.z = -0.1;
+  group.add(pecLeftBase, pecRightBase);
+
+  if (breastsScale > 1.04) {
+    const breastLeft = box(
+      0.075 * torsoScale * breastVolume,
+      0.055,
+      0.03 * breastVolume,
+      shirtAccent,
+      -0.17 * torsoScale,
+      0.95,
+      0.33
+    );
+    const breastRight = breastLeft.clone();
+    breastRight.position.x = 0.17 * torsoScale;
+    group.add(breastLeft, breastRight);
+  }
+
+  if (wingsScale > 0.82) {
+    const wingBaseY = 0.88;
+    const wingHeight = 0.24 * wingVolume;
+    const wingDepth = 0.14 * Math.max(1, wingsScale - 0.45);
+    const wingLeft = box(0.055, wingHeight, wingDepth, skinColor, -0.62 * shoulderScale, wingBaseY, -0.01);
+    wingLeft.rotation.z = 0.5;
+    wingLeft.rotation.x = -0.25;
+    const wingLeftTip = box(0.04, wingHeight * 0.72, 0.05, 0x1b2f43, -0.72 * shoulderScale, wingBaseY - 0.02, -0.09);
+    wingLeftTip.rotation.z = 0.95;
+    const wingRight = wingLeft.clone();
+    wingRight.position.x = 0.62 * shoulderScale;
+    wingRight.rotation.z = -0.5;
+    const wingRightTip = wingLeftTip.clone();
+    wingRightTip.position.x = 0.72 * shoulderScale;
+    wingRightTip.rotation.z = -0.95;
+    group.add(wingLeft, wingLeftTip, wingRight, wingRightTip);
+  }
+
+  const gluteScaleY = 0.7 + (gluteScale - 1) * 0.36;
+  const gluteLeft = box(
+    0.16 * torsoScale * hipScale * Math.max(0.6, gluteScale),
+    0.15 * gluteScaleY,
+    0.12,
+    0x1b2f43,
+    -0.19 * hipScale,
+    0.48,
+    -0.02
+  );
+  const gluteRight = gluteLeft.clone();
+  gluteRight.position.x = 0.19 * hipScale;
+  const gluteTop = box(0.17 * torsoScale * Math.max(0.6, gluteScale), 0.085, 0.1, 0x2f3d4c, 0, 0.58, -0.01);
+  const legRibbon = box(
+    0.34 * torsoScale * Math.max(0.65, thighScale * 0.8),
+    0.055,
+    0.1,
+    0xf9f7ef,
+    0,
+    0.33,
+    0.04
+  );
+  group.add(gluteLeft, gluteRight, gluteTop, legRibbon);
+
   if (build === 'lean') {
     const chestLineA = box(0.08 * torsoScale, 0.025, 0.28, shirtAccent, -0.1 * torsoScale, 0.93, 0.32);
     chestLineA.rotation.z = 0.35;
@@ -1111,6 +1194,23 @@ function addPlayerMuscleGeometry(
     chestLineB.rotation.z = -0.35;
     const core = createFlatHex(0.06, shirtAccent);
     core.position.set(0, 0.72, 0.35);
+    const obliqueLeft = box(0.044, 0.16 * (0.84 + (calfScale - 1) * 0.08), 0.045, skinColor, -0.2 * torsoScale, 0.74, 0.34);
+    obliqueLeft.rotation.z = -0.34;
+    const obliqueRight = obliqueLeft.clone();
+    obliqueRight.position.x = 0.2 * torsoScale;
+    obliqueRight.rotation.z = 0.34;
+    const thighMarkLeft = box(
+      0.05 * (0.86 + (thighScale - 1) * 0.14),
+      0.16,
+      0.052,
+      shirtAccent,
+      -0.18 * legOffset * 1.2,
+      0.36,
+      0.06
+    );
+    const thighMarkRight = thighMarkLeft.clone();
+    thighMarkRight.position.x = 0.18 * 1.2 * legOffset;
+    group.add(obliqueLeft, obliqueRight, thighMarkLeft, thighMarkRight);
     group.add(chestLineA, chestLineB, core);
     return;
   }
@@ -1154,25 +1254,65 @@ export function createPlayerMesh(appearance = DEFAULT_PLAYER_APPEARANCE): Group 
   const armScale = sizing.arms;
   const legScale = sizing.legs;
   const hipScale = frame.hipSpread;
+  const pecksScale = sizing.pecks;
+  const breastsScale = sizing.breasts;
+  const gluteScale = sizing.glutes;
+  const thighScale = sizing.thighs;
+  const calfScale = sizing.calfs;
+  const shouldersDepth = 1 + (breastsScale - 1) * 0.2;
+  const torsoPecks = 1 + (pecksScale - 1) * 0.22;
+  const gluteDepth = 1 + (gluteScale - 1) * 0.18;
   const chest = cylinder(
-    spec.torsoTop * frame.torsoTopScale * torsoScale,
-    spec.torsoBottom * 0.88 * frame.torsoTopScale * torsoScale,
+    spec.torsoTop * frame.torsoTopScale * torsoScale * torsoPecks,
+    spec.torsoBottom * 0.88 * frame.torsoTopScale * torsoScale * (0.96 + shouldersDepth * 0.08),
     0.48,
     0x24445f,
     7
   );
-  chest.scale.z = frame.torsoDepth;
+  chest.scale.z = frame.torsoDepth * shouldersDepth;
   chest.position.y = 0.84;
   const hips = cylinder(
     spec.torsoBottom * 0.72 * frame.torsoBottomScale * torsoScale,
-    spec.torsoBottom * frame.torsoBottomScale * torsoScale,
+    spec.torsoBottom * frame.torsoBottomScale * torsoScale * gluteScale,
     0.26,
     0x1b2f43,
     7
   );
-  hips.scale.z = frame.torsoDepth * 0.95;
+  hips.scale.z = frame.torsoDepth * 0.95 * gluteDepth;
   hips.position.y = 0.52;
   const waistGap = box(0.48 * torsoScale * hipScale, 0.04, 0.1, 0xf9f7ef, 0, 0.64, 0.35);
+
+  const glutePlate = box(
+    0.28 * hipScale * torsoScale * gluteScale,
+    0.11 * gluteScale,
+    0.13 * gluteDepth,
+    0x1b2f43,
+    0,
+    0.44,
+    -0.04
+  );
+  const glutePlate2 = box(
+    0.19 * hipScale * gluteScale,
+    0.13 * gluteScale,
+    0.07 * gluteDepth,
+    0x2f3d4c,
+    -0.13 * hipScale,
+    0.46,
+    -0.03
+  );
+  const glutePlate3 = glutePlate2.clone();
+  glutePlate3.position.x = 0.13 * hipScale;
+
+  const bellyPad = box(
+    0.21 * torsoScale * breastsScale,
+    0.09,
+    0.1 * gluteDepth,
+    0x1f2f43,
+    0,
+    0.7,
+    0.02
+  );
+
   const head = new Mesh(new IcosahedronGeometry(0.25, 0), standardMaterial(skinColor));
   head.position.y = 1.2;
   const headband = box(0.36, 0.055, 0.3, 0xff705c, 0, 1.29, 0.06);
@@ -1201,19 +1341,34 @@ export function createPlayerMesh(appearance = DEFAULT_PLAYER_APPEARANCE): Group 
   rightHand.position.x = armOffset + 0.06;
 
   const legOffset = 0.15 * frame.legSpread * hipScale;
-  const thighHeight = 0.29 * legScale;
-  const calfHeight = 0.25 * legScale;
-  const leftThigh = cylinder(spec.leg * 1.08 * legScale, spec.leg * 0.95 * legScale, thighHeight, 0x1b2f43, 5);
+  const thighDepthScale = 0.75 + 0.5 * Math.max(0.7, thighScale);
+  const calfHeightScale = 0.7 + 0.5 * Math.max(0.7, calfScale);
+  const leftThigh = cylinder(
+    spec.leg * 1.08 * legScale * thighDepthScale,
+    spec.leg * 0.95 * legScale * thighDepthScale,
+    0.29 * legScale,
+    0x1b2f43,
+    5
+  );
   leftThigh.position.set(-legOffset, 0.36, 0.02);
   const rightThigh = leftThigh.clone();
   rightThigh.position.x = legOffset;
   const leftKnee = createFacetMuscle(spec.leg * 0.82 * legScale, 0xf9f7ef, -legOffset, 0.22, 0.05, 1, 0.6, 0.8);
   const rightKnee = leftKnee.clone();
   rightKnee.position.x = legOffset;
-  const leftCalf = cylinder(spec.leg * 0.82 * legScale, spec.leg * 0.76 * legScale, calfHeight, 0x1b2f43, 5);
+  const leftCalf = cylinder(
+    spec.leg * 0.82 * legScale * calfScale,
+    spec.leg * 0.76 * legScale * calfHeightScale,
+    0.25 * legScale,
+    0x1b2f43,
+    5
+  );
   leftCalf.position.set(-legOffset, 0.12, 0.01);
   const rightCalf = leftCalf.clone();
   rightCalf.position.x = legOffset;
+  const calfBand = box(0.14 * torsoScale * calfScale, 0.045, 0.09, 0x59667a, -legOffset * 0.8, 0.19, 0.07);
+  const calfBandR = calfBand.clone();
+  calfBandR.position.x = legOffset * 0.8;
   const leftFoot = box(0.18 * legScale, 0.08, 0.3 * legScale, 0x172436, -legOffset, 0.02, 0.1);
   const rightFoot = leftFoot.clone();
   rightFoot.position.x = legOffset;
@@ -1221,6 +1376,10 @@ export function createPlayerMesh(appearance = DEFAULT_PLAYER_APPEARANCE): Group 
   group.add(
     chest,
     hips,
+    glutePlate,
+    glutePlate2,
+    glutePlate3,
+    bellyPad,
     waistGap,
     head,
     headband,
@@ -1238,6 +1397,8 @@ export function createPlayerMesh(appearance = DEFAULT_PLAYER_APPEARANCE): Group 
     rightKnee,
     leftCalf,
     rightCalf,
+    calfBand,
+    calfBandR,
     leftFoot,
     rightFoot
   );

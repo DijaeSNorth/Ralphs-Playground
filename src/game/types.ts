@@ -28,7 +28,18 @@ export type MuscleBuild = 'lean' | 'power' | 'sculpted';
 
 export type BodyFrame = 'balanced' | 'tapered' | 'curved' | 'compact';
 
-export type BodySizeKey = 'height' | 'shoulders' | 'torso' | 'arms' | 'legs';
+export type BodySizeKey =
+  | 'height'
+  | 'shoulders'
+  | 'torso'
+  | 'arms'
+  | 'legs'
+  | 'pecks'
+  | 'breasts'
+  | 'wings'
+  | 'glutes'
+  | 'thighs'
+  | 'calfs';
 
 export type BodySizing = Record<BodySizeKey, number>;
 
@@ -106,6 +117,7 @@ export type BuddyDefinition = {
   archetype: BuddyArchetype;
   color: number;
   accent: number;
+  displayNames?: string[];
   rarity: 'common' | 'uncommon' | 'rare';
   baseCatchRate: number;
   staminaReward: number;
@@ -114,6 +126,7 @@ export type BuddyDefinition = {
 export type BuddyRosterEntry = {
   rosterId: number;
   definitionId: string;
+  displayName?: string;
   level: number;
   xp: number;
   strength: number;
@@ -122,6 +135,7 @@ export type BuddyRosterEntry = {
   energy: number;
   status: BuddyRosterStatus;
   taskLabel?: string;
+  taskStationId?: string;
   taskOutcome?: BuddyTrainingOutcome;
   taskTimer: number;
   taskDuration: number;
@@ -152,6 +166,7 @@ export type BossState = {
 export type BuddyState = {
   id: number;
   definitionId: string;
+  displayName?: string;
   position: Vec2;
   heading: number;
   wanderHeading: number;

@@ -1,4 +1,4 @@
-import { BUDDY_DEFINITIONS, getBuddyDefinition } from '../content/buddies';
+import { BUDDY_DEFINITIONS, getBuddyDefinition, getRandomBuddyName } from '../content/buddies';
 import { BOSS_DEFINITIONS, getBossDefinition } from '../content/bosses';
 import { FREE_WEIGHT_PICKUPS, WORKOUT_STATIONS } from '../content/equipment';
 import { VENDING_MACHINES } from '../content/vending';
@@ -33,6 +33,7 @@ const BUDDY_DODGE_SPEED = 4.4;
 const TRAINING_DURATION = 12;
 const TRAINING_SPOT_WINDOW = 7;
 const BOSS_ACTIVE_DURATION = 26;
+const ROSTER_SPOT_RANGE = 1.95;
 const FREE_WEIGHT_PICKUP_RANGE = 2.15;
 const FREE_WEIGHT_THROW_SPEED = 11.8;
 const FREE_WEIGHT_THROW_DURATION = 1.12;
@@ -118,6 +119,14 @@ function weightedBuddyDefinitionId(): string {
   }
 
   return Math.random() > 0.5 ? 'mat-maven' : 'tempo-trotter';
+}
+
+function getWorkoutStationById(stationId?: string): WorkoutStation | undefined {
+  if (!stationId) {
+    return undefined;
+  }
+
+  return WORKOUT_STATIONS.find((station) => station.id === stationId);
 }
 
 export class GymBuddyWorld {
@@ -342,10 +351,12 @@ export class GymBuddyWorld {
       return;
     }
 
+    const buddyName = this.getRosterDisplayName(buddy);
+
     if (buddy.status !== 'ready') {
       this.events.push({
         type: 'roster',
-        message: `${getBuddyDefinition(buddy.definitionId).name} is already busy.`
+        message: `${buddyName} is already busy.`
       });
       return;
     }
@@ -353,20 +364,22 @@ export class GymBuddyWorld {
     if (buddy.energy < 15) {
       this.events.push({
         type: 'roster',
-        message: `${getBuddyDefinition(buddy.definitionId).name} needs a breather first.`
+        message: `${buddyName} needs a breather first.`
       });
       return;
     }
 
     buddy.energy = clamp(buddy.energy - 15, 0, 100);
     buddy.status = 'training';
-    buddy.taskLabel = this.getRandomWorkoutStation().name;
+    const station = this.getRandomWorkoutStation();
+    buddy.taskLabel = station.name;
+    buddy.taskStationId = station.id;
     buddy.taskOutcome = Math.random() < 0.5 ? 'success' : 'needs-spot';
     buddy.taskTimer = TRAINING_DURATION;
     buddy.taskDuration = TRAINING_DURATION;
     this.events.push({
       type: 'roster',
-      message: `${getBuddyDefinition(buddy.definitionId).name} started ${buddy.taskLabel}. Be ready to spot.`
+      message: `${buddyName} is training at ${buddy.taskLabel}. Be ready to spot them.`
     });
   }
 
@@ -377,10 +390,32 @@ export class GymBuddyWorld {
       return;
     }
 
+    const buddyName = this.getRosterDisplayName(buddy);
+
     if (buddy.status !== 'needs-spot') {
       this.events.push({
         type: 'roster',
-        message: `${getBuddyDefinition(buddy.definitionId).name} does not need a spot right now.`
+        message: `${buddyName} does not need a spot right now.`
+      });
+      return;
+    }
+
+    const station = getWorkoutStationById(buddy.taskStationId);
+
+    if (!station) {
+      this.events.push({
+        type: 'roster',
+        message: `${buddyName} has no workout station and cannot be spotted right now.`
+      });
+      return;
+    }
+
+    const stationDistance = distance(this.player.position, station.position);
+
+    if (stationDistance > ROSTER_SPOT_RANGE) {
+      this.events.push({
+        type: 'roster',
+        message: `${buddyName} needs a spot at ${buddy.taskLabel}. Move closer (${stationDistance.toFixed(1)}m).`
       });
       return;
     }
@@ -388,7 +423,7 @@ export class GymBuddyWorld {
     if (buddy.energy < 10) {
       this.events.push({
         type: 'roster',
-        message: `${getBuddyDefinition(buddy.definitionId).name} is too tired to spot.`
+        message: `${buddyName} is too tired to spot.`
       });
       return;
     }
@@ -400,7 +435,7 @@ export class GymBuddyWorld {
     this.finishRosterTask(buddy);
     this.events.push({
       type: 'roster',
-      message: `You spotted ${definition.name}. Their set passed and stats improved.`
+      message: `You spotted ${buddyName}. Their set passed and stats improved.`
     });
   }
 
@@ -411,10 +446,10 @@ export class GymBuddyWorld {
       return;
     }
 
-    const [buddy] = this.roster.splice(index, 1);
+    const [, removedBuddy] = this.roster.splice(index, 1);
     this.events.push({
       type: 'roster',
-      message: `${getBuddyDefinition(buddy.definitionId).name} left your crew.`
+      message: `${this.getRosterDisplayName(removedBuddy)} left your crew.`
     });
   }
 
@@ -508,6 +543,10 @@ export class GymBuddyWorld {
       captureRange: CAPTURE_RANGE,
       arenaRadius: ARENA_RADIUS
     };
+  }
+
+  private getRosterDisplayName(rosterEntry: BuddyRosterEntry): string {
+    return rosterEntry.displayName ?? getBuddyDefinition(rosterEntry.definitionId).name;
   }
 
   private updatePlayer(dt: number, actions: ActionState): void {
@@ -717,17 +756,17 @@ export class GymBuddyWorld {
       buddy.taskTimer = Math.max(0, buddy.taskTimer - dt);
 
       if (buddy.taskTimer > 0) {
-        if (
-          buddy.status === 'training' &&
-          buddy.taskOutcome === 'needs-spot' &&
-          buddy.taskTimer <= TRAINING_SPOT_WINDOW
-        ) {
-          buddy.status = 'needs-spot';
-          this.events.push({
-            type: 'roster',
-            message: `${getBuddyDefinition(buddy.definitionId).name} needs a spot on ${buddy.taskLabel}.`
-          });
-        }
+      if (
+        buddy.status === 'training' &&
+        buddy.taskOutcome === 'needs-spot' &&
+        buddy.taskTimer <= TRAINING_SPOT_WINDOW
+      ) {
+        buddy.status = 'needs-spot';
+        this.events.push({
+          type: 'roster',
+          message: `${this.getRosterDisplayName(buddy)} needs a spot on ${buddy.taskLabel}.`
+        });
+      }
 
         continue;
       }
@@ -738,13 +777,13 @@ export class GymBuddyWorld {
         this.applyTrainingResult(buddy, definition.archetype);
         this.events.push({
           type: 'roster',
-          message: `${definition.name} finished ${buddy.taskLabel}. Stats improved.`
+          message: `${this.getRosterDisplayName(buddy)} finished ${buddy.taskLabel}. Stats improved.`
         });
       } else if (buddy.status === 'needs-spot') {
         buddy.energy = clamp(buddy.energy - 10, 0, 100);
         this.events.push({
           type: 'roster',
-          message: `${definition.name} missed ${buddy.taskLabel}. Spot them sooner next time.`
+          message: `${this.getRosterDisplayName(buddy)} missed ${buddy.taskLabel}. Spot them sooner next time.`
         });
       }
 
@@ -828,6 +867,7 @@ export class GymBuddyWorld {
 
     const buddy = nearest.buddy;
     const definition = getBuddyDefinition(buddy.definitionId);
+    const buddyDisplayName = buddy.displayName ?? definition.name;
     const staminaBonus = this.player.stamina / MAX_STAMINA * 0.12;
     const closenessBonus = (CAPTURE_RANGE - nearest.distance) / CAPTURE_RANGE * 0.16;
     const chance = clamp(definition.baseCatchRate + staminaBonus + closenessBonus, 0.24, 0.92);
@@ -837,7 +877,7 @@ export class GymBuddyWorld {
       buddy.captured = true;
       buddy.respawnTimer = 1.45;
       this.player.capturedTotal += 1;
-      this.roster.push(this.createRosterEntry(definition.id));
+      this.roster.push(this.createRosterEntry(definition.id, buddyDisplayName));
       this.player.stamina = clamp(this.player.stamina + definition.staminaReward, 0, MAX_STAMINA);
       this.player.proteinShakers = clamp(
         this.player.proteinShakers + 1,
@@ -863,8 +903,8 @@ export class GymBuddyWorld {
       start,
       target: copyVec2(buddy.position),
       message: success
-        ? `${definition.name} joined your crew (${this.roster.length}/${MAX_ROSTER_SIZE}).`
-        : `${definition.name} broke form and dodged.`
+        ? `${buddyDisplayName} joined your crew (${this.roster.length}/${MAX_ROSTER_SIZE}).`
+        : `${buddyDisplayName} broke form and dodged.`
     });
   }
 
@@ -953,13 +993,14 @@ export class GymBuddyWorld {
     }
   }
 
-  private createRosterEntry(definitionId: string): BuddyRosterEntry {
+  private createRosterEntry(definitionId: string, displayName?: string): BuddyRosterEntry {
     const definition = getBuddyDefinition(definitionId);
     const base = this.getBaseStats(definition.archetype);
 
     return {
       rosterId: nextRosterId++,
       definitionId,
+      displayName: displayName ?? getRandomBuddyName(definitionId),
       level: 1,
       xp: 0,
       strength: base.strength,
@@ -975,6 +1016,7 @@ export class GymBuddyWorld {
   private finishRosterTask(buddy: BuddyRosterEntry): void {
     buddy.status = 'ready';
     buddy.taskLabel = undefined;
+    buddy.taskStationId = undefined;
     buddy.taskOutcome = undefined;
     buddy.taskTimer = 0;
     buddy.taskDuration = 0;
@@ -1145,6 +1187,7 @@ export class GymBuddyWorld {
 
   private createBuddy(): BuddyState {
     let position = randomPoint();
+    const definitionId = weightedBuddyDefinitionId();
 
     for (let attempts = 0; attempts < 8; attempts += 1) {
       if (distance(position, this.player.position) > 5) {
@@ -1156,7 +1199,8 @@ export class GymBuddyWorld {
 
     return {
       id: nextBuddyId++,
-      definitionId: weightedBuddyDefinitionId(),
+      definitionId,
+      displayName: getRandomBuddyName(definitionId),
       position,
       heading: randomHeading(),
       wanderHeading: randomHeading(),

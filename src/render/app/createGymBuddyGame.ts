@@ -178,6 +178,7 @@ class GymBuddyRenderer {
   private bossMesh?: Group;
   private bossDefinitionId?: string;
   private readonly buddyMeshes = new Map<number, Group>();
+  private readonly rosterBuddyMeshes = new Map<number, Group>();
   private readonly freeWeightMeshes = new Map<number, Group>();
   private readonly effects: CaptureEffect[] = [];
   private readonly clockShadowTarget = new Object3D();
@@ -226,6 +227,7 @@ class GymBuddyRenderer {
   update(snapshot: WorldSnapshot, events: WorldEvent[], deltaSeconds: number): void {
     this.syncPlayer(snapshot);
     this.syncBuddies(snapshot);
+    this.syncRosterBuddies(snapshot);
     this.syncBoss(snapshot);
     this.syncFreeWeights(snapshot);
     this.handleEvents(events);
@@ -334,6 +336,64 @@ class GymBuddyRenderer {
         mesh.scale.setScalar(0.82);
       } else {
         mesh.scale.setScalar(idleScale);
+      }
+    }
+  }
+
+  private syncRosterBuddies(snapshot: WorldSnapshot): void {
+    const activeIds = new Set<number>();
+    const renderDistance = this.touchOptimized ? BUDDY_RENDER_DISTANCE_TOUCH : BUDDY_RENDER_DISTANCE;
+
+    for (const rosterEntry of snapshot.roster) {
+      if (rosterEntry.status !== 'training' && rosterEntry.status !== 'needs-spot') {
+        continue;
+      }
+
+      const station = WORKOUT_STATIONS.find((workoutStation) => {
+        return workoutStation.id === rosterEntry.taskStationId;
+      });
+
+      if (!station) {
+        continue;
+      }
+
+      activeIds.add(rosterEntry.rosterId);
+      let mesh = this.rosterBuddyMeshes.get(rosterEntry.rosterId);
+
+      if (!mesh) {
+        mesh = createBuddyMesh(getBuddyDefinition(rosterEntry.definitionId));
+        this.rosterBuddyMeshes.set(rosterEntry.rosterId, mesh);
+        this.scene.add(mesh);
+      }
+
+      const playerDistance = Math.hypot(
+        station.position.x - snapshot.player.position.x,
+        station.position.z - snapshot.player.position.z
+      );
+      const wobble = Math.sin(performance.now() * 0.002 + rosterEntry.rosterId) * 0.06;
+      mesh.visible = playerDistance <= renderDistance;
+      mesh.scale.setScalar(rosterEntry.status === 'needs-spot' ? 0.78 : 0.84);
+      mesh.position.set(
+        station.position.x,
+        rosterEntry.status === 'needs-spot' ? 0.03 : 0.02 + Math.max(0, wobble),
+        station.position.z
+      );
+      mesh.rotation.set(
+        rosterEntry.status === 'needs-spot' ? -0.24 : 0,
+        station.rotation ?? 0,
+        rosterEntry.status === 'needs-spot' ? Math.sin(performance.now() * 0.018 + rosterEntry.rosterId) * 0.35 : 0
+      );
+    }
+
+    for (const [rosterBuddyId, mesh] of this.rosterBuddyMeshes) {
+      if (!activeIds.has(rosterBuddyId)) {
+        this.scene.remove(mesh);
+        mesh.traverse((child) => {
+          if (child instanceof Mesh) {
+            child.geometry.dispose();
+          }
+        });
+        this.rosterBuddyMeshes.delete(rosterBuddyId);
       }
     }
   }

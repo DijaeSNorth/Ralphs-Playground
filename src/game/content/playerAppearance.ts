@@ -49,7 +49,13 @@ export const BODY_SIZE_CONTROLS: Array<{ id: BodySizeKey; label: string; min: nu
   { id: 'shoulders', label: 'Shoulders', min: 0.82, max: 1.24, step: 0.02 },
   { id: 'torso', label: 'Torso', min: 0.86, max: 1.18, step: 0.02 },
   { id: 'arms', label: 'Arms', min: 0.82, max: 1.28, step: 0.02 },
-  { id: 'legs', label: 'Legs', min: 0.84, max: 1.24, step: 0.02 }
+  { id: 'legs', label: 'Legs', min: 0.84, max: 1.24, step: 0.02 },
+  { id: 'pecks', label: 'Pecks', min: 0.68, max: 1.36, step: 0.02 },
+  { id: 'breasts', label: 'Breasts', min: 0.68, max: 1.36, step: 0.02 },
+  { id: 'wings', label: 'Wings', min: 0.6, max: 1.5, step: 0.02 },
+  { id: 'glutes', label: 'Glutes', min: 0.68, max: 1.36, step: 0.02 },
+  { id: 'thighs', label: 'Thighs', min: 0.8, max: 1.34, step: 0.02 },
+  { id: 'calfs', label: 'Calfs', min: 0.8, max: 1.34, step: 0.02 }
 ];
 
 export const DEFAULT_PLAYER_APPEARANCE: PlayerAppearance = {
@@ -62,7 +68,13 @@ export const DEFAULT_PLAYER_APPEARANCE: PlayerAppearance = {
     shoulders: 1,
     torso: 1,
     arms: 1,
-    legs: 1
+    legs: 1,
+    pecks: 1,
+    breasts: 1,
+    wings: 1,
+    glutes: 1,
+    thighs: 1,
+    calfs: 1
   }
 };
 

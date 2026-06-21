@@ -903,11 +903,11 @@ button {
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-columns: minmax(0, 560px) minmax(240px, 1fr);
-  gap: clamp(18px, 4vw, 54px);
+  grid-template-columns: minmax(0, clamp(320px, 46vw, 560px)) minmax(clamp(160px, 28vw, 240px), 1fr);
+  gap: clamp(8px, 2.2vw, 34px);
   align-items: end;
   justify-items: start;
-  padding: 18px;
+  padding: clamp(10px, 2vw, 18px);
   pointer-events: auto;
   background: linear-gradient(90deg, rgba(23, 36, 54, 0.34), rgba(23, 36, 54, 0));
 }
@@ -921,8 +921,8 @@ button {
   grid-column: 2;
   justify-self: end;
   align-self: center;
-  width: min(420px, 34vw);
-  height: min(590px, 70vh);
+  width: clamp(170px, 34vw, 420px);
+  height: clamp(190px, 58vh, 590px);
   pointer-events: none;
   filter: drop-shadow(0 22px 28px rgba(23, 36, 54, 0.2));
   animation: creator-preview-float 3.8s ease-in-out infinite;
@@ -964,12 +964,12 @@ button {
   position: relative;
   grid-column: 1;
   z-index: 2;
-  width: min(560px, calc(100vw - 36px));
+  width: min(clamp(300px, 56vw, 560px), calc(100vw - clamp(16px, 2.2vw, 36px)));
   max-height: calc(100vh - 36px);
   overflow-y: auto;
   display: grid;
-  gap: 12px;
-  padding: 16px;
+  gap: clamp(8px, 1.4vw, 12px);
+  padding: clamp(10px, 1.8vw, 16px);
   border: 1px solid rgba(255, 255, 255, 0.58);
   border-radius: 8px;
   color: var(--ink);
@@ -987,14 +987,14 @@ button {
 
 .creator-head h1 {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: clamp(1rem, 2.1vw, 1.2rem);
   line-height: 1.08;
 }
 
 .creator-head span,
 .creator-label {
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: clamp(0.66rem, 1.5vw, 0.74rem);
   font-weight: 820;
   text-transform: uppercase;
 }
@@ -1020,12 +1020,12 @@ button {
 
 .creator-choice,
 .creator-start {
-  min-height: 42px;
+  min-height: clamp(34px, 3.8vw, 46px);
   border: 1px solid rgba(23, 36, 54, 0.14);
   border-radius: 8px;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.78);
-  font-size: 0.78rem;
+  font-size: clamp(0.68rem, 1.7vw, 0.8rem);
   font-weight: 820;
   cursor: pointer;
 }
@@ -1034,15 +1034,15 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  padding: 8px;
+  gap: clamp(4px, 1.2vw, 7px);
+  padding: clamp(6px, 1.4vw, 8px);
   overflow: hidden;
   text-align: center;
 }
 
 .creator-choice--muscle,
 .creator-choice--frame {
-  min-height: 46px;
+  min-height: clamp(36px, 4vw, 48px);
 }
 
 .creator-choice--selected {
@@ -1052,8 +1052,8 @@ button {
 }
 
 .choice-swatch {
-  width: 18px;
-  height: 18px;
+  width: clamp(14px, 2vw, 18px);
+  height: clamp(14px, 2vw, 18px);
   flex: 0 0 auto;
   border: 2px solid rgba(255, 255, 255, 0.78);
   border-radius: 999px;
@@ -1069,14 +1069,14 @@ button {
 .creator-sliders {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
+  gap: clamp(6px, 1.4vw, 8px);
 }
 
 .creator-slider {
   display: grid;
-  gap: 5px;
+  gap: clamp(4px, 1vw, 6px);
   min-width: 0;
-  padding: 8px;
+  padding: clamp(6px, 1.3vw, 8px);
   border: 1px solid rgba(23, 36, 54, 0.12);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.58);
@@ -1087,7 +1087,7 @@ button {
   min-width: 0;
   overflow: hidden;
   color: var(--muted);
-  font-size: 0.62rem;
+  font-size: clamp(0.58rem, 1.2vw, 0.66rem);
   font-weight: 840;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1276,7 +1276,7 @@ button {
     grid-template-columns: 1fr;
     align-items: end;
     justify-items: center;
-    padding: 12px;
+    padding: clamp(8px, 2vw, 12px);
     background: linear-gradient(0deg, rgba(23, 36, 54, 0.38), rgba(23, 36, 54, 0.04));
   }
 
@@ -1285,8 +1285,8 @@ button {
     grid-column: 1;
     top: 8px;
     right: 8px;
-    width: min(214px, 43vw);
-    height: min(250px, 34vh);
+    width: clamp(140px, 43vw, 214px);
+    height: clamp(168px, 34vh, 250px);
     opacity: 0.94;
   }
 
@@ -1298,9 +1298,9 @@ button {
   }
 
   .creator-panel {
-    width: min(430px, calc(100vw - 24px));
-    gap: 11px;
-    padding: 13px;
+    width: min(430px, calc(100vw - clamp(14px, 2.3vw, 24px)));
+    gap: clamp(8px, 1.6vw, 11px);
+    padding: clamp(10px, 1.9vw, 13px);
   }
 
   .creator-group[aria-label="Hair"] .creator-options,
@@ -1314,13 +1314,13 @@ button {
   }
 
   .creator-head h1 {
-    font-size: 1rem;
+    font-size: clamp(0.86rem, 4vw, 1rem);
   }
 
   .creator-choice,
   .creator-start {
-    min-height: 38px;
-    font-size: 0.72rem;
+    min-height: clamp(32px, 4vw, 38px);
+    font-size: clamp(0.64rem, 1.9vw, 0.72rem);
   }
 
   .stat-row,
@@ -1417,8 +1417,8 @@ button {
   }
 
   .creator-preview {
-    width: min(168px, 40vw);
-    height: min(198px, 28vh);
+    width: clamp(128px, 40vw, 168px);
+    height: clamp(140px, 28vh, 198px);
   }
 }
 

@@ -7,6 +7,7 @@ import {
   MUSCLE_BUILD_OPTIONS,
   SKIN_TONE_OPTIONS
 } from '../game/content/playerAppearance';
+import { WORKOUT_STATIONS } from '../game/content/equipment';
 import type {
   ActionState,
   BodySizeKey,
@@ -31,6 +32,7 @@ type ActiveWorkout = {
 };
 
 const WORKOUT_GOAL = 5;
+const ROSTER_SPOT_RANGE = 1.95;
 
 export class GameHud {
   readonly canvasMount: HTMLDivElement;
@@ -493,11 +495,12 @@ export class GameHud {
       targetReady = true;
     } else if (snapshot.nearestBuddy) {
       const definition = getBuddyDefinition(snapshot.nearestBuddy.buddy.definitionId);
+      const targetName = snapshot.nearestBuddy.buddy.displayName ?? definition.name;
       const distance = snapshot.nearestBuddy.distance;
       const inRange = distance <= snapshot.captureRange;
       targetText = inRange
-        ? `Catch ${definition.name}`
-        : `${definition.name} - ${distance.toFixed(1)}m`;
+        ? `Catch ${targetName}`
+        : `${targetName} - ${distance.toFixed(1)}m`;
       objectiveText = inRange
         ? 'Buddy in range. Throw clean.'
         : 'Close the gap without draining stamina.';
@@ -896,6 +899,7 @@ export class GameHud {
     return roster
       .map((entry) => {
         const definition = getBuddyDefinition(entry.definitionId);
+        const displayName = entry.displayName ?? definition.name;
         const busy = entry.status !== 'ready';
         const progress =
           entry.taskDuration > 0
@@ -914,7 +918,7 @@ export class GameHud {
         return `
           <div class="crew-row crew-row--${entry.status}">
             <div class="crew-main">
-              <span>${definition.name}</span>
+              <span>${displayName}</span>
               <strong>Lv ${entry.level}</strong>
             </div>
             <div class="crew-stats">
@@ -948,13 +952,25 @@ export class GameHud {
       return;
     }
 
-    const definition = getBuddyDefinition(target.definitionId);
-    const text = `${definition.name} needs a spot on ${target.taskLabel ?? 'their set'} (${Math.ceil(target.taskTimer)}s)`;
+    const station = target.taskStationId
+      ? WORKOUT_STATIONS.find((station) => station.id === target.taskStationId)
+      : undefined;
+    const targetName = target.displayName ?? getBuddyDefinition(target.definitionId).name;
+    const stationDistance = station
+      ? Math.hypot(snapshot.player.position.x - station.position.x, snapshot.player.position.z - station.position.z)
+      : undefined;
+    const stationName = station?.name ?? target.taskLabel ?? 'their set';
+    const nearSpot = stationDistance === undefined || stationDistance <= ROSTER_SPOT_RANGE;
+    this.spotCalloutButton.disabled = !nearSpot;
+    const text = `${targetName} needs a spot on ${stationName} (${Math.ceil(target.taskTimer)}s)${
+      stationDistance !== undefined ? ` - ${stationDistance.toFixed(1)}m` : ''
+    }`;
     this.renderedSpotCalloutText = this.setText(
       this.spotCalloutText,
       this.renderedSpotCalloutText,
       text
     );
+    this.spotCalloutButton.textContent = nearSpot ? 'Spot' : 'Move Closer';
     this.setHidden(this.spotCallout, false);
   }
 
