@@ -35,6 +35,7 @@ const WORKOUT_GOAL = 5;
 export class GameHud {
   readonly canvasMount: HTMLDivElement;
   readonly touchControls: HTMLDivElement;
+  readonly creatorPreviewMount: HTMLDivElement;
 
   private readonly root: HTMLElement;
   private readonly characterCreator: HTMLDivElement;
@@ -216,6 +217,7 @@ export class GameHud {
           <div class="workout-buttons" data-workout-buttons></div>
         </section>
         <section class="character-creator" data-character-creator aria-label="Character creation">
+          <div class="creator-preview" data-character-preview aria-hidden="true"></div>
           <div class="creator-panel">
             <div class="creator-head">
               <h1>Create your catcher</h1>
@@ -325,6 +327,7 @@ export class GameHud {
     const inputStatus = root.querySelector<HTMLDivElement>('[data-input-status]');
     const touchControls = root.querySelector<HTMLDivElement>('[data-touch-controls]');
     const characterCreator = root.querySelector<HTMLDivElement>('[data-character-creator]');
+    const creatorPreviewMount = root.querySelector<HTMLDivElement>('[data-character-preview]');
     const workoutPrompt = root.querySelector<HTMLDivElement>('[data-workout-prompt]');
     const workoutPromptName = root.querySelector<HTMLSpanElement>('[data-workout-prompt-name]');
     const freeWeightPrompt = root.querySelector<HTMLDivElement>('[data-freeweight-prompt]');
@@ -367,6 +370,7 @@ export class GameHud {
       !inputStatus ||
       !touchControls ||
       !characterCreator ||
+      !creatorPreviewMount ||
       !workoutPrompt ||
       !workoutPromptName ||
       !freeWeightPrompt ||
@@ -396,6 +400,7 @@ export class GameHud {
 
     this.canvasMount = canvasMount;
     this.characterCreator = characterCreator;
+    this.creatorPreviewMount = creatorPreviewMount;
     this.staminaFill = staminaFill;
     this.shakersValue = shakersValue;
     this.capturedValue = capturedValue;

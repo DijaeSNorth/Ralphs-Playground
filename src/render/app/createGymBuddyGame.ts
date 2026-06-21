@@ -61,6 +61,97 @@ const BUDDY_RENDER_DISTANCE_TOUCH = 18;
 const DEFAULT_STATION_RENDER_DISTANCE = 25;
 const DEFAULT_STATION_RENDER_DISTANCE_TOUCH = 21;
 
+class CharacterPreviewRenderer {
+  private readonly scene = new Scene();
+  private readonly camera = new PerspectiveCamera(34, 1, 0.1, 20);
+  private readonly renderer: WebGLRenderer;
+  private readonly anchor = new Group();
+  private readonly platform = createCaptureRing(0xf6c85f);
+  private readonly touchOptimized = shouldUseTouchRendering();
+  private player = createPlayerMesh();
+  private elapsed = 0;
+  private width = 1;
+  private height = 1;
+
+  constructor(private readonly container: HTMLElement) {
+    this.renderer = new WebGLRenderer({
+      alpha: true,
+      antialias: !this.touchOptimized,
+      preserveDrawingBuffer: true,
+      powerPreference: 'default'
+    });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.touchOptimized ? 1.1 : 1.4));
+    this.renderer.outputColorSpace = SRGBColorSpace;
+    this.renderer.setClearColor(0x000000, 0);
+    this.renderer.domElement.addEventListener('webglcontextlost', (event) => {
+      event.preventDefault();
+    });
+    this.container.appendChild(this.renderer.domElement);
+
+    this.scene.add(this.anchor);
+    this.anchor.add(this.player);
+    this.platform.position.y = -0.02;
+    this.platform.scale.setScalar(1.1);
+    this.scene.add(this.platform);
+    this.addLights();
+    this.camera.position.set(0, 1.12, 4.25);
+    this.camera.lookAt(0, 0.72, 0);
+
+    const resizeObserver = new ResizeObserver(() => this.resize());
+    resizeObserver.observe(this.container);
+    this.resize();
+  }
+
+  updateAppearance(appearance: PlayerAppearance): void {
+    this.anchor.remove(this.player);
+    this.disposeObject(this.player);
+    this.player = createPlayerMesh(appearance);
+    this.anchor.add(this.player);
+  }
+
+  update(deltaSeconds: number, enabled: boolean): void {
+    if (!enabled || this.width <= 2 || this.height <= 2) {
+      return;
+    }
+
+    this.elapsed += deltaSeconds;
+    this.anchor.position.y = 0.08 + Math.sin(this.elapsed * 1.4) * 0.05;
+    this.anchor.rotation.y = -0.45 + Math.sin(this.elapsed * 0.75) * 0.22;
+    this.platform.rotation.z += deltaSeconds * 0.28;
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  private addLights(): void {
+    this.scene.add(new HemisphereLight(0xf6fbff, 0x7a5b42, 2.4));
+
+    const key = new DirectionalLight(0xfff4dc, 2.6);
+    key.position.set(3.8, 5.6, 4.4);
+    this.scene.add(key);
+
+    const rim = new DirectionalLight(0x7bdad6, 1.25);
+    rim.position.set(-4, 2.4, -3.4);
+    this.scene.add(rim);
+  }
+
+  private resize(): void {
+    const rect = this.container.getBoundingClientRect();
+    this.width = Math.max(1, Math.floor(rect.width));
+    this.height = Math.max(1, Math.floor(rect.height));
+    this.camera.aspect = this.width / this.height;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.touchOptimized ? 1.1 : 1.4));
+    this.renderer.setSize(this.width, this.height, false);
+  }
+
+  private disposeObject(object: Object3D): void {
+    object.traverse((child) => {
+      if (child instanceof Mesh) {
+        child.geometry.dispose();
+      }
+    });
+  }
+}
+
 function shouldUseTouchRendering(): boolean {
   return window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || window.innerWidth <= 820;
 }
@@ -501,12 +592,14 @@ export function createGymBuddyGame(root: HTMLElement): void {
   const world = new GymBuddyWorld();
   const initialSnapshot = world.getSnapshot();
   const renderer = new GymBuddyRenderer(hud.canvasMount, initialSnapshot);
+  const previewRenderer = new CharacterPreviewRenderer(hud.creatorPreviewMount);
   let gameStarted = false;
 
   input.bindTouchControls(hud.touchControls);
   input.bindMouseControls(hud.canvasMount);
   hud.onAppearanceChange((appearance) => {
     renderer.updatePlayerAppearance(appearance);
+    previewRenderer.updateAppearance(appearance);
   });
   hud.onStart(() => {
     gameStarted = true;
@@ -537,6 +630,7 @@ export function createGymBuddyGame(root: HTMLElement): void {
     world.challengeBoss();
   });
   renderer.updatePlayerAppearance(hud.getAppearance());
+  previewRenderer.updateAppearance(hud.getAppearance());
 
   let lastTime = performance.now();
   let proximityTimer = 0;
@@ -602,6 +696,7 @@ export function createGymBuddyGame(root: HTMLElement): void {
     }
 
     renderer.update(snapshot, events, deltaSeconds);
+    previewRenderer.update(deltaSeconds, !gameStarted);
     hud.update(snapshot, inputActions, deltaSeconds);
     requestAnimationFrame(frame);
   }
