@@ -848,8 +848,7 @@ function getBodySize(appearance: PlayerAppearance): PlayerAppearance['body'] {
 }
 
 const DEFAULT_BUDDY_BODY_TRAITS: BuddyBodyTraits = {
-  pecks: 1,
-  breasts: 1,
+  chest: 1,
   wings: 1,
   glutes: 1,
   thighs: 1,
@@ -1089,8 +1088,7 @@ function addPlayerMuscleGeometry(
   const legScale = sizing.legs;
   const torsoScale = sizing.torso;
   const hipScale = frame.hipSpread;
-  const pecksScale = sizing.pecks;
-  const breastsScale = sizing.breasts;
+  const chestScale = sizing.chest;
   const wingsScale = sizing.wings;
   const gluteScale = sizing.glutes;
   const thighScale = sizing.thighs;
@@ -1119,8 +1117,8 @@ function addPlayerMuscleGeometry(
   rightQuad.position.x = legOffset;
   group.add(leftQuad, rightQuad);
 
-  const chestVolume = Math.max(0.48, 0.84 + (pecksScale - 1) * 0.16);
-  const breastVolume = Math.max(0.56, 0.9 + (breastsScale - 1) * 0.16);
+  const chestVolume = Math.max(0.48, 0.84 + (chestScale - 1) * 0.16);
+  const breastVolume = Math.max(0.56, 0.9 + (chestScale - 1) * 0.16);
   const wingVolume = Math.max(0.24, wingsScale);
 
   const pecLeftBase = box(
@@ -1139,7 +1137,7 @@ function addPlayerMuscleGeometry(
   pecRightBase.rotation.z = -0.1;
   group.add(pecLeftBase, pecRightBase);
 
-  if (breastsScale > 1.04) {
+  if (chestScale > 1.04) {
     const breastLeft = box(
       0.075 * torsoScale * breastVolume,
       0.055,
@@ -1264,13 +1262,12 @@ export function createPlayerMesh(appearance = DEFAULT_PLAYER_APPEARANCE): Group 
   const armScale = sizing.arms;
   const legScale = sizing.legs;
   const hipScale = frame.hipSpread;
-  const pecksScale = sizing.pecks;
-  const breastsScale = sizing.breasts;
+  const chestScale = sizing.chest;
   const gluteScale = sizing.glutes;
   const thighScale = sizing.thighs;
   const calfScale = sizing.calfs;
-  const shouldersDepth = 1 + (breastsScale - 1) * 0.2;
-  const torsoPecks = 1 + (pecksScale - 1) * 0.22;
+  const shouldersDepth = 1 + (chestScale - 1) * 0.2;
+  const torsoPecks = 1 + (chestScale - 1) * 0.22;
   const gluteDepth = 1 + (gluteScale - 1) * 0.18;
   const chest = cylinder(
     spec.torsoTop * frame.torsoTopScale * torsoScale * torsoPecks,
@@ -1314,7 +1311,7 @@ export function createPlayerMesh(appearance = DEFAULT_PLAYER_APPEARANCE): Group 
   glutePlate3.position.x = 0.13 * hipScale;
 
   const bellyPad = box(
-    0.21 * torsoScale * breastsScale,
+    0.21 * torsoScale * chestScale,
     0.09,
     0.1 * gluteDepth,
     0x1f2f43,
@@ -1428,14 +1425,14 @@ function addBuddyMuscleFeatures(
 ): void {
   const accent = definition.accent;
   const deepTone = definition.archetype === 'runner' ? 0x2d4054 : 0x1b2f43;
-  const pecksScale = traits.pecks;
-  const breastsScale = traits.breasts;
+  const chestScale = traits.chest;
   const wingsScale = traits.wings;
   const gluteScale = traits.glutes;
   const thighScale = traits.thighs;
   const calfScale = traits.calfs;
-  const shoulderWidth = 1 + (pecksScale - 1) * 0.2;
-  const pecMass = 0.9 + (breastsScale - 1) * 0.3;
+  const isWomanBuddy = definition.gender === 'woman';
+  const shoulderWidth = 1 + (chestScale - 1) * (isWomanBuddy ? 0.08 : 0.2);
+  const pecMass = 0.9 + (chestScale - 1) * (isWomanBuddy ? 0.18 : 0.3);
   const quadMass = 0.82 + (thighScale - 1) * 0.34;
   const calfMass = 0.8 + (calfScale - 1) * 0.35;
   const obliqueMass = 0.74 + (gluteScale - 1) * 0.31;
@@ -1448,7 +1445,7 @@ function addBuddyMuscleFeatures(
     0.04,
     1.2 * shoulderWidth,
     0.72,
-    0.9 + (pecksScale - 1) * 0.25
+    0.9 + (chestScale - 1) * (isWomanBuddy ? 0.06 : 0.25)
   );
   const shoulderRight = shoulderLeft.clone();
   shoulderRight.position.x = 0.43;
@@ -1460,7 +1457,7 @@ function addBuddyMuscleFeatures(
     0.08,
     0.9 * pecMass,
     1.2 * pecMass,
-    0.8 + (pecksScale - 1) * 0.2
+    0.8 + (chestScale - 1) * (isWomanBuddy ? 0.12 : 0.2)
   );
   const bicepRight = bicepLeft.clone();
   bicepRight.position.x = 0.5;
@@ -1472,7 +1469,7 @@ function addBuddyMuscleFeatures(
     0.08,
     0.85 * pecMass,
     1.15 * pecMass,
-    0.75 + (breastsScale - 1) * 0.2
+    0.75 + (chestScale - 1) * (isWomanBuddy ? 0.15 : 0.21)
   );
   const forearmRight = forearmLeft.clone();
   forearmRight.position.x = 0.46;
@@ -1492,8 +1489,8 @@ function addBuddyMuscleFeatures(
   pecRight.position.x = 0.11;
   pecRight.rotation.z = -0.16;
   const trapLeft = box(
-    0.18 * (0.9 + (breastsScale - 1) * 0.25),
-    0.08 * (0.88 + (pecksScale - 1) * 0.22),
+    0.18 * (0.9 + (chestScale - 1) * (isWomanBuddy ? 0.24 : 0.14)),
+    0.08 * (0.88 + (chestScale - 1) * (isWomanBuddy ? 0.08 : 0.22)),
     0.1,
     0xf9f7ef,
     -0.2,
@@ -1506,10 +1503,13 @@ function addBuddyMuscleFeatures(
   trapRight.rotation.z = 0.28;
   group.add(pecLeft, pecRight, trapLeft, trapRight);
 
-  const abRows = pecksScale > 1.2 ? 4 : 3;
+  const abRows = isWomanBuddy ? (chestScale > 1.24 ? 3 : 2) : chestScale > 1.2 ? 4 : 3;
   for (let row = 0; row < abRows; row += 1) {
     for (let col = 0; col < 2; col += 1) {
-      const ab = createFlatHex(0.045 * pecMass, row === 1 ? 0xf9f7ef : accent);
+      const ab = createFlatHex(
+        0.045 * pecMass,
+        row === 1 ? 0xf9f7ef : isWomanBuddy ? 0xfff1cb : accent
+      );
       ab.position.set(col === 0 ? -0.06 : 0.06, 0.72 - row * 0.075, 0.43);
       ab.scale.set(0.82, 1, 1);
       group.add(ab);
@@ -1519,7 +1519,7 @@ function addBuddyMuscleFeatures(
   const obliqueLeft = box(
     0.045 * obliqueMass,
     0.2 * obliqueMass,
-    0.06 * (0.75 + (breastsScale - 1) * 0.24),
+    0.06 * (0.75 + (chestScale - 1) * (isWomanBuddy ? 0.28 : 0.12)),
     accent,
     -0.23,
     0.66,
@@ -1560,6 +1560,29 @@ function addBuddyMuscleFeatures(
   const rightMark = leftMark.clone();
   rightMark.position.x = 0.1;
   group.add(leftMark, rightMark);
+
+  if (isWomanBuddy && chestScale > 1.08) {
+    const chestLobeLeft = createFacetMuscle(
+      0.055 * chestScale,
+      0xffdfd1,
+      -0.13,
+      0.86,
+      0.37,
+      1 + (chestScale - 1) * 0.3,
+      0.75,
+      0.65
+    );
+    const chestLobeRight = chestLobeLeft.clone();
+    chestLobeRight.position.x = 0.13;
+    group.add(chestLobeLeft, chestLobeRight);
+  }
+
+  if (!isWomanBuddy && chestScale > 1.16) {
+    const chestPlate = new Mesh(new TorusGeometry(0.06, 0.018, 5, 12), standardMaterial(0xf9f7ef));
+    chestPlate.position.set(0, 0.84, 0.5);
+    chestPlate.rotation.z = Math.PI / 2;
+    group.add(chestPlate);
+  }
 
   if (wingsScale > 1.18) {
     const wingSpread = 0.42 * (wingsScale - 1);
@@ -1656,14 +1679,16 @@ export function createBuddyMesh(
   traits: BuddyBodyTraits = DEFAULT_BUDDY_BODY_TRAITS
 ): Group {
   const safeTraits = { ...DEFAULT_BUDDY_BODY_TRAITS, ...traits };
+  const isWomanBuddy = definition.gender === 'woman';
+  const chestScale = safeTraits.chest;
   const group = new Group();
-  const torsoScale = 1 + (safeTraits.breasts - 1) * 0.16 + (safeTraits.pecks - 1) * 0.08;
-  const shoulderScale = 0.34 + (safeTraits.pecks - 1) * 0.03;
+  const torsoScale = 1 + (chestScale - 1) * (isWomanBuddy ? 0.08 : 0.16);
+  const shoulderScale = 0.34 + (chestScale - 1) * (isWomanBuddy ? 0.02 : 0.04);
   const thighScale = 1 + (safeTraits.thighs - 1) * 0.2;
   const calfScale = 1 + (safeTraits.calfs - 1) * 0.17;
   const body = cylinder(
     0.4 * torsoScale,
-    0.48 * (0.9 + (safeTraits.breasts - 1) * 0.1),
+    0.48 * (0.92 + (chestScale - 1) * (isWomanBuddy ? 0.18 : 0.1)),
     0.84,
     definition.color,
     7
@@ -1672,7 +1697,7 @@ export function createBuddyMesh(
   const head = new Mesh(new IcosahedronGeometry(0.28, 0), standardMaterial(0xffcf9a));
   head.position.y = 1.2;
   const accent = standardMaterial(definition.accent);
-  body.scale.z = 0.95 + (safeTraits.breasts - 1) * 0.2;
+  body.scale.z = 0.95 + (chestScale - 1) * (isWomanBuddy ? 0.22 : 0.12);
   const leftLeg = cylinder(
     0.1 * thighScale,
     0.15 * thighScale,
@@ -1684,8 +1709,8 @@ export function createBuddyMesh(
   const rightLeg = leftLeg.clone();
   rightLeg.position.x = 0.16 * (0.9 + (safeTraits.thighs - 1) * 0.1);
   const leftArm = cylinder(
-    0.11 * (0.9 + (safeTraits.pecks - 1) * 0.1),
-    0.14 * (0.9 + (safeTraits.pecks - 1) * 0.1),
+    0.11 * (0.9 + (chestScale - 1) * (isWomanBuddy ? 0.06 : 0.11)),
+    0.14 * (0.9 + (chestScale - 1) * (isWomanBuddy ? 0.07 : 0.11)),
     0.62,
     definition.accent,
     5
@@ -1696,8 +1721,8 @@ export function createBuddyMesh(
   rightArm.position.x = 0.39 + shoulderScale;
   rightArm.rotation.z = -0.26;
   const latLeft = box(
-    0.12 * (1 + (safeTraits.breasts - 1) * 0.22),
-    0.34 * (1 + (safeTraits.breasts - 1) * 0.16),
+    0.12 * (1 + (chestScale - 1) * (isWomanBuddy ? 0.28 : 0.16)),
+    0.34 * (1 + (chestScale - 1) * (isWomanBuddy ? 0.2 : 0.12)),
     0.1,
     definition.color,
     -0.35 - safeTraits.wings * 0.04,

@@ -28,20 +28,21 @@ export type MuscleBuild = 'lean' | 'power' | 'sculpted';
 
 export type BodyFrame = 'balanced' | 'tapered' | 'curved' | 'compact';
 
+export type BuddyGender = 'man' | 'woman';
+
 export type BodySizeKey =
   | 'height'
   | 'shoulders'
   | 'torso'
   | 'arms'
   | 'legs'
-  | 'pecks'
-  | 'breasts'
+  | 'chest'
   | 'wings'
   | 'glutes'
   | 'thighs'
   | 'calfs';
 
-export type BuddyBodyTraitKey = 'pecks' | 'breasts' | 'wings' | 'glutes' | 'thighs' | 'calfs';
+export type BuddyBodyTraitKey = 'chest' | 'wings' | 'glutes' | 'thighs' | 'calfs';
 export type BuddyBodyTraits = Record<BuddyBodyTraitKey, number>;
 
 export type BodySizing = Record<BodySizeKey, number>;
@@ -118,6 +119,7 @@ export type BuddyDefinition = {
   id: string;
   name: string;
   archetype: BuddyArchetype;
+  gender?: BuddyGender;
   color: number;
   accent: number;
   displayNames?: string[];

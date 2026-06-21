@@ -44,8 +44,7 @@ const FREE_WEIGHT_PICKUP_COOLDOWN = 0.65;
 const BUDDY_RAGDOLL_DURATION = 1.65;
 const BOSS_RAGDOLL_DURATION = 1.35;
 const BUDDY_BODY_TRAIT_RANGES: Record<keyof BuddyBodyTraits, { min: number; max: number }> = {
-  pecks: { min: 0.68, max: 1.36 },
-  breasts: { min: 0.68, max: 1.36 },
+  chest: { min: 0.68, max: 1.36 },
   wings: { min: 0.6, max: 1.5 },
   glutes: { min: 0.68, max: 1.36 },
   thighs: { min: 0.8, max: 1.34 },
@@ -54,9 +53,9 @@ const BUDDY_BODY_TRAIT_RANGES: Record<keyof BuddyBodyTraits, { min: number; max:
 
 const BUDDY_TRAIT_BIAS: Record<BuddyArchetype, Partial<Record<keyof BuddyBodyTraits, number>>> = {
   yogi: { wings: 0.12, calfs: -0.04, thighs: -0.06 },
-  runner: { calfs: 0.12, thighs: 0.05, pecks: -0.06 },
-  lifter: { pecks: 0.2, breasts: 0.18, glutes: 0.16, thighs: 0.16, calfs: 0.1 },
-  spinner: { pecks: 0.04, glutes: -0.06 },
+  runner: { calfs: 0.12, thighs: 0.05, chest: -0.06 },
+  lifter: { chest: 0.28, glutes: 0.16, thighs: 0.16, calfs: 0.1 },
+  spinner: { chest: 0.04, glutes: -0.06 },
   climber: { thighs: 0.14, calfs: 0.12, glutes: 0.08 }
 };
 
@@ -128,8 +127,7 @@ function generateBuddyBodyTraits(archetype: BuddyArchetype): BuddyBodyTraits {
   const traitBias = BUDDY_TRAIT_BIAS[archetype];
 
   return {
-    pecks: randomTrait(BUDDY_BODY_TRAIT_RANGES.pecks, traitBias.pecks),
-    breasts: randomTrait(BUDDY_BODY_TRAIT_RANGES.breasts, traitBias.breasts),
+    chest: randomTrait(BUDDY_BODY_TRAIT_RANGES.chest, traitBias.chest),
     wings: randomTrait(BUDDY_BODY_TRAIT_RANGES.wings, traitBias.wings),
     glutes: randomTrait(BUDDY_BODY_TRAIT_RANGES.glutes, traitBias.glutes),
     thighs: randomTrait(BUDDY_BODY_TRAIT_RANGES.thighs, traitBias.thighs),
