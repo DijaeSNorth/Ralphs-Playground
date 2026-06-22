@@ -1,6 +1,7 @@
-import { getBuddyDefinition } from '../game/content/buddies';
+﻿import { getBuddyDefinition } from '../game/content/buddies';
 import type { InputMode } from '../game/input/actions';
 import { normalizeManifestHairId, normalizeManifestSex } from '../game/content/characterAssetManifest';
+import { getArmWrestleCatchChance } from '../game/simulation/world';
 import {
   BODY_SIZE_CONTROLS,
   SEX_OPTIONS,
@@ -16,6 +17,9 @@ import type {
   BodySizeKey,
   BossState,
   BuddyRosterEntry,
+  BuddyDefinition,
+  RepDexEntry,
+  BuddyState,
   PlayerAppearance,
   VendingMachine,
   WorkoutStation,
@@ -39,8 +43,9 @@ const ROSTER_SPOT_RANGE = 1.95;
 const PREVIEW_ROTATE_STEP = Math.PI / 12;
 const SPOT_HOLD_DURATION = 0.55;
 const CONTROL_HINTS: Record<InputMode, string> = {
-  'keyboard-mouse': 'WASD Move / Shift Sprint / Left Click Catch or Throw / Right Click Use',
-  touch: 'Virtual joystick to move / Sprint / Catch while moving'
+  'keyboard-mouse':
+    'WASD Move / Shift Sprint / Left Click Arm Wrestle / Right Click Use',
+  touch: 'Virtual joystick to move / Sprint / Wrestle while moving'
 };
 const SWITCH_MODE_BUTTON_LABELS: Record<InputMode, string> = {
   'keyboard-mouse': 'Switch to Touch Controls',
@@ -56,10 +61,25 @@ export class GameHud {
   private readonly characterCreator: HTMLDivElement;
   private readonly staminaFill: HTMLDivElement;
   private readonly shakersValue: HTMLSpanElement;
+  private readonly steroidsValue: HTMLSpanElement;
   private readonly capturedValue: HTMLSpanElement;
   private readonly objective: HTMLDivElement;
   private readonly target: HTMLDivElement;
+  private readonly targetPreview: HTMLDivElement;
+  private readonly targetPreviewName: HTMLDivElement;
+  private readonly targetPreviewRarity: HTMLDivElement;
+  private readonly targetPreviewChance: HTMLDivElement;
   private readonly dexList: HTMLDivElement;
+  private readonly repDexDetail: HTMLDivElement;
+  private readonly repDexDetailClose: HTMLButtonElement;
+  private readonly repDexDetailTitle: HTMLHeadingElement;
+  private readonly repDexDetailSpecies: HTMLDivElement;
+  private readonly repDexDetailType: HTMLDivElement;
+  private readonly repDexDetailRarity: HTMLDivElement;
+  private readonly repDexDetailCount: HTMLDivElement;
+  private readonly repDexDetailDescription: HTMLDivElement;
+  private readonly repDexDetailOdds: HTMLDivElement;
+  private readonly repDexDetailFlavor: HTMLDivElement;
   private readonly crewCount: HTMLSpanElement;
   private readonly crewList: HTMLDivElement;
   private readonly bossPanel: HTMLDivElement;
@@ -106,6 +126,7 @@ export class GameHud {
   private readonly rosterTrainListeners: Array<(rosterId: number) => void> = [];
   private readonly rosterSpotListeners: Array<(rosterId: number) => void> = [];
   private readonly rosterRemoveListeners: Array<(rosterId: number) => void> = [];
+  private readonly rosterUseSteroidListeners: Array<(rosterId: number) => void> = [];
   private readonly bossChallengeListeners: Array<() => void> = [];
   private readonly previewRotationListeners: Array<(rotation: number) => void> = [];
   private readonly inputModeListeners: Array<(mode: InputMode) => void> = [];
@@ -124,12 +145,16 @@ export class GameHud {
   private renderedCrewMarkup = '';
   private renderedStaminaWidth = '';
   private renderedShakersValue = '';
+  private renderedSteroidsValue = '';
   private renderedCapturedValue = '';
   private renderedCrewCountValue = '';
   private renderedInputStatus = '';
   private renderedObjective = '';
   private renderedTarget = '';
   private renderedTargetReady = false;
+  private renderedTargetPreviewName = '';
+  private renderedTargetPreviewRarity = '';
+  private renderedTargetPreviewChance = '';
   private renderedToastVisible = false;
   private renderedWorkoutPromptName = '';
   private renderedFreeWeightPromptName = '';
@@ -144,6 +169,8 @@ export class GameHud {
   private renderedWorkoutMeterWidth = '';
   private renderedWorkoutCursorLeft = '';
   private renderedSpotMeterWidth = '';
+  private readonly repDexEntriesById = new Map<string, RepDexEntry>();
+  private readonly rosterNameById = new Map<number, string>();
   private spotTargetRosterId?: number;
   private spotHoldProgress = 0;
   private spotHoldActive = false;
@@ -165,14 +192,24 @@ export class GameHud {
       <div class="game-canvas" data-canvas-mount></div>
       <div class="hud" aria-live="polite">
         <section class="hud-cluster hud-cluster--left">
-          <div class="objective-chip" data-objective>Find a gym buddy and get close.</div>
+          <div class="objective-chip" data-objective>Arm-wrestle wild gym beasts. Build the strongest crew.</div>
           <div class="target-chip" data-target>No target</div>
+          <section class="target-preview target-preview--hidden" data-target-preview>
+            <div class="target-preview-name" data-target-preview-name></div>
+            <div class="target-preview-rarity" data-target-preview-rarity></div>
+            <div class="target-preview-chance" data-target-preview-chance></div>
+          </section>
         </section>
         <section class="hud-cluster hud-cluster--right" aria-label="Player status">
           <div class="stat-row">
             <span>Shakers</span>
             <strong data-shakers>0</strong>
           </div>
+          <div class="stat-row">
+            <span>Steroids</span>
+            <strong data-steroids>0</strong>
+          </div>
+          <div class="steroid-flavor">Instantly adds one level to a captured creature.</div>
           <div class="stat-row">
             <span>RepDex</span>
             <strong data-captured>0</strong>
@@ -192,8 +229,21 @@ export class GameHud {
           <div class="panel-title">RepDex</div>
           <div class="dex-list" data-dex-list></div>
         </section>
+        <section class="repdex-detail" data-repdex-detail hidden aria-label="RepDex creature detail">
+          <button type="button" class="repdex-detail-close" data-repdex-detail-close aria-label="Close creature card">×</button>
+          <h2 class="repdex-detail-title" data-repdex-detail-title>Creature</h2>
+          <div class="repdex-detail-grid">
+            <div class="repdex-detail-field"><span>Species</span><strong data-repdex-detail-species>Unknown</strong></div>
+            <div class="repdex-detail-field"><span>Type</span><strong data-repdex-detail-type>Normal</strong></div>
+            <div class="repdex-detail-field"><span>Rarity</span><strong data-repdex-detail-rarity>Normal</strong></div>
+            <div class="repdex-detail-field repdex-detail-full"><span>Caught</span><strong data-repdex-detail-count>0</strong></div>
+          </div>
+          <p class="repdex-detail-description" data-repdex-detail-description>Capture a creature to add details.</p>
+          <div class="repdex-detail-odds" data-repdex-detail-odds></div>
+          <p class="repdex-detail-flavor" data-repdex-detail-flavor>...</p>
+        </section>
         <section class="crew-panel" aria-label="Crew buddies">
-          <div class="panel-title">Crew</div>
+            <div class="panel-title">Crew</div>
           <div class="crew-list" data-crew-list></div>
         </section>
         <section class="boss-panel" data-boss-panel hidden aria-label="Boss challenge">
@@ -207,7 +257,7 @@ export class GameHud {
         <div class="toast" data-toast></div>
         <div class="input-status" data-input-status>Keyboard + Mouse</div>
         <button type="button" class="input-mode-toggle" data-input-mode>Keyboard + Mouse</button>
-        <div class="control-hint" data-control-hint>WASD Move / Shift Sprint / Left Click Catch or Throw / Right Click Use</div>
+        <div class="control-hint" data-control-hint>WASD Move / Shift Sprint / Left Click Arm Wrestle / Right Click Use</div>
         <div class="workout-prompt" data-workout-prompt hidden>
           <span data-workout-prompt-name>Workout station</span>
           <button type="button" data-workout-start>Use</button>
@@ -217,7 +267,7 @@ export class GameHud {
           <button type="button" data-freeweight-action>Pick Up</button>
         </div>
         <div class="spot-callout spot-callout--floating" data-spot-callout hidden>
-          <span data-spot-callout-text>Buddy needs a spot.</span>
+          <span data-spot-callout-text>Beast needs a spot.</span>
           <div class="spot-meter-stack">
             <button type="button" data-spot-buddy-now>Hold to Spot</button>
             <div class="spot-meter" aria-hidden="true">
@@ -270,8 +320,8 @@ export class GameHud {
             </div>
           <div class="creator-panel">
             <div class="creator-head">
-              <h1>Create your catcher</h1>
-              <span>Mega Gym entry</span>
+              <h1>Start Your Safari</h1>
+              <span>Ralph's Swole Safari</span>
             </div>
             <div class="creator-group" aria-label="Hair">
               <div class="creator-label">Hair</div>
@@ -356,7 +406,7 @@ export class GameHud {
                 ).join('')}
               </div>
             </div>
-            <button type="button" class="creator-start" data-start-game>Enter Gym</button>
+            <button type="button" class="creator-start" data-start-game>Enter Safari</button>
           </div>
         </section>
         <div class="touch-controls" data-touch-controls aria-label="Touch controls">
@@ -366,7 +416,7 @@ export class GameHud {
           </div>
           <div class="touch-actions">
             <button type="button" class="touch-action touch-action--sprint" data-sprint>Sprint</button>
-            <button type="button" class="touch-action touch-action--catch" data-catch>Catch</button>
+            <button type="button" class="touch-action touch-action--catch" data-catch>Wrestle</button>
           </div>
         </div>
       </div>
@@ -375,11 +425,26 @@ export class GameHud {
     const canvasMount = root.querySelector<HTMLDivElement>('[data-canvas-mount]');
     const staminaFill = root.querySelector<HTMLDivElement>('[data-stamina]');
     const shakersValue = root.querySelector<HTMLSpanElement>('[data-shakers]');
+    const steroidsValue = root.querySelector<HTMLSpanElement>('[data-steroids]');
     const capturedValue = root.querySelector<HTMLSpanElement>('[data-captured]');
     const crewCount = root.querySelector<HTMLSpanElement>('[data-crew-count]');
     const objective = root.querySelector<HTMLDivElement>('[data-objective]');
     const target = root.querySelector<HTMLDivElement>('[data-target]');
+    const targetPreview = root.querySelector<HTMLDivElement>('[data-target-preview]');
+    const targetPreviewName = root.querySelector<HTMLDivElement>('[data-target-preview-name]');
+    const targetPreviewRarity = root.querySelector<HTMLDivElement>('[data-target-preview-rarity]');
+    const targetPreviewChance = root.querySelector<HTMLDivElement>('[data-target-preview-chance]');
     const dexList = root.querySelector<HTMLDivElement>('[data-dex-list]');
+    const repDexDetail = root.querySelector<HTMLDivElement>('[data-repdex-detail]');
+    const repDexDetailClose = root.querySelector<HTMLButtonElement>('[data-repdex-detail-close]');
+    const repDexDetailTitle = root.querySelector<HTMLHeadingElement>('[data-repdex-detail-title]');
+    const repDexDetailSpecies = root.querySelector<HTMLDivElement>('[data-repdex-detail-species]');
+    const repDexDetailType = root.querySelector<HTMLDivElement>('[data-repdex-detail-type]');
+    const repDexDetailRarity = root.querySelector<HTMLDivElement>('[data-repdex-detail-rarity]');
+    const repDexDetailCount = root.querySelector<HTMLDivElement>('[data-repdex-detail-count]');
+    const repDexDetailDescription = root.querySelector<HTMLDivElement>('[data-repdex-detail-description]');
+    const repDexDetailOdds = root.querySelector<HTMLDivElement>('[data-repdex-detail-odds]');
+    const repDexDetailFlavor = root.querySelector<HTMLDivElement>('[data-repdex-detail-flavor]');
     const crewList = root.querySelector<HTMLDivElement>('[data-crew-list]');
     const bossPanel = root.querySelector<HTMLDivElement>('[data-boss-panel]');
     const bossName = root.querySelector<HTMLSpanElement>('[data-boss-name]');
@@ -430,10 +495,25 @@ export class GameHud {
       !canvasMount ||
       !staminaFill ||
       !shakersValue ||
+      !steroidsValue ||
       !capturedValue ||
       !crewCount ||
       !objective ||
       !target ||
+      !targetPreview ||
+      !targetPreviewName ||
+      !targetPreviewRarity ||
+      !targetPreviewChance ||
+      !repDexDetail ||
+      !repDexDetailClose ||
+      !repDexDetailTitle ||
+      !repDexDetailSpecies ||
+      !repDexDetailType ||
+      !repDexDetailRarity ||
+      !repDexDetailCount ||
+      !repDexDetailDescription ||
+      !repDexDetailOdds ||
+      !repDexDetailFlavor ||
       !dexList ||
       !crewList ||
       !bossPanel ||
@@ -489,11 +569,26 @@ export class GameHud {
     this.creatorPreviewMount = creatorPreviewMount;
     this.staminaFill = staminaFill;
     this.shakersValue = shakersValue;
+    this.steroidsValue = steroidsValue;
     this.capturedValue = capturedValue;
     this.crewCount = crewCount;
     this.objective = objective;
     this.target = target;
+    this.targetPreview = targetPreview;
+    this.targetPreviewName = targetPreviewName;
+    this.targetPreviewRarity = targetPreviewRarity;
+    this.targetPreviewChance = targetPreviewChance;
     this.dexList = dexList;
+    this.repDexDetail = repDexDetail;
+    this.repDexDetailClose = repDexDetailClose;
+    this.repDexDetailTitle = repDexDetailTitle;
+    this.repDexDetailSpecies = repDexDetailSpecies;
+    this.repDexDetailType = repDexDetailType;
+    this.repDexDetailRarity = repDexDetailRarity;
+    this.repDexDetailCount = repDexDetailCount;
+    this.repDexDetailDescription = repDexDetailDescription;
+    this.repDexDetailOdds = repDexDetailOdds;
+    this.repDexDetailFlavor = repDexDetailFlavor;
     this.crewList = crewList;
     this.bossPanel = bossPanel;
     this.bossName = bossName;
@@ -554,6 +649,7 @@ export class GameHud {
     this.bindWorkoutUi();
     this.bindFreeWeightUi();
     this.bindVendingUi();
+    this.bindRepDexUi();
     this.bindCrewUi();
     this.bindBossUi();
     this.bindInputModeUi();
@@ -576,6 +672,11 @@ export class GameHud {
       this.renderedShakersValue,
       String(snapshot.player.proteinShakers)
     );
+    this.renderedSteroidsValue = this.setText(
+      this.steroidsValue,
+      this.renderedSteroidsValue,
+      String(snapshot.player.steroids)
+    );
     this.renderedCapturedValue = this.setText(
       this.capturedValue,
       this.renderedCapturedValue,
@@ -591,11 +692,16 @@ export class GameHud {
       this.renderedInputStatus,
       actions.inputLabel
     );
+    this.setHidden(this.repDexDetail, this.root.classList.contains('game-root--creating'));
 
     const carriedFreeWeight = snapshot.freeWeights.find((freeWeight) => freeWeight.status === 'carried');
     let targetText = 'No target';
-    let objectiveText = 'Find a gym buddy and get close.';
+    let objectiveText = 'Find a wild gym beast and get close.';
     let targetReady = false;
+    let previewName = '';
+    let previewRarity = '';
+    let previewChance = '';
+    let showTargetPreview = false;
     if (carriedFreeWeight) {
       targetText = 'Free weight ready';
       objectiveText = 'Left click to throw. Use again to set it down.';
@@ -606,16 +712,21 @@ export class GameHud {
       targetReady = true;
     } else if (snapshot.nearestBuddy) {
       const definition = getBuddyDefinition(snapshot.nearestBuddy.buddy.definitionId);
-      const targetName = snapshot.nearestBuddy.buddy.displayName ?? definition.name;
+      const targetName = this.getBuddyDisplayName(definition, snapshot.nearestBuddy.buddy.displayName);
       const distance = snapshot.nearestBuddy.distance;
       const inRange = distance <= snapshot.captureRange;
+      const chance = this.formatCatchChanceText(definition, snapshot.nearestBuddy.buddy);
       targetText = inRange
-        ? `Catch ${targetName}`
+        ? `Ready to wrestle: ${targetName}`
         : `${targetName} - ${distance.toFixed(1)}m`;
       objectiveText = inRange
-        ? 'Buddy in range. Throw clean.'
+        ? 'Arm wrestle now to recruit.'
         : 'Close the gap without draining stamina.';
       targetReady = inRange;
+      showTargetPreview = true;
+      previewName = `${targetName} Lv. ${snapshot.nearestBuddy.buddy.level}`;
+      previewRarity = `Rarity: ${definition.rarity}`;
+      previewChance = chance;
     }
 
     this.renderedTarget = this.setText(this.target, this.renderedTarget, targetText);
@@ -625,12 +736,41 @@ export class GameHud {
       this.renderedTargetReady = targetReady;
     }
 
+    if (showTargetPreview) {
+      this.targetPreview.classList.remove('target-preview--hidden');
+      this.renderedTargetPreviewName = this.setText(this.targetPreviewName, this.renderedTargetPreviewName, previewName);
+      this.renderedTargetPreviewRarity = this.setText(
+        this.targetPreviewRarity,
+        this.renderedTargetPreviewRarity,
+        previewRarity
+      );
+      this.renderedTargetPreviewChance = this.setText(
+        this.targetPreviewChance,
+        this.renderedTargetPreviewChance,
+        previewChance
+      );
+    } else {
+      this.targetPreview.classList.add('target-preview--hidden');
+      this.renderedTargetPreviewName = '';
+      this.renderedTargetPreviewRarity = '';
+      this.renderedTargetPreviewChance = '';
+    }
+
     const dexMarkup = snapshot.repDex
       .map(
         (entry) => `
-          <div class="dex-row ${entry.count > 0 ? 'dex-row--caught' : ''}">
-            <span>${entry.definition.name}</span>
-            <strong>${entry.count}</strong>
+          <div
+            class="dex-row ${entry.count > 0 ? 'dex-row--caught' : ''}${this.isExoticBuddyDefinition(entry.definition) ? ' dex-row--exotic' : ''}"
+            data-repdex-id="${entry.definition.id}"
+            role="button"
+            tabindex="0"
+          >
+            <div class="dex-row-main">
+              <span class="dex-row-name">${this.getBuddyDisplayName(entry.definition)}</span>
+              <span class="dex-row-meta">Species ${entry.definition.species}</span>
+              <span class="dex-row-meta">Rarity ${entry.definition.rarity.toUpperCase()}</span>
+              <span class="dex-row-meta">${entry.count} caught · Best Lv ${entry.highestLevel}</span>
+            </div>
           </div>
         `
       )
@@ -640,7 +780,18 @@ export class GameHud {
       this.renderedDexMarkup = dexMarkup;
     }
 
-    const crewMarkup = this.renderCrew(snapshot.roster);
+    this.repDexEntriesById.clear();
+    snapshot.repDex.forEach((entry) => {
+      this.repDexEntriesById.set(entry.definition.id, entry);
+    });
+
+    this.rosterNameById.clear();
+    snapshot.roster.forEach((entry) => {
+      const definition = getBuddyDefinition(entry.definitionId);
+      this.rosterNameById.set(entry.rosterId, this.getBuddyDisplayName(definition, entry.displayName));
+    });
+
+    const crewMarkup = this.renderCrew(snapshot.roster, snapshot.player.steroids);
     if (crewMarkup !== this.renderedCrewMarkup) {
       this.crewList.innerHTML = crewMarkup;
       this.renderedCrewMarkup = crewMarkup;
@@ -678,6 +829,103 @@ export class GameHud {
     }
 
     this.toastTimer = 2.35;
+  }
+
+  private isExoticBuddyDefinition(definition: Pick<BuddyDefinition, 'rarity' | 'isExotic'>): boolean {
+    return definition.rarity === 'exotic' || definition.isExotic === true;
+  }
+
+  private getBuddyDisplayName(
+    definition: Pick<BuddyDefinition, 'name' | 'rarity' | 'isExotic'>,
+    displayName?: string
+  ): string {
+    const name = displayName ?? definition.name;
+    return this.isExoticBuddyDefinition(definition) ? `${name} [EXOTIC]` : name;
+  }
+
+  private formatCatchChanceText(definition: BuddyDefinition, buddy: BuddyState): string {
+    const chancePercent = Math.round(getArmWrestleCatchChance(buddy, definition) * 100);
+    const catchLabel = this.isExoticBuddyDefinition(definition) ? 'Exotic Catch' : 'Catch';
+    return `${catchLabel}: ${chancePercent}%`;
+  }
+
+  private getRepDexCaptureOdds(definition: BuddyDefinition): string {
+    const levels = [1, 16, 26, 36];
+    const labels = ['1-15', '16-25', '26-35', '36+'];
+    const lines = levels.map((min, index) => {
+      const fakeBuddy: BuddyState = {
+        id: 0,
+        definitionId: definition.id,
+        bodyTraits: {
+          chest: 1,
+          wings: 1,
+          glutes: 1,
+          thighs: 1,
+          calfs: 1
+        },
+        position: { x: 0, z: 0 },
+        heading: 0,
+        wanderHeading: 0,
+        wanderTimer: 0,
+        captured: false,
+        respawnTimer: 0,
+        dodgeTimer: 0,
+        holdTimer: 0,
+        ragdollTimer: 0,
+        level: min
+      };
+
+      const chance = Math.round(getArmWrestleCatchChance(fakeBuddy, definition) * 100);
+      return `<div>${labels[index]}: ${chance}%</div>`;
+    });
+
+    return lines.join('');
+  }
+
+  private getRepDexDescription(definition: BuddyDefinition): string {
+    if (definition.description) {
+      return definition.description;
+    }
+
+    if (this.isExoticBuddyDefinition(definition)) {
+      return `${definition.name} is a mythic gym competitor built from a real-animal myth with a lot of dramatic flair.`;
+    }
+
+    return `${definition.name} is a ${definition.species} with exaggerated gym-ready muscles and a ridiculous competitive streak.`;
+  }
+
+  private getRepDexFlavor(definition: BuddyDefinition): string {
+    if (definition.flavorText) {
+      return definition.flavorText;
+    }
+
+    if (definition.mythicMetadata?.note) {
+      return definition.mythicMetadata.note;
+    }
+
+    return this.isExoticBuddyDefinition(definition)
+      ? 'Decked out in absurd glow and over-the-top energy, it wants a rematch before dessert.'
+      : 'It only stopped mid-rep to judge your training pants and then charged your arm-wrestle range.';
+  }
+
+  private openRepDexDetail(entry: RepDexEntry): void {
+    const definition = entry.definition;
+    this.repDexDetailTitle.textContent = this.getBuddyDisplayName(definition);
+    this.repDexDetailSpecies.textContent = definition.species;
+    this.repDexDetailType.textContent = this.isExoticBuddyDefinition(definition) ? 'Exotic' : 'Normal';
+    this.repDexDetailRarity.textContent = definition.rarity;
+    this.repDexDetailCount.textContent = `${entry.count} caught · Best Lv ${entry.highestLevel}`;
+    this.repDexDetailDescription.textContent = this.getRepDexDescription(definition);
+    this.repDexDetailOdds.innerHTML = `
+      <div class="repdex-detail-odds-title">Catch odds by level</div>
+      ${this.getRepDexCaptureOdds(definition)}
+    `;
+    this.repDexDetailFlavor.textContent = this.getRepDexFlavor(definition);
+    this.repDexDetail.hidden = false;
+  }
+
+  private closeRepDexDetail(): void {
+    this.repDexDetail.hidden = true;
   }
 
   private setText<T extends HTMLElement>(element: T, previous: string, next: string): string {
@@ -733,6 +981,10 @@ export class GameHud {
 
   onRosterRemove(callback: (rosterId: number) => void): void {
     this.rosterRemoveListeners.push(callback);
+  }
+
+  onRosterUseSteroid(callback: (rosterId: number) => void): void {
+    this.rosterUseSteroidListeners.push(callback);
   }
 
   onBossChallenge(callback: () => void): void {
@@ -1144,15 +1396,83 @@ export class GameHud {
       }
 
       const trainId = target.dataset.trainBuddy;
+      const steroidId = target.dataset.useSteroid;
       const removeId = target.dataset.removeBuddy;
 
       if (trainId) {
         this.rosterTrainListeners.forEach((callback) => callback(Number(trainId)));
       }
 
+      if (steroidId) {
+        const rosterId = Number(steroidId);
+        const name = this.rosterNameById.get(rosterId) ?? 'this buddy';
+        if (this.rosterNameById.size > 1 && !window.confirm(`Use Steroids on ${name}?`)) {
+          return;
+        }
+
+        this.rosterUseSteroidListeners.forEach((callback) => callback(rosterId));
+      }
+
       if (removeId) {
         this.rosterRemoveListeners.forEach((callback) => callback(Number(removeId)));
       }
+    });
+  }
+
+  private bindRepDexUi(): void {
+    this.dexList.addEventListener('click', (event) => {
+      const target = event.target;
+
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      const row = target.closest<HTMLDivElement>('.dex-row[data-repdex-id]');
+      const definitionId = row?.dataset.repdexId;
+      if (!definitionId) {
+        return;
+      }
+
+      const entry = this.repDexEntriesById.get(definitionId);
+      if (!entry) {
+        return;
+      }
+
+      this.openRepDexDetail(entry);
+    });
+
+    this.dexList.addEventListener('keydown', (event) => {
+      if (!(event instanceof KeyboardEvent)) {
+        return;
+      }
+
+      if (event.key !== 'Enter' && event.key !== ' ') {
+        return;
+      }
+
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      const row = target.closest<HTMLDivElement>('.dex-row[data-repdex-id]');
+      const definitionId = row?.dataset.repdexId;
+
+      if (!definitionId) {
+        return;
+      }
+
+      const entry = this.repDexEntriesById.get(definitionId);
+      if (!entry) {
+        return;
+      }
+
+      this.openRepDexDetail(entry);
+      event.preventDefault();
+    });
+
+    this.bindMobilePress(this.repDexDetailClose, () => {
+      this.closeRepDexDetail();
     });
   }
 
@@ -1195,15 +1515,19 @@ export class GameHud {
     this.setHidden(this.freeWeightPrompt, false);
   }
 
-  private renderCrew(roster: BuddyRosterEntry[]): string {
+  private renderCrew(roster: BuddyRosterEntry[], steroidsAvailable = 0): string {
     if (roster.length === 0) {
-      return '<div class="crew-empty">Catch up to 4 gym buddies.</div>';
+      return '<div class="crew-empty">Catch up to 4 gym beasts.</div>';
     }
 
     return roster
       .map((entry) => {
         const definition = getBuddyDefinition(entry.definitionId);
-        const displayName = entry.displayName ?? definition.name;
+        const displayName = this.getBuddyDisplayName(
+          definition,
+          entry.displayName
+        );
+        const exoticClass = this.isExoticBuddyDefinition(definition) ? ' crew-row--exotic' : '';
         const busy = entry.status !== 'ready';
         const progress =
           entry.taskDuration > 0
@@ -1220,7 +1544,7 @@ export class GameHud {
         }
 
         return `
-          <div class="crew-row crew-row--${entry.status}">
+          <div class="crew-row crew-row--${entry.status}${exoticClass}">
             <div class="crew-main">
               <span>${displayName}</span>
               <strong>Lv ${entry.level}</strong>
@@ -1235,6 +1559,12 @@ export class GameHud {
             </div>
             <div class="crew-actions">
               <span>${status}</span>
+              <button
+                type="button"
+                class="crew-steroid"
+                data-use-steroid="${entry.rosterId}"
+                ${steroidsAvailable <= 0 ? 'disabled' : ''}
+              >Use Steroids</button>
               <button type="button" data-train-buddy="${entry.rosterId}" ${busy ? 'disabled' : ''}>Train</button>
               <button type="button" class="crew-remove" data-remove-buddy="${entry.rosterId}">Remove</button>
             </div>
@@ -1899,3 +2229,5 @@ export class GameHud {
     });
   }
 }
+
+
