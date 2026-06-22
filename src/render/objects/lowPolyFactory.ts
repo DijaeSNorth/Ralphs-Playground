@@ -221,192 +221,115 @@ function markShadows(object: Object3D): Object3D {
 
 export function createArena(radius: number): Group {
   const group = new Group();
-
-  const gymFloor = box(44, 0.18, 44, 0xc99458, 0, -0.12, 0);
-  gymFloor.receiveShadow = true;
-  group.add(gymFloor);
-
-  const rubberZone = new Mesh(
-    new CylinderGeometry(radius, radius, 0.08, 12),
-    standardMaterial(0x516a72, 0.9)
-  );
-  rubberZone.position.y = 0.02;
-  rubberZone.receiveShadow = true;
-  group.add(rubberZone);
-
-  const centerCourt = new Mesh(
-    new CylinderGeometry(7.2, 7.2, 0.09, 10),
-    standardMaterial(0x5dd29a, 0.88)
-  );
-  centerCourt.position.y = 0.08;
-  centerCourt.receiveShadow = true;
-  group.add(centerCourt);
-
-  const trainingLoop = new Mesh(
-    new RingGeometry(9.1, 11.2, 64),
-    standardMaterial(0xe56e57, 0.86)
-  );
-  trainingLoop.rotation.x = -Math.PI / 2;
-  trainingLoop.position.y = 0.12;
-  trainingLoop.receiveShadow = true;
-  group.add(trainingLoop);
-
-  const keyLine = box(0.12, 0.04, 13.8, 0xf7e17b, 0, 0.18, 0);
-  const crossLine = box(13.8, 0.04, 0.12, 0xf7e17b, 0, 0.18, 0);
-  group.add(keyLine, crossLine);
-
-  for (let i = 0; i < 12; i += 1) {
-    const angle = (i / 12) * Math.PI * 2;
-    const lane = box(0.08, 0.035, 1.15, 0xf9d66d);
-    lane.position.set(Math.cos(angle) * 10.2, 0.18, Math.sin(angle) * 10.2);
-    lane.rotation.y = -angle;
-    group.add(lane);
+  const stageWidth = Math.min(34, Math.max(30, radius * 1.7));
+  const stageDepth = Math.min(42, Math.max(36, radius * 2.05));
+  const backZ = -stageDepth / 2;
+  const frontZ = stageDepth / 2;
+  const leftX = -stageWidth / 2;
+  const rightX = stageWidth / 2;
+  const baseFloor = box(stageWidth, 0.18, stageDepth, 0xf0b45e, 0, -0.12, 0);
+  const floorOutline = box(stageWidth + 1.1, 0.1, stageDepth + 1.1, 0x24324a, 0, -0.18, 0);
+  group.add(floorOutline, baseFloor);
+  const laneSpecs = [
+    { z: backZ + 4.8, width: 10.5, depth: 6.1, color: 0x77d7c2, edge: 0x2a6f78 },
+    { z: backZ + 11.4, width: 17.8, depth: 5.5, color: 0xf7d56a, edge: 0xaa6b43 },
+    { z: backZ + 17.8, width: 12.2, depth: 5.4, color: 0xf37b6c, edge: 0x803c58 },
+    { z: frontZ - 8.8, width: 18.8, depth: 7.1, color: 0x70c46b, edge: 0x376b46 },
+    { z: frontZ - 2.8, width: 13.2, depth: 4.3, color: 0x8bb7ff, edge: 0x425b9a }
+  ];
+  for (const lane of laneSpecs) {
+    const shadow = box(lane.width + 0.72, 0.06, lane.depth + 0.54, lane.edge, 0.22, 0.02, lane.z + 0.22);
+    const panel = box(lane.width, 0.08, lane.depth, lane.color, 0, 0.09, lane.z);
+    const centerLine = box(0.16, 0.045, lane.depth - 0.85, 0xfff0a6, 0, 0.16, lane.z);
+    const crossLine = box(lane.width - 1.1, 0.045, 0.14, 0xfff0a6, 0, 0.165, lane.z);
+    group.add(shadow, panel, centerLine, crossLine);
   }
-
-  const wallMaterial = standardMaterial(0xdde5e6, 0.82);
-  const backWall = new Mesh(new BoxGeometry(44, 5.8, 0.34), wallMaterial);
-  backWall.position.set(0, 2.78, -22);
-  backWall.receiveShadow = true;
-  const leftWall = new Mesh(new BoxGeometry(0.34, 4.7, 44), wallMaterial);
-  leftWall.position.set(-22, 2.25, 0);
-  leftWall.receiveShadow = true;
-  const rightWall = leftWall.clone();
-  rightWall.position.x = 22;
-  group.add(backWall, leftWall, rightWall);
-
-  const mirrorPanelMaterial = new MeshStandardMaterial({
-    color: 0xbfdce2,
-    roughness: 0.25,
-    metalness: 0.28,
-    flatShading: true
-  });
-
-  for (let i = 0; i < 7; i += 1) {
-    const mirror = new Mesh(new BoxGeometry(4.8, 2.15, 0.06), mirrorPanelMaterial);
-    mirror.position.set(-15 + i * 5, 2.15, -21.78);
-    group.add(mirror);
+  const mainPath = box(4.4, 0.07, stageDepth - 4.6, 0xf8e3a0, 0, 0.05, 0.4);
+  const mainPathLeftEdge = box(0.16, 0.06, stageDepth - 5.2, 0x293a54, -2.35, 0.13, 0.4);
+  const mainPathRightEdge = mainPathLeftEdge.clone();
+  mainPathRightEdge.position.x = 2.35;
+  group.add(mainPath, mainPathLeftEdge, mainPathRightEdge);
+  for (let index = 0; index < 9; index += 1) {
+    const z = backZ + 5 + index * 3.7;
+    const marker = box(index % 2 === 0 ? 0.95 : 1.35, 0.08, 0.22, 0xffffff, index % 2 === 0 ? -1.15 : 1.15, 0.18, z);
+    group.add(marker);
   }
-
-  for (let i = 0; i < 8; i += 1) {
-    const angle = (i / 8) * Math.PI * 2 + 0.2;
-    const pillar = cylinder(0.18, 0.22, 4.4, 0x9aaab1, 6);
-    pillar.position.set(Math.cos(angle) * 19.5, 2.15, Math.sin(angle) * 19.5);
-    group.add(pillar);
+  const leftRail = box(0.32, 0.55, stageDepth - 1.6, 0x24324a, leftX + 0.25, 0.22, 0);
+  const rightRail = leftRail.clone();
+  rightRail.position.x = rightX - 0.25;
+  const frontLip = box(stageWidth, 0.62, 0.38, 0x24324a, 0, 0.24, frontZ - 0.12);
+  const backLip = box(stageWidth, 0.42, 0.34, 0x24324a, 0, 0.18, backZ + 0.12);
+  group.add(leftRail, rightRail, frontLip, backLip);
+  const backWall = box(stageWidth + 1.4, 5.3, 0.36, 0x9bd9ec, 0, 2.48, backZ - 0.28);
+  const backWallBase = box(stageWidth + 1.8, 0.42, 0.52, 0x24324a, 0, 0.18, backZ - 0.04);
+  const skyBand = box(stageWidth + 1.5, 1.25, 0.08, 0xf8e3a0, 0, 4.65, backZ - 0.49);
+  const mirrorBand = box(stageWidth - 4, 1.85, 0.08, 0xbee9f4, 0, 2.82, backZ - 0.52);
+  group.add(backWall, backWallBase, skyBand, mirrorBand);
+  for (let index = 0; index < 6; index += 1) {
+    const mirror = box(3.7, 1.48, 0.1, index % 2 === 0 ? 0xd8f6ff : 0xb6dfe9, -11.4 + index * 4.55, 2.84, backZ - 0.62);
+    const mirrorLine = box(0.08, 1.54, 0.12, 0xffffff, mirror.position.x + 1.58, 2.85, backZ - 0.68);
+    group.add(mirror, mirrorLine);
   }
-
-  for (let row = 0; row < 2; row += 1) {
-    for (let col = 0; col < 5; col += 1) {
-      const light = box(2.4, 0.08, 0.42, 0xfff0bd, -12 + col * 6, 6.2, -10 + row * 16);
-      light.rotation.y = row === 0 ? 0.08 : -0.08;
-      group.add(light);
-    }
+  const mythicPlatformShadow = box(8.7, 0.08, 3.2, 0x3a2f74, 6.7, 0.03, backZ + 6.2);
+  const mythicPlatform = box(8, 0.2, 2.55, 0x7865e8, 6.4, 0.22, backZ + 5.9);
+  const mythicRune = box(3.9, 0.06, 0.18, 0xf8e3a0, 6.4, 0.36, backZ + 5.9);
+  const mythicRuneCross = box(0.18, 0.06, 1.72, 0xf8e3a0, 6.4, 0.37, backZ + 5.9);
+  group.add(mythicPlatformShadow, mythicPlatform, mythicRune, mythicRuneCross);
+  const foregroundMat = box(stageWidth - 5.2, 0.09, 2.15, 0x2fa3a5, 0, 0.13, frontZ - 1.7);
+  const foregroundMatStripeA = box(stageWidth - 8, 0.045, 0.12, 0xfff0a6, 0, 0.2, frontZ - 2.22);
+  const foregroundMatStripeB = foregroundMatStripeA.clone();
+  foregroundMatStripeB.position.z = frontZ - 1.18;
+  group.add(foregroundMat, foregroundMatStripeA, foregroundMatStripeB);
+  for (let index = 0; index < 4; index += 1) {
+    const step = box(stageWidth - 4 - index * 2.3, 0.12, 0.52, 0xd88754, 0, 0.02 + index * 0.07, frontZ - 3.28 - index * 0.48);
+    group.add(step);
   }
-
-  return group;
+  return markShadows(group) as Group;
 }
 
 export function createGymProps(): Group {
   const group = new Group();
-  const mats = [
-    { x: -13.4, z: -8.4, rotation: 0.45 },
-    { x: 13.2, z: 7.2, rotation: -0.55 },
-    { x: -6.5, z: 13.5, rotation: 1.05 },
-    { x: 7.4, z: -13.1, rotation: -0.95 }
+  const backZ = -20.8;
+  const posterColors = [0xf37b6c, 0xf7d56a, 0x77d7c2, 0x7865e8];
+  for (let index = 0; index < posterColors.length; index += 1) {
+    const x = -13.2 + index * 4.8;
+    const poster = box(2.1, 1.15, 0.08, posterColors[index], x, 4.15, backZ - 0.18);
+    const posterTop = box(2.35, 0.12, 0.1, 0x24324a, x, 4.82, backZ - 0.24);
+    const posterBottom = posterTop.clone();
+    posterBottom.position.y = 3.48;
+    group.add(poster, posterTop, posterBottom);
+  }
+  const sidePropSets = [
+    { x: -14.25, z: -6.6, color: 0x2fa3a5 },
+    { x: 14.25, z: -0.6, color: 0xf37b6c },
+    { x: -14.25, z: 6.2, color: 0xf7d56a },
+    { x: 14.25, z: 10.4, color: 0x70c46b }
   ];
-
-  for (const matInfo of mats) {
-    const mat = box(3.2, 0.08, 1.45, 0x2aa6a5, matInfo.x, 0.13, matInfo.z);
-    mat.rotation.y = matInfo.rotation;
-    mat.receiveShadow = true;
-    group.add(mat);
-  }
-
-  const rig = new Group();
-  const leftPost = cylinder(0.09, 0.09, 3.1, 0x34445a, 8);
-  leftPost.position.set(-15.1, 1.55, 5.8);
-  const rightPost = leftPost.clone();
-  rightPost.position.x = -13.0;
-  const crossBar = cylinder(0.07, 0.07, 2.25, 0x34445a, 8);
-  crossBar.rotation.z = Math.PI / 2;
-  crossBar.position.set(-14.05, 3.05, 5.8);
-  const topBar = crossBar.clone();
-  topBar.position.z = 4.85;
-  rig.add(leftPost, rightPost, crossBar, topBar);
-  group.add(markShadows(rig));
-
-  const racks = [
-    { x: 15.2, z: -7.8, rotation: -0.45 },
-    { x: -15.8, z: -13.6, rotation: 0.2 },
-    { x: 13.8, z: 13.1, rotation: 0.55 }
-  ];
-
-  for (const rackInfo of racks) {
-    const rack = new Group();
-    const base = box(2.6, 0.16, 1.2, 0x303b4d, 0, 0.12, 0);
-    const backA = cylinder(0.07, 0.07, 2.2, 0x34445a, 8);
-    backA.position.set(-0.95, 1.15, -0.38);
-    const backB = backA.clone();
-    backB.position.x = 0.95;
-    const top = cylinder(0.06, 0.06, 2.1, 0x34445a, 8);
-    top.rotation.z = Math.PI / 2;
-    top.position.set(0, 2.24, -0.38);
-    const bench = box(1.35, 0.16, 0.44, 0x1f2d3a, 0, 0.46, 0.34);
-    const bar = cylinder(0.04, 0.04, 2.7, 0x202b35, 8);
-    bar.rotation.z = Math.PI / 2;
-    bar.position.set(0, 1.75, -0.42);
-    rack.add(base, backA, backB, top, bench, bar);
-    rack.position.set(rackInfo.x, 0, rackInfo.z);
-    rack.rotation.y = rackInfo.rotation;
-    group.add(markShadows(rack));
-  }
-
-  for (let i = 0; i < 8; i += 1) {
-    const angle = (i / 8) * Math.PI * 2 + 0.8;
-    const bell = new Group();
-    const body = new Mesh(new IcosahedronGeometry(0.35, 0), standardMaterial(0x59667a));
-    body.scale.set(1, 0.82, 1);
-    body.position.y = 0.34;
-    const handle = new Mesh(new TorusGeometry(0.24, 0.045, 6, 8, Math.PI), standardMaterial(0x34445a));
-    handle.position.y = 0.67;
-    handle.rotation.z = Math.PI;
-    bell.add(body, handle);
-    bell.position.set(Math.cos(angle) * 6.1, 0, Math.sin(angle) * 6.1);
-    group.add(markShadows(bell));
-  }
-
-  for (let i = 0; i < 4; i += 1) {
-    const machine = new Group();
-    const base = box(1.55, 0.12, 1.15, 0x303b4d, 0, 0.12, 0);
-    const back = box(0.28, 1.65, 0.18, 0x34445a, -0.52, 0.94, -0.25);
-    const pad = box(0.48, 0.82, 0.16, 0x1b2f43, -0.26, 0.74, 0.18);
-    pad.rotation.x = -0.28;
-    const lever = cylinder(0.045, 0.045, 1.15, 0xf9f7ef, 8);
-    lever.rotation.z = Math.PI / 2;
-    lever.position.set(0.33, 1.18, 0.14);
-    const stack = new Group();
-
-    for (let plate = 0; plate < 5; plate += 1) {
-      stack.add(box(0.34, 0.06, 0.42, 0x59667a, 0.62, 0.36 + plate * 0.075, -0.3));
+  for (const prop of sidePropSets) {
+    const rackBase = box(2.5, 0.2, 0.55, 0x24324a, prop.x, 0.22, prop.z);
+    const rackTop = box(2.35, 0.12, 0.42, prop.color, prop.x, 0.92, prop.z);
+    const postA = box(0.14, 1.15, 0.14, 0x24324a, prop.x - 1.05, 0.68, prop.z);
+    const postB = postA.clone();
+    postB.position.x = prop.x + 1.05;
+    group.add(rackBase, rackTop, postA, postB);
+    for (let index = 0; index < 3; index += 1) {
+      const plate = cylinder(0.24 - index * 0.035, 0.24 - index * 0.035, 0.14, index % 2 === 0 ? 0xf8e3a0 : 0xffffff, 8);
+      plate.rotation.z = Math.PI / 2;
+      plate.position.set(prop.x + (index - 1) * 0.62, 0.95, prop.z + 0.35);
+      group.add(plate);
     }
-
-    machine.add(base, back, pad, lever, stack);
-    machine.position.set(-18.2 + i * 2.2, 0, -17.4);
-    machine.rotation.y = 0.1;
-    group.add(markShadows(machine));
   }
-
-  const platformSpots = [
-    { x: -10.6, z: 15.8 },
-    { x: 10.8, z: -15.9 }
-  ];
-
-  for (const spot of platformSpots) {
-    const platform = box(4.1, 0.12, 2.4, 0x8b6542, spot.x, 0.1, spot.z);
-    const pad = box(2.3, 0.14, 1.8, 0x59667a, spot.x, 0.22, spot.z);
-    group.add(platform, pad);
+  const mirrorStandLeft = box(0.22, 2.45, 0.18, 0x24324a, -7.8, 1.36, backZ + 1.05);
+  const mirrorStandRight = mirrorStandLeft.clone();
+  mirrorStandRight.position.x = 7.8;
+  const banner = box(15.9, 0.62, 0.18, 0xfff0a6, 0, 5.25, backZ + 0.94);
+  group.add(mirrorStandLeft, mirrorStandRight, banner);
+  for (let index = 0; index < 5; index += 1) {
+    const cone = cylinder(0.18, 0.28, 0.58, index % 2 === 0 ? 0xf37b6c : 0xf7d56a, 5);
+    cone.position.set(-9 + index * 4.5, 0.37, 15.2);
+    group.add(cone);
   }
-
-  return group;
+  return markShadows(group) as Group;
 }
 
 function addStationMarker(group: Group, station: WorkoutStation, color = 0xf6c85f): void {
@@ -1617,206 +1540,41 @@ function addPlayerMuscleGeometry(
   }
 }
 
-export function createPlayerMesh(appearance = DEFAULT_PLAYER_APPEARANCE): Group {
+export function createPlayerMesh(appearance?: PlayerAppearance): Group {
   const group = new Group();
-  const manifest = getCachedCharacterAssetManifest();
-  const skinColor = getSkinToneOption(appearance.skinTone).color;
-  const hair = getHairOption(normalizeHairStyle(appearance.hair));
-  const hairMeshUrl = resolveHairMeshPath(appearance.hair, manifest);
-  const bodyMeshUrl = resolveBodyMeshPath(appearance.sex, manifest);
-  const bodySprite = bodyMeshUrl ? getSpriteMaterial(bodyMeshUrl, skinColor) : null;
-  const hairSprite = hairMeshUrl ? getSpriteMaterial(hairMeshUrl, hair.color) : null;
-  const build = resolveBuild(appearance.muscleBuild);
-  const spec = MUSCLE_SPECS[build];
-  const bodyStyle = resolveBodyStyle(appearance.sex);
-  const frame = FRAME_SPECS[appearance.frame];
-  const sizing = getBodySize(appearance);
-  const torsoScale = sizing.torso;
-  const shoulderScale = sizing.shoulders * frame.shoulderSpread * bodyStyle.shoulderWidth;
-  const armScale = sizing.arms;
-  const legScale = sizing.legs;
-  const hipScale = frame.hipSpread * bodyStyle.hipWidth;
-  const chestScale = sizing.chest;
-  const gluteScale = sizing.glutes * bodyStyle.gluteDepth;
-  const thighScale = sizing.thighs;
-  const calfScale = sizing.calfs * bodyStyle.calfMass;
-  const shouldersDepth = 1 + (chestScale - 1) * 0.2;
-  const torsoPecks = 1 + (chestScale - 1) * 0.22;
-  const gluteDepth = 1 + (gluteScale - 1) * 0.18;
-  const chest = cylinder(
-    spec.torsoTop * frame.torsoTopScale * torsoScale * torsoPecks * bodyStyle.shoulderDepth,
-    spec.torsoBottom *
-      0.88 *
-      frame.torsoTopScale *
-      torsoScale *
-      (0.96 + shouldersDepth * 0.08) *
-      bodyStyle.chestLift,
-    0.48,
-    0x24445f,
-    7
-  );
-  chest.scale.z = frame.torsoDepth * shouldersDepth;
-  chest.position.y = 0.84;
-  const hips = cylinder(
-    spec.torsoBottom * 0.72 * frame.torsoBottomScale * torsoScale * bodyStyle.hipWidth,
-    spec.torsoBottom * frame.torsoBottomScale * torsoScale * gluteScale * bodyStyle.hipDepth,
-    0.26,
-    0x1b2f43,
-    7
-  );
-  hips.scale.z = frame.torsoDepth * 0.95 * gluteDepth * bodyStyle.torsoDepth;
-  hips.position.y = 0.52;
-  const waistGap = box(0.48 * torsoScale * hipScale, 0.04, 0.1, 0xf9f7ef, 0, 0.64, 0.35);
-
-  const glutePlate = box(
-    0.28 * hipScale * torsoScale * gluteScale,
-    0.11 * gluteScale,
-    0.13 * gluteDepth,
-    0x1b2f43,
-    0,
-    0.44,
-    -0.04
-  );
-  const glutePlate2 = box(
-    0.19 * hipScale * gluteScale,
-    0.13 * gluteScale,
-    0.07 * gluteDepth,
-    0x2f3d4c,
-    -0.13 * hipScale,
-    0.46,
-    -0.03
-  );
-  const glutePlate3 = glutePlate2.clone();
-  glutePlate3.position.x = 0.13 * hipScale;
-
-  const bellyPad = box(
-    0.21 * torsoScale * chestScale,
-    0.09,
-    0.1 * gluteDepth,
-    0x1f2f43,
-    0,
-    0.7,
-    0.02
-  );
-
-  const head = new Mesh(new IcosahedronGeometry(0.25, 0), standardMaterial(skinColor));
-  head.position.y = 1.2;
-  head.scale.set(bodyStyle.shoulderWidth, bodyStyle.armMass, bodyStyle.torsoDepth);
-  const headband = box(0.36, 0.055, 0.3, 0xff705c, 0, 1.29, 0.06);
-
-  const shoulderOffset = 0.38 * shoulderScale;
-  const armOffset = 0.45 * shoulderScale;
-  const upperArmHeight = 0.3 * armScale;
-  const forearmHeight = 0.27 * armScale;
-  const leftUpperArm = cylinder(
-    spec.arm * 1.08 * armScale * bodyStyle.armMass,
-    spec.arm * 0.92 * armScale * bodyStyle.armMass * 0.92,
-    upperArmHeight,
-    skinColor,
-    5
-  );
-  leftUpperArm.position.set(-armOffset, 0.78, 0.04);
-  leftUpperArm.rotation.z = 0.25;
-  const rightUpperArm = leftUpperArm.clone();
-  rightUpperArm.position.x = armOffset;
-  rightUpperArm.rotation.z = -0.25;
-  const leftForearm = cylinder(
-    spec.forearm * 1.02 * armScale * bodyStyle.armMass,
-    spec.forearm * 0.9 * armScale * bodyStyle.armMass,
-    forearmHeight,
-    skinColor,
-    5
-  );
-  leftForearm.position.set(-armOffset - 0.04, 0.52, 0.04);
-  leftForearm.rotation.z = 0.12;
-  const rightForearm = leftForearm.clone();
-  rightForearm.position.x = armOffset + 0.04;
-  rightForearm.rotation.z = -0.12;
-  const leftElbow = createFacetMuscle(spec.forearm * 0.9 * armScale, skinColor, -armOffset - 0.01, 0.64, 0.04, 1, 0.78, 1);
-  const rightElbow = leftElbow.clone();
-  rightElbow.position.x = armOffset + 0.01;
-  const leftHand = createFacetMuscle(0.07 * armScale, skinColor, -armOffset - 0.06, 0.35, 0.05, 0.9, 0.82, 0.9);
-  const rightHand = leftHand.clone();
-  rightHand.position.x = armOffset + 0.06;
-
-  const legOffset = 0.15 * frame.legSpread * hipScale;
-  const thighDepthScale = 0.75 + 0.5 * Math.max(0.7, thighScale);
-  const calfHeightScale = 0.7 + 0.5 * Math.max(0.7, calfScale);
-  const leftThigh = cylinder(
-    spec.leg * 1.08 * legScale * thighDepthScale * bodyStyle.thighMass,
-    spec.leg * 0.95 * legScale * thighDepthScale * bodyStyle.thighMass,
-    0.29 * legScale,
-    0x1b2f43,
-    5
-  );
-  leftThigh.position.set(-legOffset, 0.36, 0.02);
-  const rightThigh = leftThigh.clone();
-  rightThigh.position.x = legOffset;
-  const leftKnee = createFacetMuscle(spec.leg * 0.82 * legScale, 0xf9f7ef, -legOffset, 0.22, 0.05, 1, 0.6, 0.8);
-  const rightKnee = leftKnee.clone();
-  rightKnee.position.x = legOffset;
-  const leftCalf = cylinder(
-    spec.leg * 0.82 * legScale * calfScale,
-    spec.leg * 0.76 * legScale * calfHeightScale * bodyStyle.calfMass,
-    0.25 * legScale,
-    0x1b2f43,
-    5
-  );
-  leftCalf.position.set(-legOffset, 0.12, 0.01);
-  const rightCalf = leftCalf.clone();
-  rightCalf.position.x = legOffset;
-  const calfBand = box(0.14 * torsoScale * calfScale, 0.045, 0.09, 0x59667a, -legOffset * 0.8, 0.19, 0.07);
-  const calfBandR = calfBand.clone();
-  calfBandR.position.x = legOffset * 0.8;
-  const leftFoot = box(0.18 * legScale, 0.08, 0.3 * legScale, 0x172436, -legOffset, 0.02, 0.1);
-  const rightFoot = leftFoot.clone();
-  rightFoot.position.x = legOffset;
-
-  group.add(
-    chest,
-    hips,
-    glutePlate,
-    glutePlate2,
-    glutePlate3,
-    bellyPad,
-    waistGap,
-    head,
-    headband,
-    leftUpperArm,
-    rightUpperArm,
-    leftForearm,
-    rightForearm,
-    leftElbow,
-    rightElbow,
-    leftHand,
-    rightHand,
-    leftThigh,
-    rightThigh,
-    leftKnee,
-    rightKnee,
-    leftCalf,
-    rightCalf,
-    calfBand,
-    calfBandR,
-    leftFoot,
-    rightFoot
-  );
-  const shoulderBridge = box(0.5 * shoulderScale, 0.08, 0.14, skinColor, 0, 1.0, 0.03);
-  const hipBridge = box(0.38 * hipScale * torsoScale, 0.08, 0.12, 0x1b2f43, 0, 0.43, 0.02);
-  group.add(shoulderBridge, hipBridge);
-
-  if (bodySprite) {
-    addSpriteOverlay(group, bodySprite, 0.7, 1.0, 0, 0.64, 0.22);
-  }
-
-  if (hairSprite) {
-    addSpriteOverlay(group, hairSprite, 0.66, 0.48, 0, 1.32, 0.23);
-  } else {
-    addPlayerHair(group, appearance);
-  }
-
-  addPlayerMuscleGeometry(group, appearance, skinColor, 0xff705c);
-  group.scale.set(spec.baseScale, spec.baseScale * sizing.height * frame.heightScale, spec.baseScale);
+  const appearanceHints = appearance as { skinTone?: number; hairColor?: number } | undefined;
+  const skin = typeof appearanceHints?.skinTone === 'number' ? appearanceHints.skinTone : 0xffc58f;
+  const hair = typeof appearanceHints?.hairColor === 'number' ? appearanceHints.hairColor : 0x2f2b35;
+  const outline = 0x162238;
+  const shirt = 0x3f7cf0;
+  const shorts = 0x23324d;
+  const accent = 0xffe56d;
+  const shadow = new Mesh(new CylinderGeometry(0.62, 0.62, 0.035, 16), basicMaterial(outline, 0.28));
+  shadow.scale.set(1.28, 1, 0.42);
+  shadow.rotation.x = Math.PI / 2;
+  shadow.position.y = 0.025;
+  group.add(shadow);
+  const addFlat = (width: number, height: number, depth: number, color: number, x: number, y: number, z: number): Mesh => {
+    const back = box(width + 0.09, height + 0.09, depth + 0.04, outline, x, y, z - 0.045);
+    const front = box(width, height, depth, color, x, y, z);
+    group.add(back, front);
+    return front;
+  };
+  addFlat(0.28, 0.34, 0.16, shorts, -0.16, 0.28, 0.02);
+  addFlat(0.28, 0.34, 0.16, shorts, 0.16, 0.28, 0.02);
+  addFlat(0.38, 0.16, 0.18, 0xffffff, -0.18, 0.08, 0.05);
+  addFlat(0.38, 0.16, 0.18, 0xffffff, 0.18, 0.08, 0.05);
+  addFlat(0.74, 0.62, 0.18, shirt, 0, 0.75, 0.03);
+  addFlat(0.86, 0.18, 0.2, accent, 0, 1.0, 0.06);
+  addFlat(0.18, 0.46, 0.15, skin, -0.52, 0.77, 0.03).rotation.z = -0.22;
+  addFlat(0.18, 0.46, 0.15, skin, 0.52, 0.77, 0.03).rotation.z = 0.22;
+  addFlat(0.48, 0.48, 0.19, skin, 0, 1.32, 0.05);
+  addFlat(0.52, 0.18, 0.18, hair, 0, 1.56, 0.03);
+  addFlat(0.54, 0.15, 0.2, 0xef3d4f, 0.05, 1.59, 0.1);
+  addFlat(0.34, 0.08, 0.24, accent, 0.28, 1.52, 0.16);
+  addFlat(0.09, 0.09, 0.08, outline, -0.1, 1.32, 0.17);
+  addFlat(0.09, 0.09, 0.08, outline, 0.1, 1.32, 0.17);
+  group.scale.setScalar(0.92);
   return markShadows(group) as Group;
 }
 
@@ -2625,70 +2383,145 @@ export function createBuddyMesh(
   traits: BuddyBodyTraits = DEFAULT_BUDDY_BODY_TRAITS
 ): Group {
   const safeTraits = { ...DEFAULT_BUDDY_BODY_TRAITS, ...traits };
-  const isExotic = isExoticBuddyDefinition(definition);
-  const isWomanBuddy = definition.gender === 'woman';
-  const chestScale = safeTraits.chest;
   const group = new Group();
-  const torsoScale = 1 + (chestScale - 1) * (isWomanBuddy ? 0.08 : 0.16);
-  const shoulderScale = 0.34 + (chestScale - 1) * (isWomanBuddy ? 0.02 : 0.04);
-  const thighScale = 1 + (safeTraits.thighs - 1) * 0.2;
-  const calfScale = 1 + (safeTraits.calfs - 1) * 0.17;
-  const body = cylinder(
-    0.4 * torsoScale,
-    0.48 * (0.92 + (chestScale - 1) * (isWomanBuddy ? 0.18 : 0.1)),
-    0.84,
-    definition.color,
-    7
-  );
-  body.position.y = 0.66;
-  const head = new Mesh(new IcosahedronGeometry(0.28, 0), standardMaterial(definition.color));
-  head.position.y = 1.2;
-  const accent = standardMaterial(definition.accent);
-  body.scale.z = 0.95 + (chestScale - 1) * (isWomanBuddy ? 0.22 : 0.12);
-  const leftLeg = cylinder(
-    0.1 * thighScale,
-    0.15 * thighScale,
-    0.5 * thighScale,
-    0x1b2f43,
-    5
-  );
-  leftLeg.position.set(-0.16 * (0.9 + (safeTraits.thighs - 1) * 0.1), 0.3, 0);
-  const rightLeg = leftLeg.clone();
-  rightLeg.position.x = 0.16 * (0.9 + (safeTraits.thighs - 1) * 0.1);
-  const leftArm = cylinder(
-    0.11 * (0.9 + (chestScale - 1) * (isWomanBuddy ? 0.06 : 0.11)),
-    0.14 * (0.9 + (chestScale - 1) * (isWomanBuddy ? 0.07 : 0.11)),
-    0.62,
-    definition.accent,
-    5
-  );
-  leftArm.position.set(-0.39 - shoulderScale, 0.68, 0.02);
-  leftArm.rotation.z = 0.26;
-  const rightArm = leftArm.clone();
-  rightArm.position.x = 0.39 + shoulderScale;
-  rightArm.rotation.z = -0.26;
-  const latLeft = box(
-    0.12 * (1 + (chestScale - 1) * (isWomanBuddy ? 0.28 : 0.16)),
-    0.34 * (1 + (chestScale - 1) * (isWomanBuddy ? 0.2 : 0.12)),
-    0.1,
-    definition.color,
-    -0.35 - safeTraits.wings * 0.04,
-    0.72,
-    0.24
-  );
-  latLeft.rotation.z = -0.2;
-  const latRight = latLeft.clone();
-  latRight.position.x = 0.35;
-  latRight.rotation.z = 0.2;
-  group.add(body, head, leftLeg, rightLeg, leftArm, rightArm, latLeft, latRight);
-  addBuddySpeciesFeatures(group, definition);
-
+  const id = definition.id;
+  const species = definition.species ?? id;
+  const isExotic = isExoticBuddyDefinition(definition);
+  const outline = 0x141d33;
+  const color = definition.color;
+  const accent = definition.accent;
+  const chestBoost = Math.max(0.92, Math.min(1.28, safeTraits.chest));
+  const armBoost = Math.max(0.92, Math.min(1.35, (safeTraits.chest + safeTraits.wings) * 0.5));
+  const legBoost = Math.max(0.92, Math.min(1.24, safeTraits.thighs));
+  const shadow = new Mesh(new CylinderGeometry(0.72, 0.72, 0.035, 16), basicMaterial(outline, 0.32));
+  shadow.scale.set(isExotic ? 1.62 : 1.32, 1, isExotic ? 0.52 : 0.44);
+  shadow.rotation.x = Math.PI / 2;
+  shadow.position.y = 0.025;
+  group.add(shadow);
+  const addFlat = (width: number, height: number, depth: number, partColor: number, x: number, y: number, z: number): Mesh => {
+    const back = box(width + 0.11, height + 0.11, depth + 0.045, outline, x, y, z - 0.055);
+    const front = box(width, height, depth, partColor, x, y, z);
+    group.add(back, front);
+    return front;
+  };
+  const addOrb = (radius: number, partColor: number, x: number, y: number, z: number, sx = 1, sy = 1, sz = 0.55): Mesh => {
+    const back = new Mesh(new IcosahedronGeometry(radius * 1.1, 0), standardMaterial(outline));
+    back.scale.set(sx, sy, sz);
+    back.position.set(x, y, z - 0.055);
+    const front = new Mesh(new IcosahedronGeometry(radius, 0), standardMaterial(partColor));
+    front.scale.set(sx, sy, sz);
+    front.position.set(x, y, z);
+    group.add(back, front);
+    return front;
+  };
+  const addCone = (radius: number, height: number, partColor: number, x: number, y: number, z: number, sides = 4): Mesh => {
+    const feature = cylinder(0.02, radius, height, partColor, sides);
+    feature.position.set(x, y, z);
+    group.add(feature);
+    return feature;
+  };
+  const torsoWidth = isExotic ? 0.9 : 0.72;
+  const torsoHeight = isExotic ? 0.92 : 0.76;
+  addFlat(torsoWidth * chestBoost, torsoHeight, 0.19, color, 0, 0.75, 0.02);
+  addFlat(torsoWidth * 1.18 * chestBoost, 0.28, 0.22, accent, 0, 1.02, 0.07);
+  addFlat(0.16, 0.36 * legBoost, 0.15, color, -0.22, 0.27, 0.02);
+  addFlat(0.16, 0.36 * legBoost, 0.15, color, 0.22, 0.27, 0.02);
+  const leftArm = addFlat(0.24 * armBoost, 0.62, 0.16, color, -0.55, 0.76, 0.04);
+  leftArm.rotation.z = -0.18;
+  const rightArm = addFlat(0.24 * armBoost, 0.62, 0.16, color, 0.55, 0.76, 0.04);
+  rightArm.rotation.z = 0.18;
+  addOrb(isExotic ? 0.34 : 0.29, color, 0, isExotic ? 1.43 : 1.32, 0.07, 1.05, 0.92, 0.58);
+  addFlat(0.09, 0.09, 0.07, outline, -0.1, isExotic ? 1.44 : 1.32, 0.22);
+  addFlat(0.09, 0.09, 0.07, outline, 0.1, isExotic ? 1.44 : 1.32, 0.22);
+  const addRoundEar = (x: number, y: number, scale = 1): void => {
+    addOrb(0.13 * scale, color, x, y, 0.05, 0.95, 1, 0.42);
+  };
+  const addPointEar = (x: number, y: number, angle: number, scale = 1): void => {
+    const ear = addCone(0.14 * scale, 0.38 * scale, color, x, y, 0.04, 3);
+    ear.rotation.z = angle;
+  };
+  const addTail = (x: number, y: number, z: number, tailColor: number, length: number, angle: number): void => {
+    const tail = cylinder(0.08, 0.15, length, tailColor, 6);
+    tail.rotation.z = angle;
+    tail.position.set(x, y, z);
+    group.add(tail);
+  };
+  const addWing = (side: -1 | 1, wingColor = accent, tall = false): void => {
+    const upper = addFlat(tall ? 0.34 : 0.46, tall ? 0.86 : 0.58, 0.1, wingColor, side * 0.72, 1.05, -0.03);
+    upper.rotation.z = side * (tall ? -0.55 : -0.38);
+    const tip = addCone(tall ? 0.18 : 0.16, tall ? 0.52 : 0.38, wingColor, side * 1.0, tall ? 0.88 : 0.82, -0.02, 3);
+    tip.rotation.z = side * 0.6;
+  };
+  if (id.includes('bunny') || species.includes('bunny')) {
+    const earLeft = addFlat(0.13, 0.72, 0.1, color, -0.16, 1.88, 0.02);
+    earLeft.rotation.z = -0.13;
+    const earRight = addFlat(0.13, 0.72, 0.1, color, 0.16, 1.88, 0.02);
+    earRight.rotation.z = 0.13;
+    addOrb(0.16, 0xffffff, 0.42, 0.58, -0.08, 1, 1, 0.42);
+  } else if (id.includes('bear')) {
+    addRoundEar(-0.24, 1.58, 1.1);
+    addRoundEar(0.24, 1.58, 1.1);
+    addFlat(0.32, 0.16, 0.13, accent, 0, 1.22, 0.25);
+    addFlat(1.02, 0.22, 0.22, accent, 0, 1.1, 0.11);
+  } else if (id.includes('fox')) {
+    addPointEar(-0.22, 1.64, -0.34, 1.05);
+    addPointEar(0.22, 1.64, 0.34, 1.05);
+    addTail(-0.62, 0.72, -0.12, accent, 0.95, -0.9);
+    addFlat(0.24, 0.14, 0.12, 0xffffff, 0, 1.2, 0.24);
+  } else if (id.includes('rhino')) {
+    const horn = addCone(0.12, 0.5, 0xf8f0d0, 0, 1.34, 0.34, 5);
+    horn.rotation.x = Math.PI / 2;
+    addRoundEar(-0.28, 1.58, 0.9);
+    addRoundEar(0.28, 1.58, 0.9);
+    addFlat(1.08, 0.38, 0.2, accent, 0, 0.98, 0.09);
+  } else if (id.includes('panther')) {
+    addPointEar(-0.22, 1.6, -0.25, 0.88);
+    addPointEar(0.22, 1.6, 0.25, 0.88);
+    addTail(0.64, 0.65, -0.12, accent, 1.05, 0.88);
+    addFlat(0.72, 0.16, 0.2, accent, 0, 1.04, 0.1);
+  } else if (id.includes('gorilla')) {
+    addRoundEar(-0.34, 1.4, 0.95);
+    addRoundEar(0.34, 1.4, 0.95);
+    addFlat(0.34, 0.78, 0.18, color, -0.74, 0.6, 0.08).rotation.z = 0.22;
+    addFlat(0.34, 0.78, 0.18, color, 0.74, 0.6, 0.08).rotation.z = -0.22;
+    addFlat(1.12, 0.36, 0.22, accent, 0, 1.03, 0.12);
+  } else if (id.includes('minotaur')) {
+    const hornLeft = addCone(0.1, 0.58, 0xf8f0d0, -0.28, 1.68, 0.05, 5);
+    hornLeft.rotation.z = 0.72;
+    const hornRight = addCone(0.1, 0.58, 0xf8f0d0, 0.28, 1.68, 0.05, 5);
+    hornRight.rotation.z = -0.72;
+    addFlat(1.14, 0.42, 0.24, accent, 0, 1.08, 0.12);
+  } else if (id.includes('griffin')) {
+    addWing(-1, accent, false);
+    addWing(1, accent, false);
+    const beak = addCone(0.13, 0.34, 0xffe56d, 0, 1.36, 0.34, 4);
+    beak.rotation.x = Math.PI / 2;
+    addPointEar(-0.19, 1.67, -0.18, 0.78);
+    addPointEar(0.19, 1.67, 0.18, 0.78);
+  } else if (id.includes('dragon')) {
+    addWing(-1, accent, true);
+    addWing(1, accent, true);
+    addTail(0.68, 0.58, -0.18, accent, 1.18, 0.84);
+    const hornLeft = addCone(0.07, 0.36, 0xf8f0d0, -0.16, 1.72, 0.05, 4);
+    hornLeft.rotation.z = 0.26;
+    const hornRight = addCone(0.07, 0.36, 0xf8f0d0, 0.16, 1.72, 0.05, 4);
+    hornRight.rotation.z = -0.26;
+  } else if (id.includes('cyclops')) {
+    addOrb(0.18, 0xffffff, 0, 1.42, 0.25, 1, 0.78, 0.32);
+    addOrb(0.08, outline, 0, 1.42, 0.31, 1, 0.78, 0.32);
+    const curlArm = new Mesh(new TorusGeometry(0.24, 0.055, 6, 18), standardMaterial(accent));
+    curlArm.position.set(0.72, 1.0, 0.08);
+    curlArm.rotation.y = Math.PI / 2;
+    group.add(curlArm);
+  } else {
+    addPointEar(-0.2, 1.6, -0.25, 0.75);
+    addPointEar(0.2, 1.6, 0.25, 0.75);
+  }
   addBuddyMuscleFeatures(group, definition, safeTraits);
   if (isExotic) {
-    group.scale.setScalar(1.18);
+    group.scale.setScalar(1.24);
     addExoticBuddyAura(group, definition);
   }
-
   return markShadows(group) as Group;
 }
 
@@ -2827,22 +2660,21 @@ export function createBossMesh(definition: BossDefinition): Group {
 
 export function createArmWrestleArmMesh(scale = 1): Group {
   const group = new Group();
-  const forearm = new Mesh(
-    new BoxGeometry(0.075, 0.07, 0.35),
-    standardMaterial(0x59453b)
-  );
-  forearm.position.set(0, 0, 0.175);
-  const forearmCap = new Mesh(
-    new BoxGeometry(0.095, 0.08, 0.16),
-    standardMaterial(0xdcc7a5)
-  );
-  forearmCap.position.set(0, 0.02, 0.34);
-  forearm.castShadow = true;
-  forearm.receiveShadow = true;
-  forearmCap.castShadow = true;
-  forearmCap.receiveShadow = true;
-  group.add(forearm, forearmCap);
-  group.scale.setScalar(scale > 1.5 ? 1.5 : scale < 0.6 ? 0.6 : scale);
+  const outline = 0x162238;
+  const skin = 0xffc58f;
+  const wristband = 0xffe56d;
+  const safeScale = scale > 1.5 ? 1.5 : scale < 0.6 ? 0.6 : scale;
+  const addFlat = (width: number, height: number, depth: number, color: number, x: number, y: number, z: number): Mesh => {
+    const back = box(width + 0.06, height + 0.06, depth + 0.04, outline, x, y, z - 0.035);
+    const front = box(width, height, depth, color, x, y, z);
+    group.add(back, front);
+    return front;
+  };
+  addFlat(0.18, 0.14, 0.42, wristband, 0, 0.02, 0.06);
+  addFlat(0.16, 0.16, 0.66, skin, 0, 0.02, 0.42);
+  addFlat(0.28, 0.2, 0.24, skin, 0, 0.04, 0.82);
+  addFlat(0.2, 0.18, 0.18, outline, 0, 0.03, 1.0);
+  group.scale.setScalar(safeScale);
   return markShadows(group) as Group;
 }
 
@@ -2853,12 +2685,12 @@ export function createBabyCryingDrops(): Group {
     transparent: true,
     opacity: 0.92
   });
-  const leftTear = new Mesh(new SphereGeometry(0.024, 8, 8), material);
-  const rightTear = leftTear.clone();
-  leftTear.position.set(-0.055, 0.05, 0.15);
-  rightTear.position.set(0.055, 0.05, 0.08);
-  group.add(leftTear, rightTear);
-  group.scale.setScalar(1);
+  for (let index = 0; index < 4; index += 1) {
+    const drop = new Mesh(new IcosahedronGeometry(index < 2 ? 0.045 : 0.032, 0), material);
+    drop.scale.set(0.75, 1.45, 0.35);
+    drop.position.set(index % 2 === 0 ? -0.11 - index * 0.025 : 0.11 + index * 0.018, 0.04 - index * 0.04, 0.16);
+    group.add(drop);
+  }
   return markShadows(group) as Group;
 }
 
@@ -2884,10 +2716,12 @@ export function createCaptureRing(color: number): Mesh {
   const material = new MeshBasicMaterial({
     color,
     transparent: true,
-    opacity: 0.9,
+    opacity: 0.86,
     depthWrite: false
   });
-  const ring = new Mesh(new TorusGeometry(0.45, 0.035, 6, 24), material);
-  ring.rotation.x = Math.PI / 2;
-  return ring;
+  const mat = new Mesh(new BoxGeometry(1.85, 0.045, 1.08), material);
+  mat.position.y = 0.015;
+  return mat;
 }
+
+

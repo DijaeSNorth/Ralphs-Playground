@@ -1,0 +1,23 @@
+Retro 2.5D redesign reference
+
+Files changed:
+- src/render/app/createGymBuddyGame.ts
+- src/render/objects/lowPolyFactory.ts
+- src/game/simulation/world.ts
+
+Camera direction:
+- Main gameplay renderer now uses an orthographic camera for a staged 2.5D feel.
+- Movement input uses a fixed forward/right basis instead of camera-swing-relative movement.
+- Camera distance settings now adjust orthographic view size rather than perspective feel.
+
+World direction:
+- Arena mesh was redesigned from a circular low-poly gym into a rectangular retro playfield.
+- The new scene uses foreground, midground, and background lane bands.
+- The back wall includes mirror panels and poster-like blocks.
+- Side rails, foreground lips, stepped mats, and a mythic platform create readable depth layers.
+- Gym props are sparse side/background set pieces instead of dense free-roam clutter.
+
+Movement/spawn direction:
+- Simulation bounds now use a rectangular staged playfield.
+- Random wild spawns use the new rectangular bounds while preserving creature spawning systems.
+- Capture, crew, RepDex, steroids, tutorial, goals, save/load, and boss systems were not removed.

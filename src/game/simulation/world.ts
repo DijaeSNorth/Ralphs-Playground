@@ -69,6 +69,9 @@ import {
 export { getArmWrestleCatchChance, getBuddyXpForNextLevel } from '../content/balance';
 
 const ARENA_RADIUS = WORLD_BALANCE.arenaRadius;
+const PLAYFIELD_HALF_WIDTH = Math.min(16.2, ARENA_RADIUS * 0.78);
+const PLAYFIELD_BACK_Z = -Math.min(17.2, ARENA_RADIUS * 0.82);
+const PLAYFIELD_FRONT_Z = Math.min(17.2, ARENA_RADIUS * 0.82);
 const CAPTURE_RANGE = CAPTURE_BALANCE.range;
 const MAX_STAMINA = STAMINA_BALANCE.max;
 const ARM_WRESTLE_CAPTURE_DURATION = CAPTURE_BALANCE.armWrestleDurationSeconds;
@@ -160,17 +163,22 @@ function toNonNegativeInteger(value: number, fallback: number): number {
 }
 
 function randomPoint(radius = ARENA_RADIUS - 2): Vec2 {
-  const angle = Math.random() * Math.PI * 2;
-  const r = Math.sqrt(Math.random()) * radius;
+  const scale = clamp(radius / Math.max(1, ARENA_RADIUS - 2), 0.35, 1);
+  const halfDepth = ((PLAYFIELD_FRONT_Z - PLAYFIELD_BACK_Z) / 2) * scale;
+  const centerZ = (PLAYFIELD_FRONT_Z + PLAYFIELD_BACK_Z) / 2;
 
   return {
-    x: Math.cos(angle) * r,
-    z: Math.sin(angle) * r
+    x: (Math.random() * 2 - 1) * PLAYFIELD_HALF_WIDTH * scale,
+    z: centerZ + (Math.random() * 2 - 1) * halfDepth
   };
 }
 
 function isPointInsideArena(position: Vec2, margin = 1.2): boolean {
-  return Math.hypot(position.x, position.z) <= ARENA_RADIUS - margin;
+  return (
+    Math.abs(position.x) <= PLAYFIELD_HALF_WIDTH - margin &&
+    position.z >= PLAYFIELD_BACK_Z + margin &&
+    position.z <= PLAYFIELD_FRONT_Z - margin
+  );
 }
 
 function randomPointForZone(zone: GymZoneDefinition): Vec2 {

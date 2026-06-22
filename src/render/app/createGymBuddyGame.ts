@@ -6,6 +6,7 @@ import {
   Mesh,
   MeshBasicMaterial,
   Object3D,
+  OrthographicCamera,
   PerspectiveCamera,
   Scene,
   SRGBColorSpace,
@@ -103,11 +104,11 @@ const WORLD_PIXEL_SCALE_TOUCH = 2.85;
 const PREVIEW_PIXEL_SCALE = 2.1;
 const PREVIEW_PIXEL_SCALE_TOUCH = 2.6;
 const RETRO_ARENA_SKY = 0x87c8ff;
-const RETRO_CAMERA_OFFSET = 11.2;
-const RETRO_CAMERA_HEIGHT = 10.9;
-const RETRO_LOOK_AT_HEIGHT = 1.2;
-const CUTSCENE_CAMERA_OFFSET = 5.6;
-const CUTSCENE_CAMERA_HEIGHT = 5.5;
+const RETRO_CAMERA_OFFSET = 15.4;
+const RETRO_CAMERA_HEIGHT = 12.6;
+const RETRO_LOOK_AT_HEIGHT = 0.72;
+const CUTSCENE_CAMERA_OFFSET = 6.4;
+const CUTSCENE_CAMERA_HEIGHT = 5.9;
 const CUTSCENE_LOOK_AT_HEIGHT = 0.62;
 const CAPTURE_BEAT_TEXT_HOLD_SECONDS = 0.4;
 const WRESTLE_STRUGGLE_METER_GAIN = 0.44;
@@ -292,7 +293,7 @@ const WRESTLE_ARM_BASE_TWITCH = 0.1;
 
 class GymBuddyRenderer {
   private readonly scene = new Scene();
-  private readonly camera = new PerspectiveCamera(52, 1, 0.1, 120);
+  private readonly camera = new OrthographicCamera(-10, 10, 7, -7, 0.1, 160);
   private readonly renderer: WebGLRenderer;
   private readonly cullables: RenderCullable[] = [];
   private readonly touchOptimized = shouldUseTouchRendering();
@@ -436,21 +437,9 @@ class GymBuddyRenderer {
   }
 
   getMovementBasis(): MovementBasis {
-    const direction = new Vector3();
-    this.camera.getWorldDirection(direction);
-    direction.y = 0;
-
-    if (direction.lengthSq() < 0.0001) {
-      return {
-        forward: { x: 0, z: -1 },
-        right: { x: 1, z: 0 }
-      };
-    }
-
-    direction.normalize();
     return {
-      forward: { x: direction.x, z: direction.z },
-      right: { x: -direction.z, z: direction.x }
+      forward: { x: 0, z: -1 },
+      right: { x: 1, z: 0 }
     };
   }
 
@@ -1197,10 +1186,17 @@ class GymBuddyRenderer {
     const rect = this.container.getBoundingClientRect();
     this.width = Math.max(1, Math.floor(rect.width));
     this.height = Math.max(1, Math.floor(rect.height));
-    this.camera.aspect = this.width / this.height;
+    const aspect = this.width / this.height;
+    const distance = CAMERA_DISTANCE_SETTINGS[this.settings.cameraDistance] ?? CAMERA_DISTANCE_SETTINGS.normal;
+    const viewHeight = (this.touchOptimized ? 16.8 : 15.2) * distance.height;
+    const viewWidth = viewHeight * aspect * distance.offset;
+    this.camera.left = -viewWidth / 2;
+    this.camera.right = viewWidth / 2;
+    this.camera.top = viewHeight / 2;
+    this.camera.bottom = -viewHeight / 2;
     this.camera.updateProjectionMatrix();
-    this.renderer.setPixelRatio(1);
     const pixelScale = getPixelCanvasScale(this.touchOptimized, this.settings.pixelFilter);
+    this.renderer.setPixelRatio(1);
     this.renderer.setSize(
       Math.max(1, Math.floor(this.width / pixelScale)),
       Math.max(1, Math.floor(this.height / pixelScale)),
@@ -1858,3 +1854,4 @@ export function createGymBuddyGame(root: HTMLElement): void {
 
   requestAnimationFrame(frame);
 }
+

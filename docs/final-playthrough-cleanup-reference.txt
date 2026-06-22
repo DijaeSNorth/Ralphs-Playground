@@ -1,0 +1,27 @@
+Final playthrough cleanup reference
+
+Files changed:
+- src/ui/hud.ts
+- src/style.css
+
+Title/start screen:
+- Title now shows "Ralph's Swole Safari" as the primary heading.
+- Subtitle explains the loop: arm wrestle wild gym beasts and build a crew.
+- Start button copy is "Start Game".
+- Settings and version label remain visible.
+- Daily event, RepDex, crew/storage, goals, quests, stats, debug, and playtest report stay hidden from the first impression.
+
+First gameplay:
+- Before the first capture, the objective chip says "Find your first creature."
+- Near a creature, the objective becomes short and direct: "Get close to..." or "Arm Wrestle!"
+- Crew, RepDex, and Goals buttons stay hidden until the player has captured something.
+- Storage is hidden until storage exists or the active crew is full.
+- Steroid controls stay hidden until the player owns Steroids.
+
+Capture flow:
+- A capture-active HUD class closes drawers and hides unrelated HUD/panels during the arm-wrestling cutscene.
+- Capture result buttons are contextual: success shows "View Crew" and "Keep Playing"; failure hides View Crew and says "Try Again".
+- First successful capture can show "View Crew" immediately without waiting for the next HUD progression tick.
+
+Visual integration:
+- CSS reinforces the retro title styling, smaller control hints, clean target panel, and mobile-friendly drawer behavior.

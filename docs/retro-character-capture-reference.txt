@@ -1,0 +1,30 @@
+Retro character and capture redesign reference
+
+Files changed:
+- src/render/objects/lowPolyFactory.ts
+
+Rendering approach:
+- Uses simplified 2.5D chunky geometry rather than billboard textures.
+- Player is now a compact retro trainer silhouette with flat body pieces, cap, bold outline, and shadow blob.
+- Wild creatures are now built as flattened, outline-backed shape stacks with exaggerated chest/arms.
+- Exotic creatures retain larger scale and aura treatment.
+
+Readable creature cues:
+- Buff Bunny: long ears and compact strong body.
+- Bench Bear: round ears, snout, wide chest.
+- Flex Fox: pointed ears, tail, agile silhouette.
+- Iron Rhino: forward horn and thick chest.
+- Pump Panther: cat ears, sleek tail, accent chest.
+- Swole Gorilla: round ears, huge hanging arms, broad shoulders.
+- Minotaur Maximus: horns and bulky torso.
+- Griffin Gains: wings, beak, pointed head features.
+- Dragon Deadlift: wings, tail, horns.
+- Cyclops Curl: single large eye and curling arm.
+
+Capture presentation:
+- Arm-wrestle arm mesh is now a chunky flat retro prop.
+- Capture platform is now a flat rectangular battle mat instead of a torus/projectile-style ring.
+- Crying reaction uses larger cartoon blue drops for 2.5D readability.
+
+Systems preserved:
+- Capture odds, capture events, roster/RepDex, save/load, steroids, goals, tutorial, and spawning systems remain unchanged.

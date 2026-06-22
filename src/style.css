@@ -3116,3 +3116,538 @@ button {
       0 0 0 2px rgba(255, 206, 88, 0.14);
   }
 }
+
+/* HUD declutter pass: keep active gameplay clear and move long systems into drawers. */
+.game-root:not(.game-root--creating) .event-chip,
+.game-root:not(.game-root--creating) .zone-chip,
+.game-root:not(.game-root--creating) .target-chip,
+.game-root:not(.game-root--creating) .stat-row--tokens,
+.game-root:not(.game-root--creating) .stat-row--steroids,
+.game-root:not(.game-root--creating) .stat-row--repdex,
+.game-root:not(.game-root--creating) .steroid-flavor,
+.game-root:not(.game-root--creating) .settings-toggle,
+.game-root:not(.game-root--creating) .input-status {
+  display: none !important;
+}
+
+.game-root:not(.game-root--creating) .hud-cluster--left {
+  top: 14px;
+  left: 14px;
+  gap: 8px;
+  max-width: min(360px, calc(100vw - 28px));
+  z-index: 24;
+}
+
+.game-root:not(.game-root--creating) .hud-cluster--right {
+  top: 14px;
+  right: 14px;
+  width: 156px;
+  gap: 7px;
+  padding: 9px;
+  z-index: 24;
+}
+
+.game-root:not(.game-root--creating) .objective-chip {
+  padding: 8px 10px;
+  font-size: clamp(0.62rem, 1.7vw, 0.78rem);
+  line-height: 1.35;
+}
+
+.game-root:not(.game-root--creating) .target-preview {
+  width: min(342px, calc(100vw - 28px));
+  padding: 9px 10px;
+  pointer-events: auto;
+}
+
+.game-root:not(.game-root--creating) .stat-row--crew,
+.game-root:not(.game-root--creating) .stamina-wrap {
+  margin: 0;
+}
+
+.hud-menu-bar {
+  position: absolute;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  padding: 7px;
+  border: 3px solid var(--ink);
+  background: var(--panel);
+  box-shadow: 5px 5px 0 var(--ink), inset 0 0 0 2px rgba(255, 255, 255, 0.55);
+  z-index: 30;
+}
+
+.hud-menu-button,
+.panel-close {
+  border: 2px solid var(--ink);
+  background: var(--accent-yellow);
+  color: var(--ink);
+  font-family: var(--font-pixel);
+  font-size: 0.66rem;
+  line-height: 1;
+  padding: 9px 10px;
+  box-shadow: 2px 2px 0 var(--ink);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.hud-menu-button[aria-pressed='true'] {
+  background: var(--accent-blue);
+  color: var(--panel);
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+
+.repdex-panel .panel-toggle,
+.crew-panel .panel-toggle,
+.goals-panel .panel-toggle,
+.quests-panel .panel-toggle {
+  display: none !important;
+}
+
+.repdex-panel,
+.crew-panel,
+.goals-panel,
+.quests-panel {
+  display: none !important;
+}
+
+.game-root--drawer-repdex .repdex-panel,
+.game-root--drawer-crew .crew-panel,
+.game-root--drawer-goals .goals-panel,
+.game-root--drawer-goals .quests-panel {
+  display: block !important;
+}
+
+.game-root--drawer-repdex .repdex-panel,
+.game-root--drawer-crew .crew-panel,
+.game-root--drawer-settings .settings-panel {
+  position: absolute;
+  top: 74px;
+  right: 18px;
+  bottom: 86px;
+  left: auto;
+  width: min(430px, calc(100vw - 36px));
+  max-width: none;
+  max-height: none;
+  overflow: auto;
+  z-index: 42;
+}
+
+.game-root--drawer-goals .goals-panel,
+.game-root--drawer-goals .quests-panel {
+  position: absolute;
+  right: 18px;
+  left: auto;
+  width: min(430px, calc(100vw - 36px));
+  overflow: auto;
+  z-index: 42;
+}
+
+.game-root--drawer-goals .goals-panel {
+  top: 74px;
+  max-height: min(36vh, 280px);
+}
+
+.game-root--drawer-goals .quests-panel {
+  top: calc(74px + min(36vh, 280px) + 12px);
+  max-height: calc(100vh - 74px - min(36vh, 280px) - 110px);
+}
+
+.game-root--drawer-repdex .repdex-panel .panel-body,
+.game-root--drawer-crew .crew-panel .panel-body,
+.game-root--drawer-goals .goals-panel .panel-body,
+.game-root--drawer-goals .quests-panel .panel-body {
+  max-height: none;
+  overflow: visible;
+}
+
+.game-root--creating .hud-menu-bar {
+  display: none !important;
+}
+
+.toast {
+  top: 78px !important;
+  bottom: auto !important;
+  left: 50%;
+  width: min(340px, calc(100vw - 48px));
+  padding: 8px 11px;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  pointer-events: none;
+  z-index: 52;
+}
+
+.tutorial-popup {
+  top: 92px;
+  bottom: auto;
+  width: min(330px, calc(100vw - 34px));
+  padding: 10px;
+  z-index: 34;
+}
+
+.tutorial-popup__text {
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 820px) {
+  .game-root:not(.game-root--creating) .hud-cluster--left {
+    top: calc(8px + env(safe-area-inset-top, 0px));
+    left: 8px;
+    max-width: calc(100vw - 146px);
+  }
+
+  .game-root:not(.game-root--creating) .hud-cluster--right {
+    top: calc(8px + env(safe-area-inset-top, 0px));
+    right: 8px;
+    width: 122px;
+    padding: 7px;
+  }
+
+  .game-root:not(.game-root--creating) .objective-chip,
+  .game-root:not(.game-root--creating) .target-preview {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .hud-menu-bar {
+    left: auto;
+    right: 8px;
+    bottom: calc(122px + env(safe-area-inset-bottom, 0px));
+    transform: none;
+    flex-direction: column;
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .hud-menu-button {
+    min-width: 78px;
+    min-height: 40px;
+    padding: 8px 9px;
+    font-size: 0.6rem;
+  }
+
+  .toast {
+    top: auto !important;
+    bottom: calc(182px + env(safe-area-inset-bottom, 0px)) !important;
+    left: 10px;
+    width: min(270px, calc(100vw - 116px));
+    transform: none;
+  }
+
+  .tutorial-popup {
+    top: auto;
+    bottom: calc(190px + env(safe-area-inset-bottom, 0px));
+    left: 10px;
+    right: 96px;
+    width: auto;
+    transform: none;
+  }
+
+  .game-root--drawer-repdex .repdex-panel,
+  .game-root--drawer-crew .crew-panel,
+  .game-root--drawer-settings .settings-panel {
+    top: auto;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    left: 8px;
+    width: auto;
+    max-height: min(78vh, 640px);
+    border-radius: 18px 18px 0 0;
+  }
+
+  .game-root--drawer-goals .goals-panel,
+  .game-root--drawer-goals .quests-panel {
+    right: 8px;
+    left: 8px;
+    width: auto;
+    border-radius: 16px;
+  }
+
+  .game-root--drawer-goals .goals-panel {
+    top: auto;
+    bottom: calc(42vh + 16px + env(safe-area-inset-bottom, 0px));
+    max-height: 34vh;
+  }
+
+  .game-root--drawer-goals .quests-panel {
+    top: auto;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    max-height: 38vh;
+  }
+}
+
+@media (max-width: 520px) {
+  .game-root:not(.game-root--creating) .hud-cluster--left {
+    max-width: calc(100vw - 132px);
+  }
+
+  .game-root:not(.game-root--creating) .hud-cluster--right {
+    width: 112px;
+  }
+
+  .hud-menu-button {
+    min-width: 70px;
+    font-size: 0.56rem;
+  }
+}
+
+/* First-playthrough progressive disclosure. */
+.creator-event,
+.creator-reset-save,
+.game-root:not(.game-root--debug-enabled) .settings-copy-report,
+.game-root:not(.game-root--debug-enabled) .feedback-notes,
+.game-root:not(.game-root--debug-enabled) .debug-panel,
+.game-root:not(.game-root--debug-enabled) .debug-tools,
+.game-root:not(.game-root--debug-enabled) [data-debug-panel] {
+  display: none !important;
+}
+
+.creator-short-instruction {
+  margin: 8px 0 12px;
+  padding: 10px 12px;
+  border: 2px solid var(--ink);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 3px 3px 0 var(--ink);
+  color: var(--ink);
+  font-family: var(--font-pixel);
+  font-size: clamp(0.62rem, 1.7vw, 0.78rem);
+  line-height: 1.45;
+}
+
+.creator-customize {
+  margin: 8px 0 12px;
+  border: 3px solid var(--ink);
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.creator-customize > summary {
+  padding: 10px 12px;
+  cursor: pointer;
+  font-family: var(--font-pixel);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  list-style: none;
+}
+
+.creator-customize > summary::-webkit-details-marker {
+  display: none;
+}
+
+.creator-customize > summary::after {
+  content: '+';
+  float: right;
+}
+
+.creator-customize[open] > summary::after {
+  content: '-';
+}
+
+.creator-customize .creator-group {
+  margin: 10px;
+}
+
+.creator-settings,
+.settings-help,
+.capture-result-card__button {
+  border: 2px solid var(--ink);
+  background: var(--accent-yellow);
+  color: var(--ink);
+  font-family: var(--font-pixel);
+  font-size: 0.66rem;
+  line-height: 1;
+  padding: 10px 12px;
+  box-shadow: 2px 2px 0 var(--ink);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.creator-settings {
+  background: var(--panel);
+}
+
+.settings-help {
+  width: 100%;
+  margin: 8px 0;
+}
+
+.target-preview-action {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 6px;
+  padding: 5px 8px;
+  border: 2px solid var(--ink);
+  background: var(--accent-yellow);
+  box-shadow: 2px 2px 0 var(--ink);
+  color: var(--ink);
+  font-family: var(--font-pixel);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+}
+
+.game-root:not(.game-root--has-captured) .hud-menu-button[data-menu-open='crew'],
+.game-root:not(.game-root--has-captured) .hud-menu-button[data-menu-open='repdex'],
+.game-root:not(.game-root--has-captured) .hud-menu-button[data-menu-open='goals'] {
+  display: none !important;
+}
+
+.game-root:not(.game-root--storage-unlocked) .crew-section-label--storage,
+.game-root:not(.game-root--storage-unlocked) .storage-list {
+  display: none !important;
+}
+
+.game-root:not(.game-root--has-steroids) .crew-detail-use,
+.game-root:not(.game-root--has-steroids) [data-crew-detail-use] {
+  display: none !important;
+}
+
+.capture-result-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.game-root:not(.game-root--has-captured) .capture-result-card__button[data-capture-result-view-crew] {
+  display: none !important;
+}
+
+.capture-result-card__button[data-capture-result-keep-playing] {
+  background: var(--accent-blue);
+  color: var(--panel);
+}
+
+.game-root--drawer-crew .target-preview,
+.game-root--drawer-repdex .target-preview,
+.game-root--drawer-goals .target-preview,
+.game-root--drawer-settings .target-preview {
+  opacity: 0.22;
+  pointer-events: none;
+}
+
+.game-root--creating .settings-panel {
+  z-index: 80;
+}
+
+.game-root--creating.game-root--drawer-settings .settings-panel {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  bottom: 24px;
+  left: auto;
+  width: min(420px, calc(100vw - 48px));
+  max-height: none;
+  overflow: auto;
+}
+
+@media (max-width: 820px) {
+  .creator-short-instruction {
+    font-size: 0.62rem;
+  }
+
+  .creator-customize .creator-group {
+    margin: 8px;
+  }
+
+  .game-root--creating.game-root--drawer-settings .settings-panel {
+    top: auto;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    left: 8px;
+    width: auto;
+    max-height: min(82vh, 660px);
+    border-radius: 18px 18px 0 0;
+  }
+}
+
+/* Final first-playthrough and 2.5D integration cleanup. */
+.creator-head {
+  align-items: center;
+}
+
+.creator-head h1 {
+  color: var(--ink);
+  text-shadow: 2px 2px 0 rgba(255, 255, 255, 0.75), 4px 4px 0 rgba(36, 50, 74, 0.18);
+}
+
+.creator-head span {
+  max-width: 260px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.game-root--capture-active .hud-cluster,
+.game-root--capture-active .hud-menu-bar,
+.game-root--capture-active .control-hint,
+.game-root--capture-active .tutorial-popup,
+.game-root--capture-active .workout-prompt,
+.game-root--capture-active .freeweight-prompt,
+.game-root--capture-active .vending-prompt,
+.game-root--capture-active .spot-callout,
+.game-root--capture-active .settings-panel,
+.game-root--capture-active .repdex-panel,
+.game-root--capture-active .crew-panel,
+.game-root--capture-active .goals-panel,
+.game-root--capture-active .quests-panel,
+.game-root--capture-active .boss-panel {
+  display: none !important;
+}
+
+.game-root:not(.game-root--has-captured) .capture-result-card .capture-result-card__button[data-capture-result-view-crew]:not([hidden]) {
+  display: inline-flex !important;
+}
+
+.capture-result-card__button[hidden] {
+  display: none !important;
+}
+
+.capture-result-card__button {
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+}
+
+.game-root:not(.game-root--creating) .control-hint {
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 7px 10px;
+  font-size: 0.6rem;
+}
+
+.game-root:not(.game-root--creating) .hud-menu-button[data-menu-open='settings'] {
+  background: var(--panel);
+}
+
+.game-root--has-captured .hud-menu-button[data-menu-open='crew'],
+.game-root--has-captured .hud-menu-button[data-menu-open='repdex'],
+.game-root--has-captured .hud-menu-button[data-menu-open='goals'] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.target-preview-name,
+.target-preview-chance,
+.target-preview-action {
+  letter-spacing: 0.02em;
+}
+
+@media (max-width: 820px) {
+  .creator-head {
+    align-items: flex-start;
+  }
+
+  .creator-head span {
+    max-width: none;
+  }
+
+  .game-root--has-captured .hud-menu-button[data-menu-open='crew'],
+  .game-root--has-captured .hud-menu-button[data-menu-open='repdex'],
+  .game-root--has-captured .hud-menu-button[data-menu-open='goals'] {
+    display: flex;
+  }
+}

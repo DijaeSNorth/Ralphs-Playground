@@ -1,0 +1,54 @@
+UI declutter pass reference
+
+Files changed:
+- src/ui/hud.ts
+- src/style.css
+
+Main gameplay HUD now keeps only:
+- Current objective/tutorial hint.
+- Nearby creature target preview when a creature is in range.
+- Crew count and stamina.
+- Minimal menu access through Crew, RepDex, Goals, and Settings buttons.
+
+Drawer behavior:
+- Crew, RepDex, Goals/Quests, and Settings use a single active drawer state.
+- Opening one drawer hides the others.
+- Closing a drawer returns to the clean gameplay view.
+- Goals drawer includes both milestone goals and quests so quest details are not always visible.
+
+Hidden during normal gameplay:
+- RepDex list, full crew/storage list, goals, quests, settings, daily event chip, zone chip, debug/playtest utilities, extra inventory stats, and long status readouts.
+- Boss panel remains event-driven and hidden unless a boss is active.
+- Target preview remains hidden until a nearby creature is available.
+
+Mobile notes:
+- Main menu becomes a compact side rail above touch controls.
+- Drawers use full-width/bottom-sheet style positioning.
+- Toasts are shorter and positioned away from capture odds and touch controls.
+
+First playthrough cleanup update
+
+Purpose:
+- Make the first five minutes show only the next useful action.
+- Keep advanced systems intact but hidden until the player has a reason to open them.
+
+Progressive disclosure rules added:
+- Before first capture: only Settings is available from the gameplay menu.
+- After first capture: Crew, RepDex, and Goals menu buttons unlock.
+- Storage UI stays hidden until storage exists or the active crew limit is reached.
+- Steroid use controls stay hidden until the player has at least one Steroid.
+- Playtest report and debug surfaces stay hidden unless debug mode is enabled.
+
+Start flow changes:
+- Start screen now has a short instruction: "Move around. Find a creature. Arm wrestle to capture it."
+- Character customization is collapsed behind "Customize Character" by default.
+- Settings is available from the start screen.
+- Reset Save is no longer a first-impression button; it remains in Settings.
+
+Capture flow changes:
+- Nearby target preview includes an "Arm Wrestle" prompt.
+- Capture result card has "View Crew" and "Keep Playing" actions.
+- Opening capture/result surfaces closes any open drawer.
+
+Help:
+- Settings includes a Help / Tutorial button that replays a short tutorial card.
