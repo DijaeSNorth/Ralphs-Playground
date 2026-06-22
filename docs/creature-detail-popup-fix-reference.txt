@@ -1,0 +1,26 @@
+Creature detail popup fix reference
+
+Scope:
+- UI behavior fix only.
+- No gameplay systems added.
+
+Panel causing issue:
+- RepDex detail panel and Crew detail panel are independent overlays.
+- They could stay open after drawer/result/capture state changed because they were not tied to the shared drawer close path.
+
+Close behavior added:
+- Shared closeCreatureDetails path closes both detail panels.
+- Escape closes open creature detail panels.
+- Tapping/clicking outside an open detail panel closes it.
+- Opening/changing drawers closes detail panels.
+- Settings opens after closing detail panels.
+- Start Game, capture-active state, capture result close, View Crew, and Keep Playing force-close details.
+
+Hidden/z-index cleanup:
+- Detail panels now set/remove root open classes.
+- Hidden or class-mismatched detail panels use display:none, visibility:hidden, and pointer-events:none.
+- Detail panels have explicit z-index and mobile bottom-sheet sizing.
+- Mobile close buttons are larger and sticky near the top of the sheet.
+
+Build:
+- cmd /c npm run build passed.

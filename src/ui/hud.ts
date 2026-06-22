@@ -306,6 +306,7 @@ export class GameHud {
   private readonly storageEntriesById = new Map<number, BuddyRosterEntry>();
   private readonly rosterNameById = new Map<number, string>();
   private activeCrewDetailId?: number;
+  private lastCreatureDetailTrigger?: HTMLElement;
   private crewSort: CrewSortMode = 'recent';
   private spotTargetRosterId?: number;
   private spotHoldProgress = 0;
@@ -1051,6 +1052,7 @@ export class GameHud {
     settingsResetSaveButton.insertAdjacentElement('beforebegin', playtestReportButton);
 
     this.canvasMount = canvasMount;
+    this.canvasMount.tabIndex = -1;
     this.characterCreator = characterCreator;
     this.creatorPreviewMount = creatorPreviewMount;
     this.staminaFill = staminaFill;
@@ -1218,6 +1220,7 @@ export class GameHud {
     this.bindInputModeUi();
     this.bindSettingsUi();
     this.bindDrawerUi();
+    this.bindCreatureDetailDismissal();
     this.bindTutorialUi();
     this.bindMobilePanelToggle();
     this.bindPlaytestReportUi();
@@ -1613,6 +1616,8 @@ export class GameHud {
     const definition = getBuddyDefinition(entry.definitionId);
     const name = this.getBuddyDisplayName(definition, entry.displayName);
     const isExotic = this.isExoticBuddyDefinition(definition);
+    this.closeRepDexDetail(false);
+    this.lastCreatureDetailTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
     this.activeCrewDetailId = entry.rosterId;
     this.crewDetailTitle.textContent = `${name}`;
     this.crewDetailSpecies.textContent = definition.species;
@@ -1629,11 +1634,14 @@ export class GameHud {
     this.crewDetailUseSteroidButton.disabled = this.availableSteroids <= 0;
     this.crewDetailReleaseButton.disabled = false;
     this.crewDetail.hidden = false;
+    this.root.classList.add('game-root--crew-detail-open');
   }
 
-  private closeCrewDetail(): void {
+  private closeCrewDetail(restoreFocus = true): void {
     this.crewDetail.hidden = true;
     this.activeCrewDetailId = undefined;
+    this.root.classList.remove('game-root--crew-detail-open');
+    this.restoreCreatureDetailFocus(restoreFocus);
   }
 
   private updateGoals(goals: WorldSnapshot['goals']): void {
@@ -1778,6 +1786,8 @@ export class GameHud {
 
   private openRepDexDetail(entry: RepDexEntry): void {
     const definition = entry.definition;
+    this.closeCrewDetail(false);
+    this.lastCreatureDetailTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
     this.repDexDetailTitle.textContent = this.getBuddyDisplayName(definition);
     this.repDexDetailSpecies.textContent = definition.species;
     this.repDexDetailType.textContent = this.isExoticBuddyDefinition(definition) ? 'Exotic' : 'Normal';
@@ -1795,10 +1805,50 @@ export class GameHud {
     `;
     this.repDexDetailFlavor.textContent = this.getRepDexFlavor(definition);
     this.repDexDetail.hidden = false;
+    this.root.classList.add('game-root--repdex-detail-open');
   }
 
-  private closeRepDexDetail(): void {
+  private closeRepDexDetail(restoreFocus = true): void {
     this.repDexDetail.hidden = true;
+    this.root.classList.remove('game-root--repdex-detail-open');
+    this.restoreCreatureDetailFocus(restoreFocus);
+  }
+
+  private closeCreatureDetails(restoreFocus = true): boolean {
+    const hadOpenDetail = !this.repDexDetail.hidden || !this.crewDetail.hidden;
+
+    if (!this.repDexDetail.hidden) {
+      this.repDexDetail.hidden = true;
+      this.root.classList.remove('game-root--repdex-detail-open');
+    }
+
+    if (!this.crewDetail.hidden) {
+      this.crewDetail.hidden = true;
+      this.activeCrewDetailId = undefined;
+      this.root.classList.remove('game-root--crew-detail-open');
+    }
+
+    if (hadOpenDetail) {
+      this.restoreCreatureDetailFocus(restoreFocus);
+    }
+
+    return hadOpenDetail;
+  }
+
+  private restoreCreatureDetailFocus(restoreFocus: boolean): void {
+    if (!restoreFocus) {
+      return;
+    }
+
+    const focusTarget = this.lastCreatureDetailTrigger;
+    this.lastCreatureDetailTrigger = undefined;
+    window.requestAnimationFrame(() => {
+      if (focusTarget?.isConnected) {
+        focusTarget.focus({ preventScroll: true });
+      } else {
+        this.canvasMount.focus({ preventScroll: true });
+      }
+    });
   }
 
   private setText<T extends HTMLElement>(element: T, previous: string, next: string): string {
@@ -1869,6 +1919,7 @@ export class GameHud {
   private hideCaptureResult(clearPending = false): void {
     this.captureResultCard.hidden = true;
     this.captureResultTimer = 0;
+    this.closeCreatureDetails(false);
 
     if (clearPending) {
       this.pendingCaptureResult = undefined;
@@ -2033,6 +2084,7 @@ export class GameHud {
   }
 
   private openDrawer(drawer?: HudDrawer): void {
+    this.closeCreatureDetails(false);
     this.activeDrawer = this.activeDrawer === drawer ? undefined : drawer;
     this.applyDrawerVisibility();
   }
@@ -2068,6 +2120,10 @@ export class GameHud {
     if (captureActive && this.activeDrawer) {
       this.activeDrawer = undefined;
       this.applyDrawerVisibility();
+    }
+
+    if (captureActive) {
+      this.closeCreatureDetails(false);
     }
 
     if (!hasCaptured && ['crew', 'repdex', 'goals'].includes(this.activeDrawer ?? '')) {
@@ -2119,6 +2175,7 @@ export class GameHud {
   }
 
   private setSettingsPanelOpen(open: boolean): void {
+    this.closeCreatureDetails(false);
     if (open) {
       this.activeDrawer = 'settings';
     } else if (this.activeDrawer === 'settings') {
@@ -2249,6 +2306,7 @@ export class GameHud {
   }
 
   closeCharacterCreator(): void {
+    this.closeCreatureDetails(false);
     this.root.classList.remove('game-root--creating');
     this.characterCreator.hidden = true;
   }
@@ -2466,6 +2524,40 @@ export class GameHud {
     }, 1400);
   }
 
+  private bindCreatureDetailDismissal(): void {
+    window.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      if (this.closeCreatureDetails(true)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    });
+
+    this.root.addEventListener(
+      'pointerdown',
+      (event) => {
+        if (this.repDexDetail.hidden && this.crewDetail.hidden) {
+          return;
+        }
+
+        const target = event.target;
+        if (!(target instanceof Node)) {
+          return;
+        }
+
+        if (this.repDexDetail.contains(target) || this.crewDetail.contains(target)) {
+          return;
+        }
+
+        this.closeCreatureDetails(false);
+      },
+      true
+    );
+  }
+
   private bindDrawerUi(): void {
     this.bindMobilePress(this.creatorSettingsButton, () => {
       this.openDrawer('settings');
@@ -2488,11 +2580,11 @@ export class GameHud {
       });
     });
     this.bindMobilePress(this.captureResultViewCrew, () => {
-      this.setHidden(this.captureResultCard, true);
+      this.hideCaptureResult(true);
       this.openDrawer('crew');
     });
     this.bindMobilePress(this.captureResultKeepPlaying, () => {
-      this.setHidden(this.captureResultCard, true);
+      this.hideCaptureResult(true);
       this.openDrawer(undefined);
     });
     this.bindMobilePress(this.settingsHelpButton, () => {
