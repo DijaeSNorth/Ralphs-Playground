@@ -3,6 +3,7 @@ import {
   CylinderGeometry,
   Group,
   IcosahedronGeometry,
+  SphereGeometry,
   Mesh,
   MeshBasicMaterial,
   PlaneGeometry,
@@ -2075,11 +2076,548 @@ function addBuddyMuscleFeatures(
   }
 }
 
+function addBuddySpeciesFeatures(group: Group, definition: BuddyDefinition): void {
+  const base = definition.color;
+  const accent = definition.accent;
+
+  if (definition.species === 'bunny') {
+    const outerEar = new Mesh(new CylinderGeometry(0.028, 0.06, 0.34, 5), standardMaterial(accent));
+    outerEar.position.set(-0.12, 1.46, 0.08);
+    outerEar.rotation.z = -0.28;
+    outerEar.rotation.x = -0.12;
+    const outerEarRight = outerEar.clone();
+    outerEarRight.position.x = 0.12;
+    outerEarRight.rotation.z = 0.28;
+    const earInner = new Mesh(new CylinderGeometry(0.018, 0.032, 0.22, 4), standardMaterial(0xf7e8d5));
+    earInner.position.set(-0.12, 1.54, 0.11);
+    earInner.rotation.set(-0.12, 0, -0.28);
+    const earInnerRight = earInner.clone();
+    earInnerRight.position.x = 0.12;
+    earInnerRight.rotation.z = 0.28;
+    const muzzle = new Mesh(new BoxGeometry(0.18, 0.09, 0.08), standardMaterial(base));
+    muzzle.position.set(0, 1.11, 0.56);
+    const nose = new Mesh(new SphereGeometry(0.022, 7, 5), standardMaterial(0x2e241f));
+    nose.position.set(0, 1.1, 0.63);
+    const tail = new Mesh(new CylinderGeometry(0.03, 0.008, 0.2, 6), standardMaterial(accent));
+    tail.position.set(0, 0.62, -0.38);
+    tail.rotation.x = -0.9;
+    tail.rotation.z = 0.3;
+    group.add(outerEar, outerEarRight, earInner, earInnerRight, muzzle, nose, tail);
+    return;
+  }
+
+  if (definition.species === 'bear') {
+    const ear = new Mesh(new CylinderGeometry(0.11, 0.14, 0.19, 7), standardMaterial(base));
+    ear.position.set(-0.21, 1.53, 0.05);
+    ear.rotation.z = -0.22;
+    const rightEar = ear.clone();
+    rightEar.position.x = 0.21;
+    rightEar.rotation.z = 0.22;
+    const snout = new Mesh(new BoxGeometry(0.24, 0.12, 0.22), standardMaterial(accent));
+    snout.position.set(0, 1.06, 0.56);
+    const snoutTip = new Mesh(new SphereGeometry(0.05, 8, 6), standardMaterial(0x2d221b));
+    snoutTip.position.set(0, 1.07, 0.65);
+    const brow = box(0.16, 0.07, 0.06, 0x2d221b, 0, 1.07, 0.46);
+    const jaw = createFlatHex(0.07, 0x5d4536);
+    jaw.position.set(0, 0.98, 0.53);
+    group.add(ear, rightEar, snout, snoutTip, brow, jaw);
+    return;
+  }
+
+  if (definition.species === 'fox') {
+    const ear = new Mesh(new CylinderGeometry(0.028, 0.008, 0.21, 4), standardMaterial(base));
+    ear.position.set(-0.11, 1.47, 0.07);
+    ear.rotation.z = -0.42;
+    ear.rotation.x = 0.1;
+    const rightEar = ear.clone();
+    rightEar.position.x = 0.11;
+    rightEar.rotation.z = 0.42;
+    const muzzle = new Mesh(new BoxGeometry(0.18, 0.08, 0.13), standardMaterial(accent));
+    muzzle.position.set(0, 1.08, 0.56);
+    const muzzleTip = new Mesh(new SphereGeometry(0.03, 8, 6), standardMaterial(0x3f2f2c));
+    muzzleTip.position.set(0, 1.07, 0.65);
+    const tail = new Mesh(new CylinderGeometry(0.05, 0.03, 0.58, 7), standardMaterial(base));
+    tail.position.set(-0.16, 0.52, -0.36);
+    tail.rotation.x = 0.5;
+    tail.rotation.z = -0.9;
+    const tailTip = new Mesh(new SphereGeometry(0.12, 7, 6), standardMaterial(accent));
+    tailTip.position.set(-0.48, 0.79, -0.58);
+    const cheek = box(0.1, 0.03, 0.16, 0x3d2d2b, 0, 0.84, 0.24);
+    group.add(ear, rightEar, muzzle, muzzleTip, tail, tailTip, cheek);
+    return;
+  }
+
+  if (definition.species === 'rhino') {
+    const horn = new Mesh(new CylinderGeometry(0.05, 0.016, 0.46, 6), standardMaterial(0xd8cfb3));
+    horn.position.set(0, 1.41, 0.16);
+    horn.rotation.x = Math.PI / 2;
+    const hornTip = new Mesh(new SphereGeometry(0.03, 8, 6), standardMaterial(0xe9ded2));
+    hornTip.position.set(0, 1.67, 0.27);
+    const muzzle = new Mesh(new BoxGeometry(0.3, 0.11, 0.08), standardMaterial(accent));
+    muzzle.position.set(0, 1.03, 0.62);
+    const brow = box(0.28, 0.08, 0.1, base, 0, 1.08, 0.48);
+    const neck = new Mesh(new CylinderGeometry(0.13, 0.13, 0.28, 8), standardMaterial(accent));
+    neck.position.set(0, 0.83, 0.06);
+    neck.rotation.x = 0.2;
+    group.add(horn, hornTip, muzzle, brow, neck);
+    return;
+  }
+
+  if (definition.species === 'panther') {
+    const ear = new Mesh(new BoxGeometry(0.03, 0.19, 0.05), standardMaterial(base));
+    ear.position.set(-0.11, 1.46, 0.06);
+    ear.rotation.z = -0.4;
+    ear.rotation.x = -0.12;
+    const rightEar = ear.clone();
+    rightEar.position.x = 0.11;
+    rightEar.rotation.z = 0.4;
+    const tail = new Mesh(new CylinderGeometry(0.035, 0.019, 0.66, 8), standardMaterial(accent));
+    tail.position.set(0.19, 0.47, -0.36);
+    tail.rotation.x = 0.44;
+    tail.rotation.z = -0.7;
+    const tailTip = new Mesh(new SphereGeometry(0.11, 6, 5), standardMaterial(base));
+    tailTip.position.set(0.54, 0.82, -0.62);
+    const stripeA = box(0.05, 0.18, 0.04, 0x1f2633, 0, 0.72, -0.05);
+    const stripeB = box(0.05, 0.14, 0.04, 0x1f2633, 0, 0.84, 0.13);
+    const stripeC = box(0.05, 0.1, 0.04, 0x1f2633, 0, 0.78, 0.3);
+    group.add(ear, rightEar, tail, tailTip, stripeA, stripeB, stripeC);
+    return;
+  }
+
+  if (definition.species === 'corgi') {
+    const ear = new Mesh(new CylinderGeometry(0.026, 0.07, 0.2, 4), standardMaterial(0x6f5234));
+    ear.position.set(-0.11, 1.5, 0.12);
+    ear.rotation.z = -0.28;
+    const earRight = ear.clone();
+    earRight.position.x = 0.11;
+    earRight.rotation.z = 0.28;
+    const muzzle = new Mesh(new BoxGeometry(0.16, 0.08, 0.08), standardMaterial(base));
+    muzzle.position.set(0, 1.12, 0.58);
+    const nose = new Mesh(new BoxGeometry(0.028, 0.018, 0.03), standardMaterial(0x2b1f1a));
+    nose.position.set(0, 1.11, 0.65);
+    const patch = box(0.12, 0.03, 0.26, 0x6f5234, 0, 1.02, 0.14);
+    const tail = new Mesh(new CylinderGeometry(0.05, 0.02, 0.24, 6), standardMaterial(accent));
+    tail.position.set(0.05, 0.56, -0.42);
+    tail.rotation.set(-1.18, 0, 0.12);
+    const tailTip = new Mesh(new SphereGeometry(0.07, 6, 5), standardMaterial(0x5c422b));
+    tailTip.position.set(-0.02, 0.34, -0.5);
+    const chestBand = box(0.09, 0.06, 0.1, definition.accent, 0, 0.8, 0.02);
+    group.add(ear, earRight, muzzle, nose, patch, tail, tailTip, chestBand);
+    return;
+  }
+
+  if (definition.species === 'deer') {
+    const antler = new Mesh(new CylinderGeometry(0.04, 0.015, 0.34, 5), standardMaterial(0xd7c1a0));
+    antler.position.set(-0.1, 1.54, 0.19);
+    antler.rotation.z = -0.5;
+    antler.rotation.x = 0.1;
+    const antlerLeftTip = new Mesh(new CylinderGeometry(0.025, 0.01, 0.2, 4), standardMaterial(0xe9dece));
+    antlerLeftTip.position.set(-0.22, 1.68, 0.17);
+    antlerLeftTip.rotation.z = -0.7;
+    const antlerR = antler.clone();
+    const antlerRTip = antlerLeftTip.clone();
+    antlerR.position.x = 0.1;
+    antlerR.rotation.z = 0.5;
+    antlerRTip.position.x = 0.22;
+    antlerRTip.rotation.z = 0.7;
+    const muzzle = new Mesh(new BoxGeometry(0.17, 0.08, 0.07), standardMaterial(base));
+    muzzle.position.set(0, 1.07, 0.61);
+    const snout = new Mesh(new SphereGeometry(0.036, 7, 6), standardMaterial(0x2f241f));
+    snout.position.set(0, 1.06, 0.68);
+    const dewlap = box(0.1, 0.09, 0.22, 0x6e5540, 0, 0.77, -0.14);
+    group.add(antler, antlerR, antlerLeftTip, antlerRTip, muzzle, snout, dewlap);
+    return;
+  }
+
+  if (definition.species === 'jaguar') {
+    const ear = new Mesh(new BoxGeometry(0.045, 0.17, 0.07), standardMaterial(base));
+    ear.position.set(-0.09, 1.47, 0.06);
+    ear.rotation.z = -0.37;
+    const earRight = ear.clone();
+    earRight.position.x = 0.09;
+    earRight.rotation.z = 0.37;
+    const muzzle = new Mesh(new CylinderGeometry(0.08, 0.10, 0.08, 6), standardMaterial(base));
+    muzzle.position.set(0, 1.11, 0.58);
+    muzzle.rotation.x = Math.PI / 2;
+    const nose = new Mesh(new SphereGeometry(0.028, 7, 5), standardMaterial(0x3f2e2d));
+    nose.position.set(0, 1.11, 0.66);
+    const stripeA = box(0.08, 0.17, 0.06, 0x2c3f2f, -0.14, 0.86, 0.12);
+    const stripeB = box(0.08, 0.17, 0.06, 0x2c3f2f, 0.16, 0.9, 0.26);
+    const tail = new Mesh(new CylinderGeometry(0.045, 0.018, 0.52, 8), standardMaterial(0xbf5a3c));
+    tail.position.set(0.23, 0.5, -0.34);
+    tail.rotation.set(0.5, 0, -0.42);
+    const tailTip = new Mesh(new SphereGeometry(0.09, 7, 5), standardMaterial(0x6d3d2a));
+    tailTip.position.set(0.58, 0.78, -0.56);
+    group.add(ear, earRight, muzzle, nose, stripeA, stripeB, tail, tailTip);
+    return;
+  }
+
+  if (definition.species === 'penguin') {
+    const beak = new Mesh(new CylinderGeometry(0.03, 0.075, 0.16, 4), standardMaterial(definition.accent));
+    beak.position.set(0, 1.07, 0.66);
+    beak.rotation.x = Math.PI / 2;
+    const eyeBand = box(0.16, 0.03, 0.05, 0x1f1f23, 0, 1.2, 0.49);
+    const flapL = new Mesh(new BoxGeometry(0.08, 0.15, 0.05), standardMaterial(accent));
+    flapL.position.set(-0.16, 1, 0.14);
+    flapL.rotation.z = 0.28;
+    const flapR = flapL.clone();
+    flapR.position.x = 0.16;
+    flapR.rotation.z = -0.28;
+    const belly = box(0.07, 0.22, 0.25, 0xf8f8f8, 0, 0.95, 0.11);
+    const headSpot = box(0.08, 0.03, 0.13, 0x253445, 0, 1.16, 0.46);
+    group.add(beak, eyeBand, flapL, flapR, belly, headSpot);
+    return;
+  }
+
+  if (definition.species === 'raccoon') {
+    const ear = new Mesh(new CylinderGeometry(0.026, 0.056, 0.16, 4), standardMaterial(0x4f3c2d));
+    ear.position.set(-0.08, 1.48, 0.08);
+    ear.rotation.z = -0.28;
+    const earRight = ear.clone();
+    earRight.position.x = 0.08;
+    earRight.rotation.z = 0.28;
+    const mask = box(0.14, 0.08, 0.16, 0x2b1f1a, 0, 1.15, 0.24);
+    const muzzle = new Mesh(new BoxGeometry(0.15, 0.06, 0.07), standardMaterial(base));
+    muzzle.position.set(0, 1.08, 0.56);
+    const stripe = new Mesh(new BoxGeometry(0.18, 0.015, 0.14), standardMaterial(0x1a1a1a));
+    stripe.position.set(0, 1.03, 0.3);
+    const tail = new Mesh(new CylinderGeometry(0.06, 0.018, 0.46, 6), standardMaterial(accent));
+    tail.position.set(-0.17, 0.56, -0.36);
+    tail.rotation.set(0.3, 0.15, -0.72);
+    const tailTip = new Mesh(new SphereGeometry(0.1, 6, 5), standardMaterial(0xeed4be));
+    tailTip.position.set(-0.44, 0.86, -0.64);
+    group.add(ear, earRight, mask, muzzle, stripe, tail, tailTip);
+    return;
+  }
+
+  if (definition.species === 'squirrel') {
+    const ear = new Mesh(new CylinderGeometry(0.025, 0.054, 0.16, 4), standardMaterial(0xd5a679));
+    ear.position.set(-0.095, 1.49, 0.1);
+    ear.rotation.z = -0.12;
+    const earRight = ear.clone();
+    earRight.position.x = 0.095;
+    earRight.rotation.z = 0.12;
+    const muzzle = new Mesh(new BoxGeometry(0.12, 0.07, 0.06), standardMaterial(base));
+    muzzle.position.set(0, 1.12, 0.57);
+    const whisker = box(0.16, 0.02, 0.08, 0x2f251f, 0, 1.12, 0.27);
+    const tail = new Mesh(new CylinderGeometry(0.08, 0.025, 0.6, 8), standardMaterial(accent));
+    tail.position.set(0, 0.6, -0.36);
+    tail.rotation.set(0.42, 0.15, -0.35);
+    const tailTip = new Mesh(new SphereGeometry(0.1, 7, 6), standardMaterial(0x9b6447));
+    tailTip.position.set(0.05, 0.92, -0.72);
+    const cheek = box(0.08, 0.03, 0.08, 0x7f5c43, 0, 0.86, 0.2);
+    group.add(ear, earRight, muzzle, whisker, tail, tailTip, cheek);
+    return;
+  }
+
+  if (definition.species === 'tiger') {
+    const ear = new Mesh(new BoxGeometry(0.035, 0.18, 0.06), standardMaterial(0x2d231f));
+    ear.position.set(-0.105, 1.44, 0.07);
+    ear.rotation.z = -0.3;
+    const earRight = ear.clone();
+    earRight.position.x = 0.105;
+    earRight.rotation.z = 0.3;
+    const muzzle = new Mesh(new CylinderGeometry(0.07, 0.1, 0.08, 6), standardMaterial(base));
+    muzzle.position.set(0, 1.07, 0.58);
+    muzzle.rotation.x = Math.PI / 2;
+    const nose = new Mesh(new SphereGeometry(0.026, 6, 5), standardMaterial(0x1f1817));
+    nose.position.set(0, 1.07, 0.65);
+    const stripeA = box(0.06, 0.13, 0.04, 0x2d2c2c, 0, 0.83, 0.12);
+    const stripeB = box(0.06, 0.13, 0.04, 0x2d2c2c, 0.15, 0.87, 0.3);
+    const stripeC = box(0.06, 0.13, 0.04, 0x2d2c2c, -0.15, 0.9, 0.3);
+    const tail = new Mesh(new CylinderGeometry(0.045, 0.022, 0.58, 8), standardMaterial(0xaa5f43));
+    tail.position.set(0.21, 0.5, -0.34);
+    tail.rotation.set(0.2, 0, -0.6);
+    const tailTip = new Mesh(new SphereGeometry(0.1, 6, 5), standardMaterial(0x8c4430));
+    tailTip.position.set(0.63, 0.73, -0.55);
+    group.add(ear, earRight, muzzle, nose, stripeA, stripeB, stripeC, tail, tailTip);
+    return;
+  }
+
+  if (definition.species === 'buffalo') {
+    const horn = new Mesh(new CylinderGeometry(0.045, 0.02, 0.34, 6), standardMaterial(0xd9cfb9));
+    horn.position.set(-0.08, 1.54, 0.18);
+    horn.rotation.x = Math.PI / 2;
+    const hornTip = new Mesh(new CylinderGeometry(0.026, 0.026, 0.07, 6), standardMaterial(0xf3e8d0));
+    hornTip.position.set(-0.08, 1.76, 0.19);
+    const hornR = horn.clone();
+    const hornTipR = hornTip.clone();
+    hornR.position.x = 0.08;
+    hornTipR.position.x = 0.08;
+    const hump = box(0.26, 0.17, 0.34, accent, 0, 0.94, -0.06);
+    const muzzle = new Mesh(new BoxGeometry(0.23, 0.09, 0.07), standardMaterial(base));
+    muzzle.position.set(0, 1.02, 0.6);
+    const jaw = box(0.17, 0.06, 0.14, 0x5e4735, 0, 0.95, 0.2);
+    const dewlap = box(0.09, 0.08, 0.18, 0x8d6d4d, 0, 0.74, -0.16);
+    group.add(horn, hornR, hornTip, hornTipR, hump, muzzle, jaw, dewlap);
+    return;
+  }
+
+  if (definition.species === 'griffin') {
+    const face = new Mesh(new BoxGeometry(0.2, 0.11, 0.06), standardMaterial(base));
+    face.position.set(0, 1.14, 0.58);
+    face.rotation.x = -0.15;
+    const beak = new Mesh(new CylinderGeometry(0.028, 0.08, 0.2, 5), standardMaterial(accent));
+    beak.position.set(0, 1.04, 0.69);
+    beak.rotation.x = Math.PI / 2;
+    const crest = new Mesh(new BoxGeometry(0.18, 0.05, 0.06), standardMaterial(definition.accent));
+    crest.position.set(0, 1.29, 0.08);
+    crest.rotation.z = 0.16;
+    const wingL = new Mesh(new TorusGeometry(0.28, 0.06, 5, 12), standardMaterial(accent));
+    wingL.position.set(-0.34, 0.78, -0.22);
+    wingL.rotation.z = 1.4;
+    wingL.rotation.y = -1.32;
+    const wingR = wingL.clone();
+    wingR.position.x = 0.34;
+    wingR.rotation.z = -1.4;
+    wingR.rotation.y = 1.32;
+    const talonLeft = new Mesh(new BoxGeometry(0.14, 0.1, 0.09), standardMaterial(accent));
+    talonLeft.position.set(-0.08, 0.18, -0.46);
+    talonLeft.rotation.z = 0.22;
+    const talonRight = talonLeft.clone();
+    talonRight.position.x = 0.08;
+    talonRight.rotation.z = -0.22;
+    const wingStrip = box(0.05, 0.02, 0.46, 0xa98b6f, 0.03, 0.3, -0.08);
+    wingStrip.rotation.y = Math.PI / 2;
+    group.add(face, beak, crest, wingL, wingR, talonLeft, talonRight, wingStrip);
+    return;
+  }
+
+  if (definition.species === 'minotaur') {
+    const hornLeft = new Mesh(new CylinderGeometry(0.052, 0.01, 0.4, 6), standardMaterial(0xf3e5bd));
+    hornLeft.position.set(-0.1, 1.54, 0.22);
+    hornLeft.rotation.x = -0.5;
+    const hornRight = hornLeft.clone();
+    hornRight.position.x = 0.1;
+    hornRight.rotation.x = -0.5;
+    const hornCrest = new Mesh(new BoxGeometry(0.22, 0.08, 0.07), standardMaterial(0x69452c));
+    hornCrest.position.set(0, 1.38, 0.16);
+    const mane = box(0.26, 0.14, 0.08, base, 0, 1.28, 0.12);
+    mane.rotation.z = 0.2;
+    const snout = new Mesh(new BoxGeometry(0.2, 0.1, 0.08), standardMaterial(base));
+    snout.position.set(0, 1.06, 0.6);
+    const fangL = new Mesh(new CylinderGeometry(0.015, 0.005, 0.06, 4), standardMaterial(0xf9f7ef));
+    fangL.position.set(-0.045, 1.05, 0.68);
+    const fangR = fangL.clone();
+    fangR.position.x = 0.045;
+    const loin = box(0.1, 0.08, 0.18, 0x6b3f2f, 0, 0.58, -0.15);
+    group.add(hornLeft, hornRight, hornCrest, mane, snout, fangL, fangR, loin);
+    return;
+  }
+
+  if (definition.species === 'dragon') {
+    const hornBase = new Mesh(new CylinderGeometry(0.06, 0.02, 0.28, 6), standardMaterial(0xc9b58c));
+    hornBase.position.set(0, 1.5, 0.14);
+    const hornTip = new Mesh(new SphereGeometry(0.055, 7, 6), standardMaterial(0xf4ecd7));
+    hornTip.position.set(0, 1.74, 0.3);
+    const snout = new Mesh(new CylinderGeometry(0.1, 0.15, 0.26, 7), standardMaterial(base));
+    snout.position.set(0, 1.04, 0.59);
+    snout.rotation.x = Math.PI / 2;
+    const crest = new Mesh(new BoxGeometry(0.32, 0.08, 0.12), standardMaterial(0x5e4738));
+    crest.position.set(0, 1.36, 0.25);
+    crest.rotation.z = -0.22;
+    const scaleRowA = box(0.08, 0.1, 0.58, accent, -0.02, 0.62, -0.56);
+    scaleRowA.rotation.x = 0.3;
+    const scaleRowB = scaleRowA.clone();
+    scaleRowB.position.set(0.02, 0.52, -0.58);
+    const tail = new Mesh(new CylinderGeometry(0.06, 0.03, 0.62, 7), standardMaterial(base));
+    tail.position.set(0, 0.33, -0.66);
+    tail.rotation.x = 0.32;
+    const tailTip = new Mesh(new SphereGeometry(0.1, 6, 5), standardMaterial(accent));
+    tailTip.position.set(0, 0.66, -1.08);
+    group.add(hornBase, hornTip, snout, crest, scaleRowA, scaleRowB, tail, tailTip);
+    return;
+  }
+
+  if (definition.species === 'cyclops') {
+    const brow = new Mesh(new BoxGeometry(0.34, 0.09, 0.06), standardMaterial(0x5c4130));
+    brow.position.set(0, 1.3, 0.15);
+    brow.rotation.z = -0.06;
+    const eyeSocket = new Mesh(new CylinderGeometry(0.11, 0.11, 0.05, 8), standardMaterial(definition.accent));
+    eyeSocket.position.set(0, 1.25, 0.44);
+    eyeSocket.rotation.x = Math.PI / 2;
+    const eye = new Mesh(new SphereGeometry(0.045, 7, 5), standardMaterial(0xf0efda));
+    eye.position.set(0, 1.25, 0.53);
+    const muzzle = new Mesh(new BoxGeometry(0.24, 0.1, 0.1), standardMaterial(base));
+    muzzle.position.set(0, 1.01, 0.6);
+    const cheek = box(0.11, 0.03, 0.08, 0x5e3f2e, 0, 0.9, 0.2);
+    const crest = new Mesh(new CylinderGeometry(0.055, 0.015, 0.46, 6), standardMaterial(accent));
+    crest.position.set(0, 1.45, 0.02);
+    crest.rotation.z = Math.PI / 2;
+    group.add(brow, eyeSocket, eye, muzzle, cheek, crest);
+    return;
+  }
+
+  if (definition.species === 'hydra') {
+    const mainJaw = new Mesh(new SphereGeometry(0.05, 7, 5), standardMaterial(base));
+    mainJaw.position.set(0, 1.05, 0.65);
+    const headLeft = new Mesh(new SphereGeometry(0.04, 6, 5), standardMaterial(definition.accent));
+    headLeft.position.set(-0.09, 1.1, 0.6);
+    const headRight = new Mesh(new SphereGeometry(0.04, 6, 5), standardMaterial(definition.accent));
+    headRight.position.set(0.09, 1.12, 0.59);
+    const neck = new Mesh(new CylinderGeometry(0.05, 0.07, 0.3, 6), standardMaterial(0x7c5f53));
+    neck.position.set(-0.09, 1.4, 0.5);
+    neck.rotation.x = 0.22;
+    const neckR = new Mesh(new CylinderGeometry(0.05, 0.07, 0.28, 6), standardMaterial(0x7c5f53));
+    neckR.position.set(0.09, 1.38, 0.49);
+    neckR.rotation.x = -0.08;
+    const scaleRow = box(0.1, 0.11, 0.45, accent, 0, 0.95, -0.17);
+    const headStripA = box(0.07, 0.09, 0.06, 0x5b433a, -0.12, 1.22, 0.39);
+    const headStripB = box(0.07, 0.09, 0.06, 0x5b433a, 0.12, 1.21, 0.38);
+    group.add(mainJaw, headLeft, headRight, neck, neckR, scaleRow, headStripA, headStripB);
+    return;
+  }
+
+  if (definition.species === 'pegasus') {
+    const wingL = new Mesh(new BoxGeometry(0.28, 0.08, 0.7), standardMaterial(0xd5b37b));
+    wingL.position.set(-0.44, 0.94, -0.02);
+    wingL.rotation.z = 1.28;
+    wingL.rotation.y = -1.22;
+    const wingR = wingL.clone();
+    wingR.position.set(0.44, 0.94, -0.02);
+    wingR.rotation.z = -1.28;
+    wingR.rotation.y = 1.22;
+    const wingTipL = new Mesh(new BoxGeometry(0.15, 0.06, 0.18), standardMaterial(accent));
+    wingTipL.position.set(-0.72, 0.62, -0.24);
+    wingTipL.rotation.z = 1.52;
+    const wingTipR = wingTipL.clone();
+    wingTipR.position.set(0.72, 0.62, -0.24);
+    wingTipR.rotation.z = -1.52;
+    const mane = new Mesh(new TorusGeometry(0.12, 0.03, 5, 10), standardMaterial(definition.accent));
+    mane.position.set(0, 1.3, 0.07);
+    mane.rotation.x = Math.PI / 2;
+    group.add(wingL, wingR, wingTipL, wingTipR, mane);
+    return;
+  }
+
+  if (definition.species === 'werewolf') {
+    const ear = new Mesh(new BoxGeometry(0.045, 0.16, 0.05), standardMaterial(0x2f2b2a));
+    ear.position.set(-0.08, 1.47, 0.08);
+    ear.rotation.z = -0.28;
+    const earR = ear.clone();
+    earR.position.x = 0.08;
+    earR.rotation.z = 0.28;
+    const muzzle = new Mesh(new CylinderGeometry(0.06, 0.11, 0.08, 6), standardMaterial(base));
+    muzzle.position.set(0, 1.08, 0.58);
+    muzzle.rotation.x = Math.PI / 2;
+    const clawL = new Mesh(new BoxGeometry(0.045, 0.07, 0.09), standardMaterial(base));
+    clawL.position.set(-0.24, 0.34, 0.27);
+    clawL.rotation.z = 0.2;
+    const clawR = clawL.clone();
+    clawR.position.x = 0.24;
+    clawR.rotation.z = -0.2;
+    const fur = box(0.18, 0.06, 0.08, 0x4c3c31, 0, 0.83, 0.01);
+    group.add(ear, earR, muzzle, clawL, clawR, fur);
+    return;
+  }
+
+  if (definition.species === 'kraken') {
+    const beak = new Mesh(new CylinderGeometry(0.04, 0.07, 0.12, 5), standardMaterial(0x97a4b6));
+    beak.position.set(0, 1.06, 0.61);
+    beak.rotation.x = Math.PI / 2;
+    const tentA = new Mesh(new CylinderGeometry(0.04, 0.012, 0.62, 6), standardMaterial(accent));
+    tentA.position.set(-0.16, 0.4, -0.16);
+    tentA.rotation.set(-0.2, 0, -0.26);
+    const tentB = new Mesh(new CylinderGeometry(0.038, 0.012, 0.58, 6), standardMaterial(base));
+    tentB.position.set(0, 0.43, -0.34);
+    tentB.rotation.set(0.2, 0, 0.11);
+    const tentC = new Mesh(new CylinderGeometry(0.038, 0.012, 0.54, 6), standardMaterial(0x6b7f96));
+    tentC.position.set(0.17, 0.43, -0.24);
+    tentC.rotation.set(-0.16, 0, 0.22);
+    const tentTipA = new Mesh(new SphereGeometry(0.055, 6, 5), standardMaterial(0x3f5971));
+    tentTipA.position.set(-0.18, 0.11, -0.58);
+    const tentTipB = tentTipA.clone();
+    tentTipB.position.set(0.17, 0.08, -0.7);
+    tentTipB.scale.set(0.86, 0.86, 0.86);
+    group.add(beak, tentA, tentB, tentC, tentTipA, tentTipB);
+    return;
+  }
+
+  if (definition.species === 'sphinx') {
+    const crest = new Mesh(new BoxGeometry(0.22, 0.12, 0.09), standardMaterial(0xefd89a));
+    crest.position.set(0, 1.26, 0.13);
+    crest.rotation.z = 0.12;
+    const mane = new Mesh(new CylinderGeometry(0.15, 0.22, 0.16, 8), standardMaterial(0x65472c));
+    mane.position.set(0, 1.17, 0.26);
+    mane.rotation.x = Math.PI / 2;
+    const brow = new Mesh(new BoxGeometry(0.16, 0.05, 0.06), standardMaterial(definition.accent));
+    brow.position.set(0, 1.12, 0.48);
+    const maneStrip = box(0.12, 0.08, 0.09, 0x8c684f, 0, 0.64, -0.04);
+    const royal = new Mesh(new CylinderGeometry(0.05, 0.05, 0.16, 6), standardMaterial(0xd6a03c));
+    royal.position.set(0, 1.34, 0.06);
+    group.add(crest, mane, brow, maneStrip, royal);
+    return;
+  }
+
+  if (definition.species === 'phoenix') {
+    const beak = new Mesh(new CylinderGeometry(0.028, 0.06, 0.14, 5), standardMaterial(0x352117));
+    beak.position.set(0, 1.07, 0.66);
+    beak.rotation.x = Math.PI / 2;
+    const featherA = new Mesh(new BoxGeometry(0.1, 0.03, 0.16), standardMaterial(0xffae60));
+    featherA.position.set(-0.09, 1.11, 0.13);
+    featherA.rotation.z = 0.42;
+    const featherB = new Mesh(new BoxGeometry(0.1, 0.03, 0.16), standardMaterial(0xffd39a));
+    featherB.position.set(0.09, 1.11, 0.13);
+    featherB.rotation.z = -0.42;
+    const plume = new Mesh(new CylinderGeometry(0.06, 0.01, 0.4, 6), standardMaterial(0xff7c3f));
+    plume.position.set(0, 1.22, 0.32);
+    plume.rotation.set(-0.3, 0, 0.1);
+    const flameA = new Mesh(new SphereGeometry(0.07, 7, 6), standardMaterial(0xffd47a));
+    flameA.position.set(-0.1, 0.98, 0.05);
+    const flameB = new Mesh(new SphereGeometry(0.07, 7, 6), standardMaterial(0xff9b4d));
+    flameB.position.set(0.11, 0.96, 0.02);
+    const plumeTip = new Mesh(new SphereGeometry(0.05, 6, 5), standardMaterial(0xff5f37));
+    plumeTip.position.set(0, 0.78, 0.01);
+    group.add(beak, featherA, featherB, plume, flameA, flameB, plumeTip);
+    return;
+  }
+
+  const shoulderCapL = new Mesh(
+    new CylinderGeometry(0.24, 0.16, 0.18, 6),
+    standardMaterial(accent)
+  );
+  shoulderCapL.position.set(-0.5, 0.82, -0.01);
+  shoulderCapL.rotation.z = 0.15;
+  const shoulderCapR = shoulderCapL.clone();
+  shoulderCapR.position.x = 0.5;
+  shoulderCapR.rotation.z = -0.15;
+  const armAnchorL = box(0.2, 0.56, 0.09, definition.color, -0.56, 0.55, 0.03);
+  const armAnchorR = armAnchorL.clone();
+  armAnchorR.position.x = 0.56;
+  const face = new Mesh(new BoxGeometry(0.22, 0.11, 0.14), standardMaterial(base));
+  face.position.set(0, 1.02, 0.54);
+  const brow = createFlatHex(0.06, 0x2f2b2b);
+  brow.position.set(0, 1.08, 0.45);
+  const jaw = new Mesh(new CylinderGeometry(0.09, 0.09, 0.07, 7), standardMaterial(accent));
+  jaw.position.set(0, 0.94, 0.57);
+  group.add(shoulderCapL, shoulderCapR, armAnchorL, armAnchorR, face, brow, jaw);
+}
+
+function isExoticBuddyDefinition(definition: BuddyDefinition): boolean {
+  return definition.rarity === 'exotic' || definition.isExotic === true;
+}
+
+function addExoticBuddyAura(group: Group, definition: BuddyDefinition): void {
+  const halo = new Mesh(new TorusGeometry(0.82, 0.05, 6, 22), basicMaterial(definition.accent, 0.34));
+  halo.position.set(0, 0.94, 0.34);
+  halo.rotation.x = Math.PI / 2;
+
+  const core = new Mesh(new TorusGeometry(0.57, 0.03, 5, 18), basicMaterial(definition.accent, 0.24));
+  core.position.set(0, 1.33, 0.64);
+  core.rotation.x = Math.PI / 2;
+
+  const marker = new Mesh(new SphereGeometry(0.12, 8, 5), standardMaterial(definition.accent));
+  marker.position.set(0, 1.34, 0.68);
+
+  group.add(halo, core, marker);
+}
+
 export function createBuddyMesh(
   definition: BuddyDefinition,
   traits: BuddyBodyTraits = DEFAULT_BUDDY_BODY_TRAITS
 ): Group {
   const safeTraits = { ...DEFAULT_BUDDY_BODY_TRAITS, ...traits };
+  const isExotic = isExoticBuddyDefinition(definition);
   const isWomanBuddy = definition.gender === 'woman';
   const chestScale = safeTraits.chest;
   const group = new Group();
@@ -2095,7 +2633,7 @@ export function createBuddyMesh(
     7
   );
   body.position.y = 0.66;
-  const head = new Mesh(new IcosahedronGeometry(0.28, 0), standardMaterial(0xffcf9a));
+  const head = new Mesh(new IcosahedronGeometry(0.28, 0), standardMaterial(definition.color));
   head.position.y = 1.2;
   const accent = standardMaterial(definition.accent);
   body.scale.z = 0.95 + (chestScale - 1) * (isWomanBuddy ? 0.22 : 0.12);
@@ -2135,59 +2673,13 @@ export function createBuddyMesh(
   latRight.position.x = 0.35;
   latRight.rotation.z = 0.2;
   group.add(body, head, leftLeg, rightLeg, leftArm, rightArm, latLeft, latRight);
-
-  if (definition.archetype === 'yogi') {
-    const halo = new Mesh(new TorusGeometry(0.32, 0.035, 5, 12), accent);
-    halo.position.y = 1.45;
-    halo.rotation.x = Math.PI / 2;
-    const mat = box(1.08, 0.045, 0.5, definition.accent, 0, 0.07, -0.04);
-    group.add(halo, mat);
-  }
-
-  if (definition.archetype === 'runner') {
-    const sash = box(0.78, 0.11, 0.08, definition.accent, 0, 0.88, 0.32);
-    const leftShoe = box(0.2, 0.1, 0.32, 0x1b2f43, -0.2, 0.1, 0.1);
-    const rightShoe = box(0.2, 0.1, 0.32, 0x1b2f43, 0.2, 0.1, -0.06);
-    group.add(sash, leftShoe, rightShoe);
-  }
-
-  if (definition.archetype === 'lifter') {
-    const leftArm = cylinder(0.12, 0.14, 0.68, definition.accent, 6);
-    leftArm.position.set(-0.52, 0.72, 0);
-    leftArm.rotation.z = 0.2;
-    const rightArm = leftArm.clone();
-    rightArm.position.x = 0.52;
-    rightArm.rotation.z = -0.2;
-    const bar = cylinder(0.035, 0.035, 1.28, 0x303b4d, 8);
-    bar.rotation.z = Math.PI / 2;
-    bar.position.set(0, 1.28, 0.03);
-    const leftPlate = cylinder(0.16, 0.16, 0.12, 0x303b4d, 8);
-    leftPlate.rotation.z = Math.PI / 2;
-    leftPlate.position.set(-0.72, 1.28, 0.03);
-    const rightPlate = leftPlate.clone();
-    rightPlate.position.x = 0.72;
-    group.add(leftArm, rightArm, bar, leftPlate, rightPlate);
-  }
-
-  if (definition.archetype === 'spinner') {
-    const wheelA = new Mesh(new TorusGeometry(0.28, 0.04, 6, 12), accent);
-    wheelA.position.set(-0.42, 0.24, 0.2);
-    wheelA.rotation.y = Math.PI / 2;
-    const wheelB = wheelA.clone();
-    wheelB.position.x = 0.42;
-    const handle = box(0.86, 0.08, 0.08, definition.accent, 0, 1.24, 0.18);
-    group.add(wheelA, wheelB, handle);
-  }
-
-  if (definition.archetype === 'climber') {
-    const chalkBag = cylinder(0.16, 0.19, 0.22, 0xf3f0e7, 6);
-    chalkBag.position.set(0.42, 0.54, -0.1);
-    const leftGrip = box(0.22, 0.18, 0.16, definition.accent, -0.52, 1.02, 0.04);
-    const rightGrip = box(0.22, 0.18, 0.16, definition.accent, 0.52, 1.14, 0.04);
-    group.add(chalkBag, leftGrip, rightGrip);
-  }
+  addBuddySpeciesFeatures(group, definition);
 
   addBuddyMuscleFeatures(group, definition, safeTraits);
+  if (isExotic) {
+    group.scale.setScalar(1.18);
+    addExoticBuddyAura(group, definition);
+  }
 
   return markShadows(group) as Group;
 }
@@ -2325,21 +2817,40 @@ export function createBossMesh(definition: BossDefinition): Group {
   return markShadows(group) as Group;
 }
 
-export function createProteinShakerProjectile(): Group {
+export function createArmWrestleArmMesh(scale = 1): Group {
   const group = new Group();
-  const body = cylinder(0.13, 0.15, 0.54, 0x2aa6a5, 8);
-  body.rotation.x = Math.PI / 2;
-  const lid = cylinder(0.12, 0.12, 0.08, 0xf9f7ef, 8);
-  lid.rotation.x = Math.PI / 2;
-  lid.position.z = 0.31;
-  const base = cylinder(0.11, 0.11, 0.04, 0xf9f7ef, 8);
-  base.rotation.x = Math.PI / 2;
-  base.position.z = -0.31;
-  const band = cylinder(0.132, 0.132, 0.07, 0xff705c, 8);
-  band.rotation.x = Math.PI / 2;
-  band.position.z = 0.03;
-  const spout = box(0.08, 0.08, 0.12, 0xf9f7ef, 0, 0.12, 0.36);
-  group.add(body, lid, base, band, spout);
+  const forearm = new Mesh(
+    new BoxGeometry(0.075, 0.07, 0.35),
+    standardMaterial(0x59453b)
+  );
+  forearm.position.set(0, 0, 0.175);
+  const forearmCap = new Mesh(
+    new BoxGeometry(0.095, 0.08, 0.16),
+    standardMaterial(0xdcc7a5)
+  );
+  forearmCap.position.set(0, 0.02, 0.34);
+  forearm.castShadow = true;
+  forearm.receiveShadow = true;
+  forearmCap.castShadow = true;
+  forearmCap.receiveShadow = true;
+  group.add(forearm, forearmCap);
+  group.scale.setScalar(scale > 1.5 ? 1.5 : scale < 0.6 ? 0.6 : scale);
+  return markShadows(group) as Group;
+}
+
+export function createBabyCryingDrops(): Group {
+  const group = new Group();
+  const material = new MeshBasicMaterial({
+    color: 0x72d4ff,
+    transparent: true,
+    opacity: 0.92
+  });
+  const leftTear = new Mesh(new SphereGeometry(0.024, 8, 8), material);
+  const rightTear = leftTear.clone();
+  leftTear.position.set(-0.055, 0.05, 0.15);
+  rightTear.position.set(0.055, 0.05, 0.08);
+  group.add(leftTear, rightTear);
+  group.scale.setScalar(1);
   return markShadows(group) as Group;
 }
 
