@@ -21,6 +21,40 @@ function hasMoveInput(x: number, z: number): boolean {
   return Math.hypot(x, z) > 0.01;
 }
 
+function isInteractiveElement(target: EventTarget | null): boolean {
+  return target instanceof Element && Boolean(
+    target.closest(
+      [
+        'button',
+        'a',
+        'input',
+        'select',
+        'textarea',
+        '[role="button"]',
+        '[data-ui]',
+        '[data-panel]',
+        '[data-menu-open]',
+        '[data-capture-action]',
+        '[data-catch]',
+        '[data-interact]',
+        '[data-sprint]',
+        '.hud',
+        '.drawer',
+        '.modal',
+        '.target-preview',
+        '.capture-result-card',
+        '.character-creator',
+        '.settings-panel',
+        '.repdex-panel',
+        '.crew-panel',
+        '.goals-panel',
+        '.quests-panel',
+        '.tutorial-popup'
+      ].join(', ')
+    )
+  );
+}
+
 function applyRadialDeadZone(x: number, z: number, deadZone: number): { x: number; z: number } {
   const magnitude = Math.hypot(x, z);
 
@@ -43,6 +77,8 @@ export class InputController {
   private pointerMoveAxis = { x: 0, z: 0 };
   private pointerMoveActive = false;
   private pointerMoveId?: number;
+  private pointerMoveSurface?: HTMLElement;
+  private canUsePointerMove: () => boolean = () => true;
   private virtualSprintHeld = false;
   private smoothedTouchAxis = { x: 0, z: 0 };
   private catchQueued = false;
@@ -121,19 +157,32 @@ export class InputController {
     });
   }
 
-  bindMouseControls(surface: HTMLElement): void {
+  cancelPointerMove(): void {
+    if (this.pointerMoveId !== undefined && this.pointerMoveSurface?.hasPointerCapture(this.pointerMoveId)) {
+      this.pointerMoveSurface.releasePointerCapture(this.pointerMoveId);
+    }
+
+    this.pointerMoveAxis = { x: 0, z: 0 };
+    this.pointerMoveActive = false;
+    this.pointerMoveId = undefined;
+    this.pointerMoveSurface = undefined;
+  }
+
+  queueCapture(): void {
+    this.cancelPointerMove();
+    this.catchQueued = true;
+    this.lastInputLabel = this.mode === 'touch' ? TOUCH_INPUT_LABEL : DESKTOP_INPUT_LABEL;
+  }
+
+  bindMouseControls(surface: HTMLElement, canUsePointerMove: () => boolean = () => true): void {
+    this.canUsePointerMove = canUsePointerMove;
+
     const resetPointerMove = (event?: PointerEvent) => {
       if (event && this.pointerMoveId !== event.pointerId) {
         return;
       }
 
-      if (event && surface.hasPointerCapture(event.pointerId)) {
-        surface.releasePointerCapture(event.pointerId);
-      }
-
-      this.pointerMoveAxis = { x: 0, z: 0 };
-      this.pointerMoveActive = false;
-      this.pointerMoveId = undefined;
+      this.cancelPointerMove();
     };
 
     const updatePointerMove = (event: PointerEvent) => {
@@ -151,9 +200,15 @@ export class InputController {
       };
       this.pointerMoveActive = hasMoveInput(this.pointerMoveAxis.x, this.pointerMoveAxis.z);
       this.pointerMoveId = event.pointerId;
+      this.pointerMoveSurface = surface;
     };
 
     surface.addEventListener('pointerdown', (event) => {
+      if (isInteractiveElement(event.target) || !this.canUsePointerMove()) {
+        this.cancelPointerMove();
+        return;
+      }
+
       const isMouseMove = this.mode === 'keyboard-mouse' && event.pointerType === 'mouse' && event.button === 0;
       const isTouchMove = this.mode === 'touch' && event.pointerType !== 'mouse';
 
@@ -177,6 +232,11 @@ export class InputController {
     });
 
     surface.addEventListener('pointermove', (event) => {
+      if (!this.canUsePointerMove()) {
+        resetPointerMove(event);
+        return;
+      }
+
       if (!this.pointerMoveActive && this.pointerMoveId !== event.pointerId) {
         return;
       }
@@ -419,6 +479,10 @@ export class InputController {
   }
 
   read(): ActionState {
+    if (!this.canUsePointerMove()) {
+      this.cancelPointerMove();
+    }
+
     let keyboardX = 0;
     let keyboardZ = 0;
 

@@ -97,6 +97,7 @@ export class GameHud {
   private readonly targetPreviewName: HTMLDivElement;
   private readonly targetPreviewRarity: HTMLDivElement;
   private readonly targetPreviewChance: HTMLDivElement;
+  private readonly targetCaptureButton: HTMLButtonElement;
   private readonly goalsList: HTMLDivElement;
   private readonly goalsPanel: HTMLElement;
   private readonly goalsPanelToggle: HTMLButtonElement;
@@ -328,6 +329,7 @@ export class GameHud {
   private readonly creatorBodySizeValueElements = new Map<BodySizeKey, HTMLElement>();
   private appearanceNotifyHandle: number | null = null;
   private hasStarted = false;
+  private readonly captureActionListeners: Array<() => void> = [];
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -361,7 +363,7 @@ export class GameHud {
             <div class="target-preview-name" data-target-preview-name></div>
             <div class="target-preview-rarity" data-target-preview-rarity></div>
             <div class="target-preview-chance" data-target-preview-chance></div>
-            <div class="target-preview-action">Arm Wrestle</div>
+            <button type="button" class="target-preview-action" data-capture-action>Arm Wrestle</button>
           </section>
           <section class="goals-panel hud-panel--collapsible" data-panel="goals" aria-label="Progress goals">
             <div class="panel-title">
@@ -426,14 +428,14 @@ export class GameHud {
           </div>
         </section>
         <section class="repdex-detail" data-repdex-detail hidden aria-label="RepDex creature detail">
-          <button type="button" class="repdex-detail-close" data-repdex-detail-close aria-label="Close creature card">�</button>
+          <button type="button" class="repdex-detail-close" data-repdex-detail-close aria-label="Close creature card">ï¿½</button>
           <h2 class="repdex-detail-title" data-repdex-detail-title>Creature</h2>
           <div class="repdex-detail-grid">
             <div class="repdex-detail-field"><span>Species</span><strong data-repdex-detail-species>Unknown</strong></div>
             <div class="repdex-detail-field"><span>Type</span><strong data-repdex-detail-type>Normal</strong></div>
             <div class="repdex-detail-field"><span>Rarity</span><strong data-repdex-detail-rarity>Normal</strong></div>
-            <div class="repdex-detail-field repdex-detail-full"><span>Personality</span><strong data-repdex-detail-personality>�</strong></div>
-            <div class="repdex-detail-field repdex-detail-full"><span>Favorite Workout</span><strong data-repdex-detail-fav-workout>�</strong></div>
+            <div class="repdex-detail-field repdex-detail-full"><span>Personality</span><strong data-repdex-detail-personality>ï¿½</strong></div>
+            <div class="repdex-detail-field repdex-detail-full"><span>Favorite Workout</span><strong data-repdex-detail-fav-workout>ï¿½</strong></div>
             <div class="repdex-detail-field repdex-detail-full"><span>Caught</span><strong data-repdex-detail-count>0</strong></div>
           </div>
           <p class="repdex-detail-description" data-repdex-detail-description>Capture a creature to add details.</p>
@@ -463,7 +465,7 @@ export class GameHud {
           </div>
         </section>
         <section class="crew-detail" data-crew-detail hidden aria-label="Crew creature detail">
-          <button type="button" class="crew-detail-close" data-crew-detail-close aria-label="Close crew detail">�</button>
+          <button type="button" class="crew-detail-close" data-crew-detail-close aria-label="Close crew detail">ï¿½</button>
           <h2 class="crew-detail-title" data-crew-detail-title>Creature</h2>
           <div class="crew-detail-grid">
             <div class="crew-detail-field"><span>Species</span><strong data-crew-detail-species>Unknown</strong></div>
@@ -474,7 +476,7 @@ export class GameHud {
             <div class="crew-detail-field"><span>Endurance</span><strong data-crew-detail-endurance>0</strong></div>
             <div class="crew-detail-field"><span>Focus</span><strong data-crew-detail-focus>0</strong></div>
             <div class="crew-detail-field"><span>Energy</span><strong data-crew-detail-energy>100</strong></div>
-            <div class="crew-detail-field"><span>Caught</span><strong data-crew-detail-caught>�</strong></div>
+            <div class="crew-detail-field"><span>Caught</span><strong data-crew-detail-caught>ï¿½</strong></div>
             <div class="crew-detail-field crew-detail-field--wide">
               <span>Rename this buddy</span>
               <div class="crew-detail-rename">
@@ -775,6 +777,7 @@ export class GameHud {
     const targetPreviewName = root.querySelector<HTMLDivElement>('[data-target-preview-name]');
     const targetPreviewRarity = root.querySelector<HTMLDivElement>('[data-target-preview-rarity]');
     const targetPreviewChance = root.querySelector<HTMLDivElement>('[data-target-preview-chance]');
+    const targetCaptureButton = root.querySelector<HTMLButtonElement>('[data-capture-action]');
     const goalsList = root.querySelector<HTMLDivElement>('[data-goals-list]');
     const goalsPanel = root.querySelector<HTMLElement>('.goals-panel[data-panel="goals"]');
     const goalsPanelToggle = root.querySelector<HTMLButtonElement>('[data-panel-toggle="goals"]');
@@ -925,6 +928,7 @@ export class GameHud {
       !targetPreviewName ||
       !targetPreviewRarity ||
       !targetPreviewChance ||
+      !targetCaptureButton ||
       !goalsList ||
       !goalsPanel ||
       !goalsPanelToggle ||
@@ -1091,6 +1095,7 @@ export class GameHud {
     this.targetPreviewName = targetPreviewName;
     this.targetPreviewRarity = targetPreviewRarity;
     this.targetPreviewChance = targetPreviewChance;
+    this.targetCaptureButton = targetCaptureButton;
     this.goalsList = goalsList;
     this.goalsPanel = goalsPanel;
     this.goalsPanelToggle = goalsPanelToggle;
@@ -1389,7 +1394,7 @@ export class GameHud {
               <span class="dex-row-meta">Species ${entry.definition.species}</span>
               ${this.renderRarityBadge(entry.definition.rarity)}
               <span class="dex-row-meta">Personality ${entry.definition.personalityTag}</span>
-              <span class="dex-row-meta">${entry.count} caught � Best Lv ${entry.highestLevel}</span>
+              <span class="dex-row-meta">${entry.count} caught ï¿½ Best Lv ${entry.highestLevel}</span>
             </div>
           </div>
         `
@@ -1824,7 +1829,7 @@ export class GameHud {
     this.setRarityBadgeClasses(this.repDexDetailRarity, definition.rarity, 'detail-rarity-badge');
     this.repDexDetailPersonality.textContent = definition.personalityTag;
     this.repDexDetailFavoriteWorkout.textContent = definition.favoriteWorkout;
-    this.repDexDetailCount.textContent = `${entry.count} caught � Best Lv ${entry.highestLevel}`;
+    this.repDexDetailCount.textContent = `${entry.count} caught ï¿½ Best Lv ${entry.highestLevel}`;
     this.repDexDetailDescription.textContent = this.getRepDexDescription(definition);
     this.repDexDetailOdds.innerHTML = `
       <div class="repdex-detail-odds-title">Catch odds by level</div>
@@ -2013,6 +2018,10 @@ export class GameHud {
 
   onBossChallenge(callback: () => void): void {
     this.bossChallengeListeners.push(callback);
+  }
+
+  onCaptureAction(callback: () => void): void {
+    this.captureActionListeners.push(callback);
   }
 
   onPreviewRotationChange(callback: (rotation: number) => void): void {
@@ -2222,6 +2231,9 @@ export class GameHud {
       this.activeWorkout ||
         this.activeVending ||
         this.activeDrawer ||
+        !this.captureResultCard.hidden ||
+        this.pendingCaptureResult ||
+        this.root.classList.contains('game-root--capture-active') ||
         (this.hasStarted && !this.characterCreator.hidden)
     );
   }
@@ -3302,6 +3314,12 @@ export class GameHud {
   }
 
   private bindCaptureResultUi(): void {
+    this.bindMobilePress(this.targetCaptureButton, () => {
+      this.closeCreatureDetails(false);
+      this.openDrawer(undefined);
+      this.captureActionListeners.forEach((callback) => callback());
+    });
+
     this.bindMobilePress(this.captureResultClose, () => {
       this.hideCaptureResult(true);
     });

@@ -18,3 +18,11 @@ Files touched:
 - src/render/app/createGymBuddyGame.ts
 - src/style.css
 - docs/priority-fix-reference.txt
+
+Follow-up input priority fix:
+- Added an interactive-target guard in src/game/input/actions.ts so playfield click/tap movement ignores buttons, panels, HUD, target preview, capture actions, settings, crew, RepDex, goals, tutorial cards, and modal-like UI.
+- Added InputController.queueCapture() and cancelPointerMove() so UI capture actions stop any active click-to-move gesture before queueing capture.
+- Converted the target preview "Arm Wrestle" affordance into a real button with data-capture-action.
+- Connected HUD capture action events to the existing input capture queue in createGymBuddyGame.ts.
+- Pointer movement now starts only when the game has started and HUD interaction/capture/customization overlays are not active.
+- CSS now explicitly keeps visible HUD controls above the canvas and disables pointer events for hidden panels.

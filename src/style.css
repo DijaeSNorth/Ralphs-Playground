@@ -3794,6 +3794,49 @@ button {
   }
 }
 
+/* Pointer priority fix: canvas receives playfield gestures, visible HUD controls receive UI taps. */
+.game-canvas {
+  z-index: 0;
+  touch-action: none;
+}
+
+.hud {
+  z-index: 20;
+}
+
+.hud-menu-bar,
+.hud-menu-button,
+.target-preview,
+.target-preview-action,
+.capture-result-card,
+.capture-result-card button,
+.settings-panel,
+.settings-panel button,
+.repdex-panel,
+.crew-panel,
+.goals-panel,
+.quests-panel,
+.character-creator,
+.character-creator button {
+  pointer-events: auto;
+}
+
+.target-preview-action {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.game-root:not(.game-root--drawer-repdex) .repdex-panel,
+.game-root:not(.game-root--drawer-crew) .crew-panel,
+.game-root:not(.game-root--drawer-goals) .goals-panel,
+.game-root:not(.game-root--drawer-goals) .quests-panel,
+.capture-result-card[hidden],
+.settings-panel[hidden],
+.character-creator[hidden],
+.target-preview--hidden {
+  pointer-events: none !important;
+}
+
 /* Creature Data safety: hidden detail sheets must never trap gameplay. */
 .repdex-detail,
 .crew-detail {
