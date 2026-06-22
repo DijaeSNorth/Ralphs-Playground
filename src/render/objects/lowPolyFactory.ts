@@ -1551,51 +1551,125 @@ export function createPlayerMesh(appearance?: PlayerAppearance): Group {
       ...(appearance?.body ?? {})
     }
   };
+  const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
   const sizing = getBodySize(resolvedAppearance);
   const buildSpec = MUSCLE_SPECS[resolveBuild(resolvedAppearance.muscleBuild)];
   const frameSpec = FRAME_SPECS[resolvedAppearance.frame] ?? FRAME_SPECS.balanced;
-  const buildMass = buildSpec.baseScale / MUSCLE_SPECS.athletic.baseScale;
+  const buildMass = clamp(buildSpec.baseScale / MUSCLE_SPECS.athletic.baseScale, 0.88, 1.16);
+  const heightScale = clamp(sizing.height * frameSpec.heightScale, 0.9, 1.14);
+  const shoulderScale = clamp(sizing.shoulders * frameSpec.shoulderSpread, 0.82, 1.22);
+  const torsoScale = clamp(sizing.torso * frameSpec.torsoTopScale, 0.86, 1.18);
+  const chestScale = clamp(sizing.chest, 0.72, 1.28);
+  const wingsScale = clamp(sizing.wings, 0.72, 1.32);
+  const armScale = clamp(sizing.arms * buildMass, 0.82, 1.22);
+  const legScale = clamp(sizing.legs, 0.86, 1.2);
+  const thighScale = clamp(sizing.thighs * frameSpec.hipSpread, 0.82, 1.22);
+  const calfScale = clamp(sizing.calfs, 0.82, 1.2);
+  const gluteScale = clamp(sizing.glutes * frameSpec.hipSpread, 0.78, 1.24);
   const skin = getSkinToneOption(resolvedAppearance.skinTone).color;
   const hair = getHairOption(resolvedAppearance.hair).color;
   const outline = 0x162238;
-  const shirt = 0x3f7cf0;
-  const shorts = 0x23324d;
-  const accent = 0xffe56d;
-  const torsoWidth = 0.68 * buildMass * sizing.torso * frameSpec.torsoTopScale;
-  const torsoHeight = 0.62 * Math.max(0.9, frameSpec.heightScale);
-  const shoulderWidth = 0.18 * buildMass * sizing.arms;
-  const armHeight = 0.46 * sizing.arms;
-  const legWidth = 0.26 * sizing.thighs;
-  const legHeight = 0.34 * sizing.legs;
-  const hipOffset = 0.16 * frameSpec.hipSpread;
-  const shadow = new Mesh(new CylinderGeometry(0.62, 0.62, 0.035, 16), basicMaterial(outline, 0.28));
-  shadow.scale.set(1.28, 1, 0.42);
+  const trainerBlue = 0x2f7de1;
+  const trainerNavy = 0x26395d;
+  const shirtCream = 0xfff2c6;
+  const accent = 0xffd85a;
+  const coral = 0xf05f4f;
+  const glove = 0xf7fbff;
+  const shadow = new Mesh(new CylinderGeometry(0.62, 0.62, 0.035, 16), basicMaterial(outline, 0.26));
+  shadow.scale.set(1.18 + shoulderScale * 0.1, 1, 0.38 + legScale * 0.04);
   shadow.rotation.x = Math.PI / 2;
   shadow.position.y = 0.025;
   group.add(shadow);
+
   const addFlat = (width: number, height: number, depth: number, color: number, x: number, y: number, z: number): Mesh => {
     const back = box(width + 0.09, height + 0.09, depth + 0.04, outline, x, y, z - 0.045);
     const front = box(width, height, depth, color, x, y, z);
     group.add(back, front);
     return front;
   };
-  addFlat(legWidth, legHeight, 0.16, shorts, -hipOffset, 0.28, 0.02);
-  addFlat(legWidth, legHeight, 0.16, shorts, hipOffset, 0.28, 0.02);
-  addFlat(0.38, 0.16, 0.18, 0xffffff, -0.18, 0.08, 0.05);
-  addFlat(0.38, 0.16, 0.18, 0xffffff, 0.18, 0.08, 0.05);
-  addFlat(torsoWidth, torsoHeight, 0.18, shirt, 0, 0.75, 0.03);
-  addFlat(torsoWidth * 1.12 * sizing.shoulders * frameSpec.shoulderSpread, 0.18, 0.2, accent, 0, 1.0, 0.06);
-  addFlat(shoulderWidth, armHeight, 0.15, skin, -0.52 * sizing.shoulders * frameSpec.shoulderSpread, 0.77, 0.03).rotation.z = -0.22;
-  addFlat(shoulderWidth, armHeight, 0.15, skin, 0.52 * sizing.shoulders * frameSpec.shoulderSpread, 0.77, 0.03).rotation.z = 0.22;
-  addFlat(0.48, 0.48, 0.19, skin, 0, 1.32, 0.05);
-  addFlat(0.52, 0.18, 0.18, hair, 0, 1.56, 0.03);
-  addFlat(0.54, 0.15, 0.2, hair, 0.05, 1.59, 0.1);
-  addFlat(0.34, 0.08, 0.24, hair, 0.28, 1.52, 0.16);
-  addFlat(0.09, 0.09, 0.08, outline, -0.1, 1.32, 0.17);
-  addFlat(0.09, 0.09, 0.08, outline, 0.1, 1.32, 0.17);
-  addPlayerMuscleGeometry(group, resolvedAppearance, skin, accent);
+
+  const addSoft = (
+    radius: number,
+    color: number,
+    x: number,
+    y: number,
+    z: number,
+    scaleX = 1,
+    scaleY = 1,
+    scaleZ = 1
+  ): Mesh => {
+    const mesh = new Mesh(new IcosahedronGeometry(radius, 0), standardMaterial(color));
+    mesh.position.set(x, y, z);
+    mesh.scale.set(scaleX, scaleY, scaleZ);
+    group.add(mesh);
+    return mesh;
+  };
+
+  const hipOffset = 0.15 * frameSpec.hipSpread;
+  const legWidth = 0.2 * thighScale;
+  const legHeight = 0.34 * legScale;
+  const footWidth = 0.32 * calfScale;
+  addFlat(legWidth, legHeight, 0.16, trainerNavy, -hipOffset, 0.32, 0.02);
+  addFlat(legWidth, legHeight, 0.16, trainerNavy, hipOffset, 0.32, 0.02);
+  addFlat(0.14 * calfScale, 0.22 * legScale, 0.13, skin, -hipOffset, 0.17, 0.04);
+  addFlat(0.14 * calfScale, 0.22 * legScale, 0.13, skin, hipOffset, 0.17, 0.04);
+  addFlat(footWidth, 0.11, 0.2, glove, -hipOffset, 0.065, 0.12);
+  addFlat(footWidth, 0.11, 0.2, glove, hipOffset, 0.065, 0.12);
+  addFlat(footWidth * 0.72, 0.045, 0.21, coral, -hipOffset, 0.09, 0.21);
+  addFlat(footWidth * 0.72, 0.045, 0.21, coral, hipOffset, 0.09, 0.21);
+
+  const torsoWidth = 0.62 * torsoScale * (0.95 + shoulderScale * 0.08);
+  const torsoHeight = 0.58 * (0.96 + buildMass * 0.08);
+  addFlat(torsoWidth * 1.08, torsoHeight, 0.19, trainerBlue, 0, 0.78, 0.02);
+  addFlat(torsoWidth * 0.62, torsoHeight * 0.78, 0.21, shirtCream, 0, 0.8, 0.11);
+  addFlat(torsoWidth * 1.12 * shoulderScale, 0.13, 0.22, accent, 0, 1.05, 0.1);
+  addFlat(torsoWidth * 0.86, 0.085, 0.18, trainerNavy, 0, 0.47, 0.09);
+
+  if (chestScale > 0.82) {
+    const pecWidth = 0.13 * chestScale * torsoScale;
+    addFlat(pecWidth, 0.08, 0.055, accent, -0.11 * torsoScale, 0.88, 0.24).rotation.z = 0.12;
+    addFlat(pecWidth, 0.08, 0.055, accent, 0.11 * torsoScale, 0.88, 0.24).rotation.z = -0.12;
+  }
+
+  if (wingsScale > 0.82) {
+    const latHeight = 0.28 * wingsScale;
+    const leftLat = addFlat(0.075, latHeight, 0.09, 0x245fba, -0.38 * shoulderScale, 0.77, -0.1);
+    leftLat.rotation.z = -0.2;
+    const rightLat = addFlat(0.075, latHeight, 0.09, 0x245fba, 0.38 * shoulderScale, 0.77, -0.1);
+    rightLat.rotation.z = 0.2;
+  }
+
+  const gluteWidth = 0.13 * gluteScale;
+  addFlat(gluteWidth, 0.1, 0.08, trainerNavy, -0.09 * frameSpec.hipSpread, 0.44, -0.12);
+  addFlat(gluteWidth, 0.1, 0.08, trainerNavy, 0.09 * frameSpec.hipSpread, 0.44, -0.12);
+
+  const shoulderOffset = 0.42 * shoulderScale;
+  addSoft(0.16 * armScale, skin, -shoulderOffset, 0.98, 0.08, 1.18, 0.78, 0.86);
+  addSoft(0.16 * armScale, skin, shoulderOffset, 0.98, 0.08, 1.18, 0.78, 0.86);
+  const leftArm = addFlat(0.15 * armScale, 0.42 * armScale, 0.14, skin, -0.49 * shoulderScale, 0.7, 0.06);
+  leftArm.rotation.z = -0.18;
+  const rightArm = addFlat(0.15 * armScale, 0.42 * armScale, 0.14, skin, 0.49 * shoulderScale, 0.7, 0.06);
+  rightArm.rotation.z = 0.18;
+  addFlat(0.18 * armScale, 0.075, 0.15, accent, -0.52 * shoulderScale, 0.51, 0.1).rotation.z = -0.18;
+  addFlat(0.18 * armScale, 0.075, 0.15, accent, 0.52 * shoulderScale, 0.51, 0.1).rotation.z = 0.18;
+  addSoft(0.095 * armScale, glove, -0.54 * shoulderScale, 0.43, 0.12, 1.15, 0.78, 0.84);
+  addSoft(0.095 * armScale, glove, 0.54 * shoulderScale, 0.43, 0.12, 1.15, 0.78, 0.84);
+
+  addSoft(0.37, outline, 0, 1.33, -0.015, 1.06, 1.02, 0.84);
+  addSoft(0.32, skin, 0, 1.34, 0.04, 1.08, 1.03, 0.82);
+  addFlat(0.48, 0.07, 0.08, accent, 0, 1.52, 0.2);
+  addFlat(0.08, 0.08, 0.045, outline, -0.1, 1.38, 0.32);
+  addFlat(0.08, 0.08, 0.045, outline, 0.1, 1.38, 0.32);
+  addFlat(0.035, 0.035, 0.035, 0xffffff, -0.085, 1.395, 0.355);
+  addFlat(0.035, 0.035, 0.035, 0xffffff, 0.115, 1.395, 0.355);
+  addFlat(0.16, 0.035, 0.04, coral, 0, 1.26, 0.31);
+  addFlat(0.09, 0.05, 0.04, 0xffb98c, -0.23, 1.31, 0.27);
+  addFlat(0.09, 0.05, 0.04, 0xffb98c, 0.23, 1.31, 0.27);
+  addFlat(0.28, 0.32, 0.08, coral, 0, 0.86, -0.16);
+  addFlat(0.2, 0.1, 0.07, accent, 0, 1.17, -0.14);
   addPlayerHair(group, resolvedAppearance);
-  group.scale.setScalar(0.92 * sizing.height * frameSpec.heightScale);
+
+  group.scale.setScalar(0.92 * heightScale);
   return markShadows(group) as Group;
 }
 

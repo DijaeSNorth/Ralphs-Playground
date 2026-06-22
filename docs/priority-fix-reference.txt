@@ -33,3 +33,9 @@ Customization fix:
 - Appearance listeners now hydrate immediately, so the preview and gameplay player receive the current appearance on startup and update live from Settings customization.
 - Creator controls include short helper descriptions and a live Build/Frame/Focus summary.
 - Front View, Back View, Rotate Left, Rotate Right, and Reset View continue to drive the existing preview rotation listener.
+
+Player character redesign:
+- Replaced the harsh blocky player mesh with a softer 2.5D retro trainer silhouette.
+- The player now has a larger rounded head, simple eyes/smile, headband, gloves, sneakers, trainer outfit, rear backpack/backplate details, and a cleaner shadow blob.
+- Customization still drives skin, hair, muscle build, frame, shoulders, arms, chest, wings/back, torso, legs, glutes, thighs, calves, and height.
+- Slider ranges are visually clamped in the mesh so high values read heroic/swole without extreme distortion.
