@@ -80,8 +80,8 @@ export const MUSCLE_BUILD_OPTIONS: Array<{ id: MuscleBuild; label: string; descr
   { id: 'toned', label: 'Toned', description: 'Lean definition and sharper muscle lines.' },
   { id: 'athletic', label: 'Athletic', description: 'Stronger shoulders, arms, and legs.' },
   { id: 'muscular', label: 'Muscular', description: 'Visibly larger arms, chest, and back.' },
-  { id: 'bodybuilder', label: 'Bodybuilder', description: 'Exaggerated upper body and mass.' },
-  { id: 'elite', label: 'Elite', description: 'Maximum stylized build.' }
+  { id: 'bodybuilder', label: 'Bodybuilder', description: 'Big but clean, stylized, and readable.' },
+  { id: 'elite', label: 'Elite', description: 'Heroic swole shape without distortion.' }
 ];
 
 export const FRAME_OPTIONS: Array<{ id: BodyFrame; label: string; description: string }> = [
@@ -115,21 +115,21 @@ export const BODY_SIZE_CONTROLS: Array<{
 
 export const DEFAULT_PLAYER_APPEARANCE: PlayerAppearance = {
   sex: 'man',
-  hair: 'afro',
-  skinTone: 'deep',
+  hair: 'swept-back',
+  skinTone: 'warm',
   muscleBuild: 'athletic',
   frame: 'balanced',
   body: {
-    height: 1,
-    shoulders: 1,
-    torso: 1,
-    arms: 1,
-    legs: 1,
-    chest: 1,
-    wings: 1,
-    glutes: 1,
-    thighs: 1,
-    calfs: 1
+    height: 1.02,
+    shoulders: 1.08,
+    torso: 1.02,
+    arms: 1.08,
+    legs: 1.04,
+    chest: 1.08,
+    wings: 1.05,
+    glutes: 1.02,
+    thighs: 1.03,
+    calfs: 1.02
   }
 };
 

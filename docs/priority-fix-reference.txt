@@ -39,3 +39,9 @@ Player character redesign:
 - The player now has a larger rounded head, simple eyes/smile, headband, gloves, sneakers, trainer outfit, rear backpack/backplate details, and a cleaner shadow blob.
 - Customization still drives skin, hair, muscle build, frame, shoulders, arms, chest, wings/back, torso, legs, glutes, thighs, calves, and height.
 - Slider ranges are visually clamped in the mesh so high values read heroic/swole without extreme distortion.
+
+Customization polish:
+- Default player appearance is now warm skin, swept-back hair, athletic build, balanced frame, and lightly boosted heroic proportions.
+- Build styles are tuned from Beginner through Elite with intentional mass, arm, chest, and leg scaling.
+- Frame styles now add tasteful shoulder/waist/hip/height/lower-body differences without extreme distortion.
+- Live creator summary now reports Build, Frame, Base, and a readable visual Focus such as boosted shoulders or heroic silhouette.

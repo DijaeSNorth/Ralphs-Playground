@@ -1553,19 +1553,48 @@ export function createPlayerMesh(appearance?: PlayerAppearance): Group {
   };
   const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
   const sizing = getBodySize(resolvedAppearance);
-  const buildSpec = MUSCLE_SPECS[resolveBuild(resolvedAppearance.muscleBuild)];
+  const build = resolveBuild(resolvedAppearance.muscleBuild);
+  const buildStyles: Record<
+    CanonicalMuscleBuild,
+    { mass: number; arms: number; chest: number; legs: number }
+  > = {
+    beginner: { mass: 0.9, arms: 0.88, chest: 0.88, legs: 0.92 },
+    average: { mass: 0.96, arms: 0.95, chest: 0.95, legs: 0.97 },
+    toned: { mass: 0.99, arms: 0.99, chest: 0.98, legs: 1 },
+    athletic: { mass: 1.03, arms: 1.06, chest: 1.04, legs: 1.04 },
+    muscular: { mass: 1.08, arms: 1.12, chest: 1.1, legs: 1.07 },
+    bodybuilder: { mass: 1.12, arms: 1.17, chest: 1.15, legs: 1.09 },
+    elite: { mass: 1.16, arms: 1.22, chest: 1.19, legs: 1.11 }
+  };
+  const buildStyle = buildStyles[build];
   const frameSpec = FRAME_SPECS[resolvedAppearance.frame] ?? FRAME_SPECS.balanced;
-  const buildMass = clamp(buildSpec.baseScale / MUSCLE_SPECS.athletic.baseScale, 0.88, 1.16);
-  const heightScale = clamp(sizing.height * frameSpec.heightScale, 0.9, 1.14);
-  const shoulderScale = clamp(sizing.shoulders * frameSpec.shoulderSpread, 0.82, 1.22);
-  const torsoScale = clamp(sizing.torso * frameSpec.torsoTopScale, 0.86, 1.18);
-  const chestScale = clamp(sizing.chest, 0.72, 1.28);
-  const wingsScale = clamp(sizing.wings, 0.72, 1.32);
-  const armScale = clamp(sizing.arms * buildMass, 0.82, 1.22);
-  const legScale = clamp(sizing.legs, 0.86, 1.2);
-  const thighScale = clamp(sizing.thighs * frameSpec.hipSpread, 0.82, 1.22);
+  const frameStyles: Record<
+    PlayerAppearance['frame'],
+    { shoulders: number; waist: number; hips: number; height: number; lower: number }
+  > = {
+    balanced: { shoulders: 1, waist: 1, hips: 1, height: 1, lower: 1 },
+    tapered: { shoulders: 1.08, waist: 0.94, hips: 0.96, height: 1.01, lower: 0.97 },
+    curved: { shoulders: 0.96, waist: 0.98, hips: 1.09, height: 1, lower: 1.07 },
+    compact: { shoulders: 1.04, waist: 1.02, hips: 1.03, height: 0.94, lower: 1.04 },
+    voluptuous: { shoulders: 0.98, waist: 1.02, hips: 1.12, height: 1, lower: 1.11 },
+    pear: { shoulders: 0.94, waist: 1, hips: 1.16, height: 1, lower: 1.14 }
+  };
+  const frameStyle = frameStyles[resolvedAppearance.frame];
+  const buildMass = buildStyle.mass;
+  const heightScale = clamp(sizing.height * frameSpec.heightScale * frameStyle.height, 0.9, 1.12);
+  const shoulderScale = clamp(
+    sizing.shoulders * frameSpec.shoulderSpread * frameStyle.shoulders * (0.98 + buildMass * 0.02),
+    0.84,
+    1.22
+  );
+  const torsoScale = clamp(sizing.torso * frameSpec.torsoTopScale * frameStyle.waist, 0.88, 1.16);
+  const chestScale = clamp(sizing.chest * buildStyle.chest, 0.74, 1.28);
+  const wingsScale = clamp(sizing.wings * frameStyle.shoulders, 0.72, 1.3);
+  const armScale = clamp(sizing.arms * buildStyle.arms, 0.82, 1.22);
+  const legScale = clamp(sizing.legs * buildStyle.legs, 0.86, 1.18);
+  const thighScale = clamp(sizing.thighs * frameSpec.hipSpread * frameStyle.lower, 0.84, 1.2);
   const calfScale = clamp(sizing.calfs, 0.82, 1.2);
-  const gluteScale = clamp(sizing.glutes * frameSpec.hipSpread, 0.78, 1.24);
+  const gluteScale = clamp(sizing.glutes * frameSpec.hipSpread * frameStyle.hips, 0.82, 1.22);
   const skin = getSkinToneOption(resolvedAppearance.skinTone).color;
   const hair = getHairOption(resolvedAppearance.hair).color;
   const outline = 0x162238;
@@ -1605,7 +1634,7 @@ export function createPlayerMesh(appearance?: PlayerAppearance): Group {
     return mesh;
   };
 
-  const hipOffset = 0.15 * frameSpec.hipSpread;
+  const hipOffset = 0.15 * clamp(frameSpec.hipSpread * frameStyle.hips, 0.88, 1.18);
   const legWidth = 0.2 * thighScale;
   const legHeight = 0.34 * legScale;
   const footWidth = 0.32 * calfScale;

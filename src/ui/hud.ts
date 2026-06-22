@@ -4213,16 +4213,39 @@ export class GameHud {
     const muscle = MUSCLE_BUILD_OPTIONS.find((option) => option.id === this.appearance.muscleBuild);
     const frame = FRAME_OPTIONS.find((option) => option.id === this.appearance.frame);
     const sex = SEX_OPTIONS.find((option) => option.id === this.appearance.sex);
+    const buildFocus: Record<PlayerAppearance['muscleBuild'], string> = {
+      lean: 'lean casual frame',
+      beginner: 'smaller casual build',
+      average: 'balanced everyday build',
+      power: 'sporty powerful frame',
+      toned: 'lean definition',
+      athletic: 'sporty shoulders and capable legs',
+      sculpted: 'clean sculpted muscle',
+      muscular: 'wider shoulders, stronger arms, athletic torso',
+      bodybuilder: 'big clean upper body, still stylized',
+      elite: 'heroic swole silhouette'
+    };
+    const frameFocus: Record<PlayerAppearance['frame'], string> = {
+      balanced: 'even proportions',
+      tapered: 'wider shoulders and smaller waist',
+      compact: 'shorter powerful stance',
+      curved: 'stronger lower-body shape',
+      voluptuous: 'fuller lower-body emphasis',
+      pear: 'fuller hips and thighs'
+    };
     const bodyFocus = BODY_SIZE_CONTROLS.filter((control) => {
       const value = this.appearance.body[control.id] ?? 1;
       return Math.abs(value - 1) >= 0.08;
     })
       .slice(0, 3)
-      .map((control) => `${control.label}: ${control.description}`);
+      .map((control) => {
+        const value = this.appearance.body[control.id] ?? 1;
+        return value > 1 ? `${control.label.toLowerCase()} boosted` : `${control.label.toLowerCase()} leaner`;
+      });
     const focus =
       bodyFocus.length > 0
-        ? bodyFocus.join(' | ')
-        : `${muscle?.description ?? 'Balanced build.'} ${frame?.description ?? 'Even proportions.'}`;
+        ? bodyFocus.join(', ')
+        : `${buildFocus[this.appearance.muscleBuild]}, ${frameFocus[this.appearance.frame]}`;
 
     this.creatorSummary.innerHTML = `
       <strong>Build: ${muscle?.label ?? this.appearance.muscleBuild}</strong>
