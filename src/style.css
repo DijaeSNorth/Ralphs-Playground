@@ -1629,6 +1629,17 @@ button {
   text-align: center;
 }
 
+.creator-version {
+  display: inline-block;
+  margin-top: 5px;
+  border: 2px solid var(--line);
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--muted);
+  padding: 4px 6px;
+  font-size: 0.64rem;
+  font-weight: 900;
+}
+
 .feedback-notes {
   border: 3px solid var(--ink);
   background: rgba(255, 255, 255, 0.76);

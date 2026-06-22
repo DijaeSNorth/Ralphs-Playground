@@ -357,7 +357,7 @@ export class GameHud {
         </section>
         <section class="hud-cluster hud-cluster--right" aria-label="Player status">
           <div class="stat-row">
-            <span>Shakers</span>
+            <span>Gym Tokens</span>
             <strong data-shakers>0</strong>
           </div>
           <div class="stat-row">
@@ -564,7 +564,7 @@ export class GameHud {
           <div class="vending-options">
             <button type="button" class="vending-option" data-vending-energy>
               <strong>Energy Drink</strong>
-              <span data-vending-energy-meta>${VENDING_BALANCE.energyDrinkCost} shaker -> +${VENDING_BALANCE.energyDrinkStamina} stamina</span>
+              <span data-vending-energy-meta>${VENDING_BALANCE.energyDrinkCost} token -> +${VENDING_BALANCE.energyDrinkStamina} stamina</span>
             </button>
             <button type="button" class="vending-option" data-vending-snack>
               <strong>Protein Snack</strong>
@@ -596,10 +596,11 @@ export class GameHud {
               </div>
             </div>
           <div class="creator-panel">
-            <div class="creator-head">
-              <h1>Start Your Safari</h1>
-              <span>Ralph's Swole Safari</span>
-            </div>
+          <div class="creator-head">
+            <h1>Start Your Safari</h1>
+            <span>Ralph's Swole Safari</span>
+            <small class="creator-version">Version ${GAME_VERSION}</small>
+          </div>
             <div class="creator-event" data-creator-event>
               <span>Local Gym Event</span>
               <strong data-creator-event-name>${initialEvent.name}</strong>
@@ -3314,11 +3315,11 @@ export class GameHud {
 
     let energyMeta: string;
     if (lacksShaker) {
-      energyMeta = `Need ${machine.energyDrinkCost} shaker`;
+      energyMeta = `Need ${machine.energyDrinkCost} token`;
     } else if (staminaFull) {
       energyMeta = 'Stamina full';
     } else {
-      energyMeta = `${machine.energyDrinkCost} shaker -> +${machine.energyDrinkStamina} stamina`;
+      energyMeta = `${machine.energyDrinkCost} token -> +${machine.energyDrinkStamina} stamina`;
     }
 
     const snackMeta =

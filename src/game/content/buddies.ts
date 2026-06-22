@@ -1,19 +1,6 @@
 import { BUDDY_PASSIVE_DEFINITIONS } from './balance';
 import type { BuddyDefinition } from '../types';
 
-const WOMEN_FRIENDLY_BUDDY_NAMES = [
-  'Muscle Mommy',
-  'Lift Queen',
-  'Strength Sister',
-  'Iron Lady',
-  'Rep Royalty',
-  'Gainz Goddess',
-  'Power Mama',
-  'Plate Queen',
-  'She-Lifts',
-  'Athlete Anthem'
-];
-
 type BuddyDefinitionDraft = Omit<BuddyDefinition, 'passive'>;
 
 const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
@@ -723,9 +710,7 @@ export const BUDDY_BY_ID = new Map(BUDDY_DEFINITIONS.map((buddy) => [buddy.id, b
 
 export function getRandomBuddyName(definitionId: string): string {
   const definition = getBuddyDefinition(definitionId);
-  const candidates = Array.from(
-    new Set([definition.name, ...(definition.displayNames ?? []), ...WOMEN_FRIENDLY_BUDDY_NAMES])
-  );
+  const candidates = Array.from(new Set([definition.name, ...(definition.displayNames ?? [])]));
 
   return candidates[Math.floor(Math.random() * candidates.length)] ?? definition.name;
 }

@@ -481,7 +481,7 @@ export class GymBuddyWorld {
     const steroidText = steroidGain > 0 ? ` +${steroidGain} steroid` : '';
     this.events.push({
       type: 'workout',
-      message: `${station.name} complete. +${station.staminaReward} stamina, +${station.shakerReward} shaker.${steroidText}`
+      message: `${station.name} complete. +${station.staminaReward} stamina, +${station.shakerReward} gym token.${steroidText}`
     });
   }
 
@@ -499,7 +499,7 @@ export class GymBuddyWorld {
     if (this.player.proteinShakers < machine.energyDrinkCost) {
       this.events.push({
         type: 'vending',
-        message: `Need ${machine.energyDrinkCost} shaker to buy an energy drink.`
+        message: `Need ${machine.energyDrinkCost} gym token to buy an energy drink.`
       });
       return;
     }

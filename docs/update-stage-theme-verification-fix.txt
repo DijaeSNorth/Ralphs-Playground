@@ -1,0 +1,14 @@
+Theme verification/fix stage reference
+
+Verified present in code:
+- Pixel/retro presentation uses CSS pixel rendering and low internal Three.js render scale.
+- Creature definitions include original muscular animals such as Buff Bunny, Bench Bear, Flex Fox, Iron Rhino, Pump Panther, and Swole Gorilla.
+- Exotic definitions include Minotaur Maximus, Griffin Gains, Dragon Deadlift, and Cyclops Curl.
+- Capture events use captureStyle arm-wrestle and the renderer builds prone player/creature meshes with arm-wrestle arms and crying drops.
+- No protein shaker projectile factory is used for capture effects.
+- In-game version is 0.1.0-playtest.1.
+
+Fixes made:
+- Removed old human-style random buddy name fallback list from wild/captured creature naming.
+- Changed visible Shakers label and vending/workout text to Gym Tokens/token so the UI does not read like the old shaker-catcher build.
+- Added version label to the title/start screen as well as Settings.

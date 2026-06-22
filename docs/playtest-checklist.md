@@ -60,14 +60,14 @@ Version: `0.1.0-playtest.1`
 - Did save/load preserve crew, storage, levels, goals, settings, and RepDex progress?
 - Did Copy Playtest Report create a useful plain-text report without exposing personal info?
 - Did corrupt-save recovery show a friendly reset/reload screen instead of breaking permanently?
-- Any stale wording about protein shakers as capture items should be reported.
+- Any stale wording that implies protein shakers are capture items should be reported.
 
 ## 8. Known issues
 
 - Feedback collection is manual; the game does not upload tester notes.
 - Audio uses lightweight generated Web Audio tones, not final music or external sound assets.
 - Local rotating events are based on the tester's device date and do not require a backend.
-- Protein shakers may still exist as non-capture gym economy flavor if present, but they should not be described as the capture method.
+- Gym Tokens may exist as non-capture gym economy flavor if present, but they should not be described as the capture method.
 - Playtest reports include browser user agent and screen size by design, but omit raw save data and custom creature nicknames.
 - Save corruption backups stay in localStorage under a bad-save backup key for debugging; testers can still reset the active save.
 
