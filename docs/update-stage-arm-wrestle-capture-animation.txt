@@ -1,0 +1,16 @@
+ARM-WRESTLE CAPTURE ANIMATION STAGE
+Date: 2026-06-21
+Status: Completed
+
+Files changed in this stage:
+- C:\Users\jaysl\Documents\Ralph's Playground\src/render/app/createGymBuddyGame.ts
+- C:\Users\jaysl\Documents\Ralph's Playground\src/render/objects/lowPolyFactory.ts
+
+Implementation order:
+1. Replace capture render branch that previously launched a shaker-like projectile with arm-wrestling setup.
+2. Add arm-wrestling actor visuals (prone player/creature poses, arm meshes, body shake, arm wobble, contest tug-of-war motion).
+3. Add success/failure finish choreography:
+   - Success: player advantage, tears/cute crying cue, creature squash/disappears.
+   - Miss: creature pops up briefly then recoils/powers out and backs away.
+4. Ensure no capture-shot projectile is created for capture events.
+5. Run `npm run build`.

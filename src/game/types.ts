@@ -141,6 +141,21 @@ export type WorkoutType =
   | 'hack-squat'
   | 'free-weight-bench';
 
+export type ProgressGoalId =
+  | 'capture_3'
+  | 'capture_6'
+  | 'capture_10'
+  | 'capture_first_exotic'
+  | 'roster_level_10_any'
+  | 'repdex_half';
+
+export type ProgressGoalState = {
+  completed: boolean;
+  progress: number;
+};
+
+export type ProgressGoals = Record<ProgressGoalId, ProgressGoalState>;
+
 export type WorkoutStation = {
   id: string;
   name: string;
@@ -194,6 +209,12 @@ export type BuddyDefinition = {
   name: string;
   archetype: BuddyArchetype;
   gender?: BuddyGender;
+  personalityTag: string;
+  favoriteWorkout: string;
+  reactionLines: {
+    victory: string;
+    cry: string;
+  };
   description?: string;
   flavorText?: string;
   species: BuddySpecies;
@@ -213,6 +234,7 @@ export type BuddyRosterEntry = {
   definitionId: string;
   bodyTraits: BuddyBodyTraits;
   displayName?: string;
+  capturedAt?: number;
   level: number;
   xp: number;
   strength: number;
@@ -328,6 +350,8 @@ export type WorldEvent =
   | {
       type: 'roster';
       message: string;
+      steroidUsed?: boolean;
+      rosterId?: number;
     }
   | {
       type: 'vending';
@@ -385,6 +409,7 @@ export type WorldSnapshot = {
   activeBuddyCount: number;
   captureRange: number;
   arenaRadius: number;
+  goals: ProgressGoals;
   captureCutsceneRemaining: number;
   captureCutsceneDuration: number;
 };

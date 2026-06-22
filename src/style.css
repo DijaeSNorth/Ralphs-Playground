@@ -112,6 +112,11 @@ button {
   image-rendering: crisp-edges;
 }
 
+.game-root--pixel-filter-off .game-canvas canvas,
+.game-root--pixel-filter-off .creator-preview canvas {
+  image-rendering: auto;
+}
+
 .hud {
   position: absolute;
   inset: 0;
@@ -148,7 +153,9 @@ button {
 .toast,
 .repdex-panel,
 .crew-panel,
+.goals-panel,
 .boss-panel,
+.settings-panel,
 .freeweight-prompt,
 .vending-prompt,
 .vending-panel {
@@ -173,10 +180,14 @@ button {
   width: min(360px, calc(100vw - 36px));
   padding: 8px 10px;
   color: var(--ink);
+  pointer-events: none;
   background: var(--panel);
   border: 2px solid var(--line);
   box-shadow: var(--shadow);
+  z-index: 10;
   transition: opacity 120ms ease;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
 }
 
 .target-preview--hidden {
@@ -312,7 +323,73 @@ button {
   pointer-events: auto;
 }
 
+.goals-panel {
+  width: min(220px, calc(100vw - 36px));
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  pointer-events: auto;
+}
+
+.goals-list {
+  display: grid;
+  gap: 4px;
+  max-height: 190px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.goal-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  align-items: center;
+  min-height: 26px;
+  padding: 5px 6px;
+  border: 1px solid rgba(23, 36, 54, 0.18);
+  border-radius: 0;
+  color: rgba(23, 36, 54, 0.7);
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 0.67rem;
+  font-weight: 760;
+}
+
+.goal-row-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.goal-row-status {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 820;
+}
+
+.goal-row--done {
+  border-color: rgba(67, 230, 168, 0.48);
+  background: rgba(67, 230, 168, 0.2);
+}
+
+.goal-row--done .goal-row-title,
+.goal-row--done .goal-row-status {
+  color: #134f35;
+}
+
 .panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  min-height: 22px;
   margin-bottom: 6px;
   color: var(--muted);
   font-size: 0.72rem;
@@ -320,12 +397,59 @@ button {
   text-transform: uppercase;
 }
 
+.panel-title span {
+  line-height: 1;
+}
+
+.panel-toggle {
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 1px 1px 0 var(--pixel-edge);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.panel-toggle:active {
+  background: var(--coral);
+  color: #ffffff;
+}
+
+.hud-panel--collapsible .panel-body {
+  display: grid;
+  gap: 6px;
+  transition:
+    max-height 140ms ease,
+    opacity 140ms ease;
+  overflow: hidden;
+  max-height: 1000px;
+  opacity: 1;
+}
+
+.hud-panel--collapsed .panel-body,
+.panel-body--collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin-top: -2px;
+  pointer-events: none;
+}
+
 .dex-list {
   display: grid;
   gap: 5px;
   max-height: calc(min(300px, calc(100vh - 240px)) - 28px);
   overflow-y: auto;
+  overflow-x: hidden;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
   padding-right: 2px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
 }
 
 .crew-list {
@@ -333,7 +457,12 @@ button {
   gap: 5px;
   max-height: calc(min(310px, calc(100vh - 430px)) - 28px);
   overflow-y: auto;
+  overflow-x: hidden;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
   padding-right: 2px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
 }
 
 .crew-empty {
@@ -514,6 +643,131 @@ button {
   line-height: 1.3;
 }
 
+.crew-sort-control {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 0.63rem;
+}
+
+.crew-sort-control span {
+  color: var(--muted);
+  font-weight: 820;
+}
+
+.crew-sort-select {
+  min-height: 24px;
+  border: 2px solid var(--line);
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--ink);
+  font-size: 0.62rem;
+  font-weight: 760;
+  padding: 2px 6px;
+}
+
+.crew-detail {
+  position: absolute;
+  top: 18px;
+  right: 14px;
+  width: min(300px, calc(100vw - 36px));
+  display: grid;
+  gap: 7px;
+  padding: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  pointer-events: auto;
+  box-shadow: var(--shadow);
+}
+
+.crew-detail[hidden] {
+  display: none;
+}
+
+.crew-detail-close {
+  width: 24px;
+  height: 24px;
+  align-self: end;
+  justify-self: end;
+  border: 2px solid var(--line);
+  border-radius: 0;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.crew-detail-title {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  font-weight: 900;
+  text-transform: none;
+}
+
+.crew-detail-grid {
+  display: grid;
+  gap: 5px;
+}
+
+.crew-detail-field {
+  display: grid;
+  gap: 2px;
+  padding: 5px 7px;
+  border: 1px dashed rgba(23, 36, 54, 0.28);
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.crew-detail-field span {
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.crew-detail-field strong {
+  color: #1e3558;
+  font-size: 0.72rem;
+  word-break: break-word;
+}
+
+.crew-detail-rename {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+}
+
+.crew-detail-rename input {
+  min-height: 26px;
+  border: 2px solid var(--line);
+  padding: 0 6px;
+  font-size: 0.66rem;
+  font-weight: 740;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.crew-detail-actions {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.crew-detail-actions button {
+  min-height: 30px;
+  border: 2px solid var(--line);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.86);
+  font-size: 0.64rem;
+  font-weight: 840;
+  touch-action: manipulation;
+}
+
+.crew-detail-use,
+.crew-steroid {
+  min-height: 30px;
+}
+
+.crew-detail-release {
+  color: var(--coral);
+}
+
 .crew-row {
   display: grid;
   gap: 4px;
@@ -522,6 +776,12 @@ button {
   border: 2px solid rgba(23, 36, 54, 0.2);
   border-radius: 0;
   background: rgba(255, 255, 255, 0.68);
+  cursor: pointer;
+}
+
+.crew-row:focus-visible {
+  outline: 2px solid #1e3558;
+  outline-offset: 1px;
 }
 
 .crew-row--training {
@@ -622,6 +882,7 @@ button {
   font-weight: 840;
   cursor: pointer;
   box-shadow: 1px 1px 0 var(--pixel-edge);
+  touch-action: manipulation;
 }
 
 .crew-actions button:disabled {
@@ -711,6 +972,40 @@ button {
   transform: translate(-50%, 0);
 }
 
+.capture-struggle-overlay {
+  margin-top: 8px;
+  width: min(340px, calc(100vw - 36px));
+  display: none;
+  grid-template-columns: 1fr;
+  gap: 5px;
+  align-items: center;
+  justify-items: center;
+  pointer-events: none;
+}
+
+.capture-struggle-overlay__label {
+  color: #17334c;
+  font-size: 0.66rem;
+  font-weight: 860;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.capture-struggle-overlay__track {
+  width: min(320px, calc(100vw - 36px));
+  height: 10px;
+  border: 2px solid var(--line);
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 1px 1px 0 rgba(17, 32, 48, 0.22);
+}
+
+.capture-struggle-overlay__fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #ffce6a, #f05f5f);
+  transition: width 0.12s linear;
+}
+
 .input-status {
   position: absolute;
   left: 18px;
@@ -739,6 +1034,116 @@ button {
   cursor: pointer;
 }
 
+.settings-toggle {
+  position: absolute;
+  left: 18px;
+  bottom: 86px;
+  min-height: 30px;
+  padding: 8px 10px;
+  color: var(--ink);
+  background: var(--panel-strong);
+  pointer-events: auto;
+  font-size: 0.7rem;
+  font-weight: 820;
+  cursor: pointer;
+}
+
+.settings-panel {
+  position: absolute;
+  left: 18px;
+  bottom: 124px;
+  width: min(320px, calc(100vw - 36px));
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  color: var(--ink);
+  pointer-events: auto;
+  z-index: 6;
+}
+
+.settings-panel[hidden] {
+  display: none;
+}
+
+.settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.settings-head h2 {
+  margin: 0;
+  font-size: 0.96rem;
+  line-height: 1.1;
+}
+
+.settings-head button,
+.settings-reset-save {
+  min-height: 30px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.86);
+  font-size: 0.66rem;
+  font-weight: 840;
+  cursor: pointer;
+}
+
+.settings-control {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 34px;
+  gap: 7px;
+  align-items: center;
+  font-size: 0.68rem;
+  font-weight: 820;
+}
+
+.settings-control input[type="range"] {
+  width: 100%;
+  accent-color: var(--coral);
+}
+
+.settings-control select {
+  grid-column: span 2;
+  min-height: 30px;
+  border: 2px solid var(--line);
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.86);
+  font: inherit;
+  font-size: 0.66rem;
+}
+
+.settings-check {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 7px;
+  align-items: center;
+  min-height: 28px;
+  font-size: 0.68rem;
+  font-weight: 820;
+}
+
+.settings-check input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--coral);
+}
+
+.settings-reset-save {
+  color: #ffffff;
+  background: var(--coral);
+}
+
+.game-root--reduced-motion .creator-preview {
+  animation: none;
+}
+
+.game-root--reduced-motion .stamina-fill,
+.game-root--reduced-motion .toast,
+.game-root--reduced-motion .workout-meter-fill,
+.game-root--reduced-motion .capture-struggle-overlay__fill {
+  transition: none;
+}
+
 .control-hint {
   position: absolute;
   left: 50%;
@@ -752,6 +1157,49 @@ button {
   line-height: 1.2;
   text-align: center;
   transform: translateX(-50%);
+}
+
+.tutorial-popup {
+  position: absolute;
+  left: 50%;
+  bottom: 190px;
+  display: grid;
+  gap: 8px;
+  width: min(480px, calc(100vw - 36px));
+  max-width: 480px;
+  padding: 8px 10px;
+  border: 2px solid var(--line);
+  border-radius: 0;
+  background: var(--panel-strong);
+  color: var(--ink);
+  pointer-events: auto;
+  text-align: center;
+  box-shadow: 2px 2px 0 var(--pixel-edge);
+  transform: translateX(-50%);
+  z-index: 4;
+}
+
+.tutorial-popup[hidden] {
+  display: none;
+}
+
+.tutorial-popup__text {
+  min-height: 24px;
+  font-size: 0.82rem;
+  font-weight: 860;
+  line-height: 1.3;
+}
+
+.tutorial-popup__skip {
+  border: 2px solid var(--line);
+  border-radius: 0;
+  min-height: 28px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.86);
+  font-size: 0.66rem;
+  font-weight: 860;
+  text-transform: uppercase;
+  cursor: pointer;
 }
 
 .workout-prompt {
@@ -1167,6 +1615,7 @@ button {
 .game-root--creating .input-status,
 .game-root--creating .input-mode-toggle,
 .game-root--creating .crew-panel,
+.game-root--creating .goals-panel,
 .game-root--creating .boss-panel,
 .game-root--creating .freeweight-prompt,
 .game-root--creating .vending-prompt,
@@ -1382,9 +1831,25 @@ button {
   box-shadow: 0 0 0 1px rgba(23, 36, 54, 0.18);
 }
 
-.creator-start {
+.creator-action-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.creator-start,
+.creator-reset-save {
   color: #ffffff;
   background: var(--coral);
+}
+
+.creator-reset-save {
+  background: #ff9f56;
+  box-shadow: 2px 2px 0 var(--pixel-edge);
+}
+
+.creator-reset-save:active {
+  background: #e08a48;
 }
 
 .creator-sliders {
@@ -1445,6 +1910,7 @@ button {
   align-items: end;
   justify-content: space-between;
   pointer-events: none;
+  z-index: 7;
 }
 
 .touch-joystick {
@@ -1489,7 +1955,7 @@ button {
 
 .touch-actions {
   display: grid;
-  grid-template-columns: 64px 80px;
+  grid-template-columns: 70px 74px 88px;
   gap: 8px;
   align-items: end;
   pointer-events: auto;
@@ -1501,8 +1967,10 @@ button {
   color: var(--ink);
   background: rgba(255, 255, 255, 0.82);
   box-shadow: 1px 1px 0 var(--pixel-edge);
-  touch-action: none;
+  touch-action: manipulation;
   pointer-events: auto;
+  min-width: 52px;
+  min-height: 52px;
 }
 
 .touch-action:active {
@@ -1510,17 +1978,26 @@ button {
 }
 
 .touch-action--sprint {
-  width: 64px;
-  height: 64px;
+  width: 70px;
+  height: 70px;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.88);
   font-size: 0.66rem;
   font-weight: 840;
 }
 
+.touch-action--interact {
+  width: 70px;
+  height: 70px;
+  color: #fff;
+  background: #2f4f79;
+  font-size: 0.62rem;
+  font-weight: 860;
+}
+
 .touch-action--catch {
-  width: 80px;
-  height: 80px;
+  width: 88px;
+  height: 88px;
   color: #ffffff;
   background: var(--coral);
   font-size: 0.76rem;
@@ -1551,6 +2028,22 @@ button {
     display: none;
   }
 
+  .settings-toggle {
+    right: 12px;
+    bottom: 100px;
+    left: auto;
+    min-height: 34px;
+  }
+
+  .settings-panel {
+    right: 12px;
+    bottom: 140px;
+    left: auto;
+    width: min(300px, calc(100vw - 24px));
+    max-height: min(470px, calc(100vh - 154px));
+    overflow-y: auto;
+  }
+
   .repdex-panel {
     width: min(198px, calc(100vw - 24px));
     max-height: min(240px, calc(100vh - 360px));
@@ -1568,19 +2061,34 @@ button {
     bottom: 292px;
   }
 
+  .goals-panel {
+    width: min(198px, calc(100vw - 24px));
+    max-height: min(170px, calc(100vh - 360px));
+  }
+
+  .goals-list {
+    max-height: calc(min(170px, calc(100vh - 360px)) - 24px);
+  }
+
   .touch-actions {
-    grid-template-columns: 68px;
+    grid-template-columns: 64px 64px 74px;
     gap: 7px;
   }
 
   .touch-action--sprint {
-    width: 68px;
-    height: 68px;
+    width: 64px;
+    height: 64px;
+  }
+
+  .touch-action--interact {
+    width: 64px;
+    height: 64px;
+    font-size: 0.6rem;
   }
 
   .touch-action--catch {
-    width: 86px;
-    height: 86px;
+    width: 74px;
+    height: 74px;
   }
 
   .crew-panel {
@@ -1602,6 +2110,12 @@ button {
     padding: 0 2px 0 0;
   }
 
+  .crew-actions button,
+  .crew-detail-actions button {
+    min-height: 36px;
+    font-size: 0.64rem;
+  }
+
   .crew-row {
     min-height: 0;
   }
@@ -1616,6 +2130,13 @@ button {
     transform: none;
     width: auto;
     max-height: min(360px, calc(100vh - 150px));
+  }
+
+  .crew-detail {
+    inset: 70px 12px auto auto;
+    transform: none;
+    width: min(252px, calc(100vw - 24px));
+    z-index: 5;
   }
 
   .workout-prompt {
@@ -1727,9 +2248,45 @@ button {
     width: 118px;
   }
 
+  .settings-toggle {
+    right: 12px;
+    bottom: 86px;
+    min-height: 32px;
+    font-size: 0.62rem;
+  }
+
+  .settings-panel {
+    right: 12px;
+    bottom: 124px;
+    width: min(270px, calc(100vw - 24px));
+    max-height: min(430px, calc(100vh - 138px));
+  }
+
+  .settings-control {
+    grid-template-columns: 54px minmax(0, 1fr) 30px;
+    font-size: 0.62rem;
+  }
+
+  .settings-check {
+    font-size: 0.62rem;
+  }
+
   .stat-row,
   .stamina-wrap {
     padding: 8px;
+  }
+
+  .goals-panel {
+    width: min(180px, calc(100vw - 24px));
+    max-height: min(144px, calc(100vh - 380px));
+  }
+
+  .goal-row {
+    font-size: 0.6rem;
+  }
+
+  .goals-list {
+    max-height: calc(min(144px, calc(100vh - 380px)) - 24px);
   }
 
   .workout-buttons button,
@@ -1763,20 +2320,26 @@ button {
   }
 
   .touch-actions {
-    grid-template-columns: 52px;
+    grid-template-columns: 58px 60px 56px;
     gap: 6px;
   }
 
   .touch-action--sprint {
-    width: 52px;
-    height: 52px;
-    font-size: 0.6rem;
+    width: 58px;
+    height: 58px;
+    font-size: 0.58rem;
   }
 
   .touch-action--catch {
-    width: 66px;
-    height: 66px;
-    font-size: 0.68rem;
+    width: 60px;
+    height: 60px;
+    font-size: 0.58rem;
+  }
+
+  .touch-action--interact {
+    width: 60px;
+    height: 60px;
+    font-size: 0.54rem;
   }
 
   .crew-panel {
@@ -1790,6 +2353,28 @@ button {
 
   .crew-row {
     padding: 5px;
+  }
+
+  .crew-actions button,
+  .crew-detail-actions button {
+    min-height: 40px;
+    font-size: 0.58rem;
+    line-height: 1.12;
+  }
+
+  .crew-detail-use,
+  .crew-steroid {
+    min-height: 40px;
+  }
+
+  .crew-detail-actions {
+    gap: 4px;
+  }
+
+  .crew-detail {
+    inset: 70px auto auto 12px;
+    transform: none;
+    width: min(228px, calc(100vw - 24px));
   }
 
   .vending-options {

@@ -1,0 +1,20 @@
+# Animal Conversion Stage Notes
+- Replaced buddy species taxonomy in `src/game/types.ts` with: `bunny | bear | fox | rhino | panther | gorilla`.
+- Rewrote `src/game/content/buddies.ts` to define new normal animal buddies:
+  - Buff Bunny (`buff-bunny`)
+  - Bench Bear (`bench-bear`)
+  - Flex Fox (`flex-fox`)
+  - Iron Rhino (`iron-rhino`)
+  - Pump Panther (`pump-panther`)
+  - Swole Gorilla (`swole-gorilla`)
+- Kept existing exotic as `chrome-rhino` (`isExotic: true`) and preserved mythic metadata.
+- Updated `weightedBuddyDefinitionId()` and reset spawn seed in `src/game/simulation/world.ts` to use the new IDs.
+- Added species-driven visual feature pass in `src/render/objects/lowPolyFactory.ts` via `addBuddySpeciesFeatures`:
+  - bunny ears & ears/ear inner,
+  - bear ears/snout,
+  - fox ears/tail,
+  - rhino horn,
+  - panther ears/tail/stripes,
+  - gorilla shoulder/arm/face features.
+- Updated `createBuddyMesh` species logic and switched default head material to the definition color for stronger readibility by species.
+- Verified with `npm run build` (via `cmd /c npm run build`).

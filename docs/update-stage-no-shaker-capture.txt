@@ -1,0 +1,24 @@
+Stage Update Reference
+====================
+Date: 2026-06-21
+Branch: feature/pixel-arm-wrestle-capture
+Stage: Remove protein shakers from catching
+
+Files changed:
+- src/game/simulation/world.ts
+  - Removed capture-time protein-shaker requirement from tryCapture().
+  - Removed capture-time shaker consumption (`this.player.proteinShakers -= 1`).
+  - Removed catch-success shaker reward (+1 shaker).
+  - Removed capture error message: "Out of protein shakers. Jog a lap to restock.".
+  - Capturing now directly runs arm-wrestle attempt via existing range checks + new chance helper.
+
+- src/ui/hud.ts
+  - Updated capture objective copy to arm-wrestle framing:
+    - From "Catch [target]" to "Attempt capture: [target]"
+    - From "Buddy in range. Throw clean." to "Buddy in range. Start arm-wrestle now."
+  - Updated keyboard/mouse control hint from "Left Click Catch or Throw" to "Left Click Capture or Throw".
+
+Acceptance notes:
+- Protein shaker inventory remains in the game for workout/vending systems.
+- No capture messages now reference shakers.
+- Build remains successful (`npm run build`).

@@ -1,0 +1,14 @@
+ARM-WRESTLE CAPTURE EVENT STATE UPDATE
+Date: 2026-06-21
+Status: Completed
+
+Files changed in this stage:
+- C:\Users\jaysl\Documents\Ralph's Playground\src\game/types.ts
+- C:\Users\jaysl\Documents\Ralph's Playground\src\game/simulation/world.ts
+- C:\Users\jaysl\Documents\Ralph's Playground\src\render/app/createGymBuddyGame.ts
+
+Implementation order:
+1. Extend capture event typing in types.ts to include arm-wrestle metadata (captureStyle, capturePose, dramaticBeat).
+2. Update tryCapture() in world.ts to emit new capture event payload, updated messages, and preserved capture outcome flags.
+3. Update renderer event handling in createGymBuddyGame.ts to consume capture pose and animate paired player/creature meshes for arm-wrestle.
+4. Rebuild and verify production build passes.

@@ -19,6 +19,17 @@ import { GymBuddyWorld } from '../../game/simulation/world';
 import type { ActionState, PlayerAppearance, Vec2, WorldEvent, WorldSnapshot } from '../../game/types';
 import { GameHud } from '../../ui/hud';
 import {
+  clearProgressStorage,
+  loadProgressFromStorage,
+  saveProgressToStorage
+} from '../../game/progress';
+import {
+  loadGameSettingsFromStorage,
+  saveGameSettingsToStorage,
+  type CameraDistanceSetting,
+  type GameSettings
+} from '../../game/settings';
+import {
   createArena,
   createBuddyMesh,
   createCaptureRing,
@@ -57,6 +68,8 @@ type CaptureEffect = {
   creatureBaseScale?: number;
   captureBeatSequence?: { at: number; text: string }[];
   captureBeatIndex?: number;
+  struggleMeter?: number;
+  struggleMomentum?: number;
 };
 
 type RenderCullable = {
@@ -86,6 +99,28 @@ const CUTSCENE_CAMERA_OFFSET = 5.6;
 const CUTSCENE_CAMERA_HEIGHT = 5.5;
 const CUTSCENE_LOOK_AT_HEIGHT = 0.62;
 const CAPTURE_BEAT_TEXT_HOLD_SECONDS = 0.4;
+const WRESTLE_STRUGGLE_METER_GAIN = 0.44;
+const WRESTLE_STRUGGLE_MOMENTUM_GAIN = 0.9;
+const WRESTLE_STRUGGLE_METER_DECAY = 0.68;
+const WRESTLE_STRUGGLE_MOMENTUM_DECAY = 1.2;
+const WRESTLE_PIN_STRENGTH = 0.18;
+const TUTORIAL_STEPS = [
+  'Move around the gym and feel the floor rumble.',
+  'Get near a wild gym beast.',
+  "Read its level and catch chance.",
+  'Start an arm-wrestle capture attempt.',
+  'Win one to add a buddy to your crew.',
+  'Use Steroids on a crew member.',
+  'Find a rare exotic beast.'
+];
+const TUTORIAL_MOVE_DISTANCE = 0.95;
+const TUTORIAL_BUDDY_READ_TIME = 0.45;
+const TUTORIAL_EXOTIC_NOTICE_TIME = 0.7;
+const CAMERA_DISTANCE_SETTINGS: Record<CameraDistanceSetting, { offset: number; height: number }> = {
+  close: { offset: 0.82, height: 0.94 },
+  normal: { offset: 1, height: 1 },
+  far: { offset: 1.18, height: 1.08 }
+};
 
 class CharacterPreviewRenderer {
   private readonly scene = new Scene();
@@ -100,7 +135,7 @@ class CharacterPreviewRenderer {
   private height = 1;
   private previewRotation = -0.45;
 
-  constructor(private readonly container: HTMLElement) {
+  constructor(private readonly container: HTMLElement, private settings: GameSettings) {
     this.renderer = new WebGLRenderer({
       alpha: true,
       antialias: false,
@@ -152,6 +187,11 @@ class CharacterPreviewRenderer {
     this.previewRotation = rotation;
   }
 
+  applySettings(settings: GameSettings): void {
+    this.settings = { ...settings };
+    this.resize();
+  }
+
   private addLights(): void {
     this.scene.add(new AmbientLight(0x9fcfff, 0.9));
 
@@ -170,7 +210,12 @@ class CharacterPreviewRenderer {
     this.height = Math.max(1, Math.floor(rect.height));
     this.camera.aspect = this.width / this.height;
     this.camera.updateProjectionMatrix();
-    const pixelScale = this.touchOptimized ? PREVIEW_PIXEL_SCALE_TOUCH : PREVIEW_PIXEL_SCALE;
+    const pixelScale = getPixelCanvasScale(
+      this.touchOptimized,
+      this.settings.pixelFilter,
+      PREVIEW_PIXEL_SCALE,
+      PREVIEW_PIXEL_SCALE_TOUCH
+    );
     this.renderer.setPixelRatio(1);
     this.renderer.setSize(
       Math.max(1, Math.floor(this.width / pixelScale)),
@@ -192,8 +237,17 @@ function shouldUseTouchRendering(): boolean {
   return window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || window.innerWidth <= 820;
 }
 
-function getPixelCanvasScale(touchOptimized: boolean): number {
-  return touchOptimized ? WORLD_PIXEL_SCALE_TOUCH : WORLD_PIXEL_SCALE;
+function getPixelCanvasScale(
+  touchOptimized: boolean,
+  pixelFilter: boolean,
+  desktopScale = WORLD_PIXEL_SCALE,
+  touchScale = WORLD_PIXEL_SCALE_TOUCH
+): number {
+  if (pixelFilter) {
+    return touchOptimized ? touchScale : desktopScale;
+  }
+
+  return touchOptimized ? 1.65 : 1.25;
 }
 
 function lerp(start: number, end: number, amount: number): number {
@@ -245,10 +299,18 @@ class GymBuddyRenderer {
   private captureBeatTimer = 0;
   private readonly captureBeatOverlay: HTMLDivElement;
   private readonly captureBeatTextElement: HTMLDivElement;
+  private readonly struggleOverlay: HTMLDivElement;
+  private readonly struggleLabel: HTMLDivElement;
+  private readonly struggleTrack: HTMLDivElement;
+  private readonly struggleFill: HTMLDivElement;
   private width = 1;
   private height = 1;
 
-  constructor(private readonly container: HTMLElement, initialSnapshot: WorldSnapshot) {
+  constructor(
+    private readonly container: HTMLElement,
+    initialSnapshot: WorldSnapshot,
+    private settings: GameSettings
+  ) {
     this.renderer = new WebGLRenderer({
       antialias: false,
       preserveDrawingBuffer: false,
@@ -290,6 +352,21 @@ class GymBuddyRenderer {
     this.captureBeatOverlay.style.pointerEvents = 'none';
     this.captureBeatOverlay.style.zIndex = '3';
     this.captureBeatOverlay.appendChild(this.captureBeatTextElement);
+    this.struggleOverlay = document.createElement('div');
+    this.struggleOverlay.className = 'capture-struggle-overlay';
+    this.struggleOverlay.style.display = 'none';
+    this.struggleOverlay.hidden = true;
+    this.struggleLabel = document.createElement('div');
+    this.struggleLabel.className = 'capture-struggle-overlay__label';
+    this.struggleLabel.textContent = 'Struggle Meter';
+    this.struggleTrack = document.createElement('div');
+    this.struggleTrack.className = 'capture-struggle-overlay__track';
+    this.struggleFill = document.createElement('div');
+    this.struggleFill.className = 'capture-struggle-overlay__fill';
+    this.struggleTrack.appendChild(this.struggleFill);
+    this.struggleOverlay.appendChild(this.struggleLabel);
+    this.struggleOverlay.appendChild(this.struggleTrack);
+    this.captureBeatOverlay.appendChild(this.struggleOverlay);
     this.container.appendChild(this.captureBeatOverlay);
 
     this.scene.background = new Color(RETRO_ARENA_SKY);
@@ -315,7 +392,7 @@ class GymBuddyRenderer {
     this.resize();
   }
 
-  update(snapshot: WorldSnapshot, events: WorldEvent[], deltaSeconds: number): void {
+  update(snapshot: WorldSnapshot, events: WorldEvent[], deltaSeconds: number, inputActions: ActionState): void {
     this.syncPlayer(snapshot);
     this.syncBuddies(snapshot);
     this.syncRosterBuddies(snapshot);
@@ -324,6 +401,7 @@ class GymBuddyRenderer {
     this.handleEvents(events);
     const activeCaptureEffect = this.findActiveArmWrestleEffect();
     this.updateCamera(snapshot, deltaSeconds, activeCaptureEffect);
+    this.updateStruggleMeter(activeCaptureEffect, deltaSeconds, inputActions.catchPressed);
     this.updateEffects(deltaSeconds, activeCaptureEffect);
     this.updateCaptureBeatOverlay(deltaSeconds);
     this.updateRenderDistance(snapshot.player.position);
@@ -339,6 +417,11 @@ class GymBuddyRenderer {
     this.player.position.copy(position);
     this.player.rotation.y = rotationY;
     this.scene.add(this.player);
+  }
+
+  applySettings(settings: GameSettings): void {
+    this.settings = { ...settings };
+    this.resize();
   }
 
   getMovementBasis(): MovementBasis {
@@ -378,7 +461,7 @@ class GymBuddyRenderer {
     this.player.position.set(snapshot.player.position.x, 0, snapshot.player.position.z);
     this.player.rotation.y = snapshot.player.heading;
 
-    const bob = Math.sin(performance.now() * 0.008) * 0.035;
+    const bob = this.settings.reducedMotion ? 0 : Math.sin(performance.now() * 0.008) * 0.035;
     this.player.position.y = 0.02 + bob;
   }
 
@@ -631,7 +714,9 @@ class GymBuddyRenderer {
 
       this.effects.push({
         age: 0,
-        duration: event.captureDuration ?? (event.result === 'success' ? 0.92 : 0.72),
+        duration: this.settings.reducedMotion
+          ? (event.result === 'success' ? 0.62 : 0.52)
+          : event.captureDuration ?? (event.result === 'success' ? 0.92 : 0.72),
         start: playerStart,
         target: creatureStart,
         ringStart: midpoint,
@@ -650,6 +735,8 @@ class GymBuddyRenderer {
         creatureEnd,
         playerBaseScale: actorScale,
         creatureBaseScale: actorScale,
+        struggleMeter: 0,
+        struggleMomentum: 0,
         captureBeatSequence: event.captureBeatSequence ?? [
           {
             at: 0.06,
@@ -682,14 +769,17 @@ class GymBuddyRenderer {
 
   private updateCamera(snapshot: WorldSnapshot, deltaSeconds: number, captureEffect?: CaptureEffect): void {
     const player = snapshot.player;
+    const cameraSettings = CAMERA_DISTANCE_SETTINGS[this.settings.cameraDistance];
+    const cameraOffset = RETRO_CAMERA_OFFSET * cameraSettings.offset;
+    const cameraHeight = RETRO_CAMERA_HEIGHT * cameraSettings.height;
     const backward = {
       x: -Math.sin(player.heading),
       z: -Math.cos(player.heading)
     };
     const defaultPosition = new Vector3(
-      player.position.x + backward.x * RETRO_CAMERA_OFFSET,
-      RETRO_CAMERA_HEIGHT,
-      player.position.z + backward.z * RETRO_CAMERA_OFFSET
+      player.position.x + backward.x * cameraOffset,
+      cameraHeight,
+      player.position.z + backward.z * cameraOffset
     );
     const defaultLookAt = new Vector3(player.position.x, RETRO_LOOK_AT_HEIGHT, player.position.z);
     let desired = defaultPosition;
@@ -699,12 +789,13 @@ class GymBuddyRenderer {
       const progress = clamp(captureEffect.age / captureEffect.duration, 0, 1);
       const focusBlend = clamp(progress / 0.8, 0, 1);
       const settleBlend = clamp((progress - 0.1) / 0.7, 0, 1);
+      const motionBlend = this.settings.reducedMotion ? 0.42 : 1;
       const midpoint = captureEffect.captureMidpoint;
       const direction = safeDirection(captureEffect.start, captureEffect.target);
       const cutsceneOffset = captureEffect.target
         ? {
-            x: captureEffect.captureMidpoint.x - direction.x * CUTSCENE_CAMERA_OFFSET,
-            z: captureEffect.captureMidpoint.z - direction.z * CUTSCENE_CAMERA_OFFSET
+            x: captureEffect.captureMidpoint.x - direction.x * CUTSCENE_CAMERA_OFFSET * cameraSettings.offset,
+            z: captureEffect.captureMidpoint.z - direction.z * CUTSCENE_CAMERA_OFFSET * cameraSettings.offset
           }
         : {
             x: captureEffect.captureMidpoint.x,
@@ -712,7 +803,7 @@ class GymBuddyRenderer {
           };
       const cutscenePosition = new Vector3(
         cutsceneOffset.x,
-        lerp(RETRO_CAMERA_HEIGHT, CUTSCENE_CAMERA_HEIGHT, focusBlend),
+        lerp(cameraHeight, CUTSCENE_CAMERA_HEIGHT, focusBlend),
         cutsceneOffset.z
       );
       const cutsceneLookAt = new Vector3(
@@ -721,12 +812,12 @@ class GymBuddyRenderer {
         captureEffect.captureMidpoint.z
       );
 
-      const blend = clamp((1.7 * focusBlend + settleBlend) / 2, 0, 1);
+      const blend = clamp((1.7 * focusBlend + settleBlend) / 2, 0, 1) * motionBlend;
       desired = defaultPosition.clone().lerp(cutscenePosition, blend);
       lookAt = defaultLookAt.clone().lerp(cutsceneLookAt, blend);
     }
 
-    const smoothing = 1 - Math.pow(0.001, deltaSeconds);
+    const smoothing = 1 - Math.pow(this.settings.reducedMotion ? 0.00001 : 0.001, deltaSeconds);
 
     this.camera.position.lerp(desired, smoothing);
     this.camera.lookAt(lookAt);
@@ -742,7 +833,9 @@ class GymBuddyRenderer {
       const direction = safeDirection(effect.start, effect.target);
       const approach = effect.success ? Math.min(1, easeOutCubic(progress * 0.95)) : Math.min(1, easeOutCubic(progress * 1.02));
       const contest = clamp((progress - WRESTLE_FIGHT_PHASE) / 0.48, 0, 1);
-      const shake = Math.sin(progress * WRESTLE_ARM_WOBBLE_SPEED) * 0.013;
+      const struggle = clamp((effect.struggleMomentum ?? 0), 0, 1);
+      const motionScale = this.settings.reducedMotion ? 0.26 : 1;
+      const shake = Math.sin(progress * WRESTLE_ARM_WOBBLE_SPEED) * (0.013 + struggle * 0.018) * motionScale;
 
       if (effect.style === 'arm-wrestle' && effect.playerMesh && effect.creatureMesh) {
         if (effect === activeCaptureEffect) {
@@ -763,12 +856,12 @@ class GymBuddyRenderer {
 
         effect.playerMesh.position.set(
           playerX - recoil.x,
-          0.03 + Math.abs(Math.sin(progress * Math.PI)) * 0.014 + Math.abs(Math.cos(progress * 7.4)) * 0.004,
+          0.03 + (Math.abs(Math.sin(progress * Math.PI)) * 0.014 + Math.abs(Math.cos(progress * 7.4)) * 0.004) * motionScale,
           playerZ - recoil.z
         );
         effect.creatureMesh.position.set(
           creatureX + recoil.x,
-          0.03 + Math.abs(Math.sin(progress * Math.PI)) * 0.014 + Math.abs(Math.cos(progress * 7.4)) * 0.004,
+          0.03 + (Math.abs(Math.sin(progress * Math.PI)) * 0.014 + Math.abs(Math.cos(progress * 7.4)) * 0.004) * motionScale,
           creatureZ + recoil.z
         );
 
@@ -789,29 +882,31 @@ class GymBuddyRenderer {
             z: (playerZ + creatureZ) / 2
           };
           const playerLead = clamp(
-            effect.success ? 0.52 + contest * 0.35 : 0.52 - contest * 0.06,
-            0.16,
-            0.9
+            effect.success
+              ? 0.48 + contest * 0.36 + struggle * 0.24
+              : 0.52 - contest * 0.24 - struggle * 0.08,
+            0.12,
+            0.88
           );
           const creatureLead = clamp(1 - playerLead, 0.1, 0.86);
           const playerArmX = lerp(playerX, midpoint.x, playerLead);
           const playerArmZ = lerp(playerZ, midpoint.z, playerLead);
           const creatureArmX = lerp(creatureX, midpoint.x, creatureLead);
           const creatureArmZ = lerp(creatureZ, midpoint.z, creatureLead);
-          const playerArmSwing = 1.0 + Math.sin(progress * 31 + Math.PI / 2) * WRESTLE_ARM_BASE_TWITCH;
-          const creatureArmSwing = 1.0 + Math.sin(progress * 31 + 1.6) * (WRESTLE_ARM_BASE_TWITCH * 1.25);
+          const playerArmSwing = 1.0 + Math.sin(progress * 31 + Math.PI / 2) * (WRESTLE_ARM_BASE_TWITCH + struggle * 0.28) * motionScale;
+          const creatureArmSwing = 1.0 + Math.sin(progress * 31 + 1.6) * ((WRESTLE_ARM_BASE_TWITCH + struggle * 0.24) * 1.25) * motionScale;
 
           effect.playerArm.position.set(playerArmX + direction.x * 0.05, 0.16 + shake, playerArmZ + direction.z * 0.05);
           effect.creatureArm.position.set(creatureArmX - direction.x * 0.05, 0.16 - shake, creatureArmZ - direction.z * 0.05);
           effect.playerArm.rotation.set(
-            0.18 + Math.sin(progress * 4 + contest * 3) * 0.12,
+            0.18 + Math.sin(progress * 4 + contest * 3) * 0.12 * motionScale,
             Math.atan2(creatureX - playerX, creatureZ - playerZ),
-            Math.sin(progress * 16) * 0.22
+            Math.sin(progress * 16) * 0.22 * motionScale
           );
           effect.creatureArm.rotation.set(
-            0.18 + Math.sin(progress * 4 + 0.9 + contest * 3) * 0.12,
+            0.18 + Math.sin(progress * 4 + 0.9 + contest * 3) * 0.12 * motionScale,
             Math.atan2(playerX - creatureX, playerZ - creatureZ),
-            Math.sin(progress * 16 + 1.2) * 0.22
+            Math.sin(progress * 16 + 1.2) * 0.22 * motionScale
           );
 
           effect.playerArm.scale.set(1, 1, playerArmSwing * 0.6 + playerLead);
@@ -822,8 +917,8 @@ class GymBuddyRenderer {
           const cry = clamp((progress - 0.58) / 0.38, 0, 1);
           effect.tears.visible = cry > 0.02;
           effect.tears.scale.setScalar(clamp(0.2 + cry * 0.8, 0, 1));
-          effect.tears.rotation.z = Math.sin(progress * 22) * 0.18;
-          effect.tears.position.y = 0.09 + Math.sin(progress * 12) * 0.03;
+          effect.tears.rotation.z = Math.sin(progress * 22) * 0.18 * motionScale;
+          effect.tears.position.y = 0.09 + Math.sin(progress * 12) * 0.03 * motionScale;
         }
 
         if (effect.success) {
@@ -831,20 +926,32 @@ class GymBuddyRenderer {
           const creatureScale = effect.creatureBaseScale ?? 0.58;
           effect.creatureMesh.scale.set(
             creatureScale * (1 - vanish * 0.95),
-            creatureScale * (1 + (1 - vanish) * 0.1),
+            creatureScale * (1 + (1 - vanish) * 0.1 * motionScale),
             creatureScale * (1 - vanish * 0.95)
           );
         } else {
-          const escape = clamp((progress - 0.58) / 0.34, 0, 1);
+          const escape = clamp(
+            (progress - 0.58) / 0.34 + Math.max(0, 0.06 - struggle * 0.03),
+            0,
+            1
+          );
           const escapeDirection = safeDirection(effect.playerMesh.position, {
             x: creatureX,
             z: creatureZ
           });
           effect.creatureMesh.position.x += escapeDirection.x * 0.34 * escape;
           effect.creatureMesh.position.z += escapeDirection.z * 0.34 * escape;
-          effect.creatureMesh.position.y = 0.02 + escape * 0.24;
+          effect.creatureMesh.position.y = 0.02 + escape * 0.24 * motionScale;
           effect.creatureMesh.rotation.x = lerp(WRESTLE_PRONE_ROT_X, 0.44, escape);
-          effect.creatureMesh.rotation.z = -Math.sin(progress * 16) * 0.2 * escape;
+          effect.creatureMesh.rotation.z = -Math.sin(progress * 16) * 0.2 * escape * motionScale;
+        }
+
+        if (effect.success) {
+          const pin = clamp((progress - 0.66) / 0.28, 0, 1);
+          const pinBoost = WRESTLE_PIN_STRENGTH * pin * (0.56 + struggle * 0.44) * (this.settings.reducedMotion ? 0.65 : 1);
+          effect.playerMesh.position.x -= direction.x * pinBoost;
+          effect.playerMesh.position.z -= direction.z * pinBoost;
+          effect.playerMesh.rotation.x = WRESTLE_PRONE_ROT_X + pin * 0.03 * (1 + struggle) * motionScale;
         }
       } else {
         const playerX = lerp(effect.start.x, effect.target.x, eased);
@@ -895,6 +1002,38 @@ class GymBuddyRenderer {
         this.effects.splice(index, 1);
       }
     }
+  }
+
+  private updateStruggleMeter(
+    captureEffect: CaptureEffect | undefined,
+    deltaSeconds: number,
+    strugglePressed: boolean
+  ): void {
+    if (!captureEffect || captureEffect.style !== 'arm-wrestle') {
+      this.struggleOverlay.style.display = 'none';
+      this.struggleOverlay.hidden = true;
+      this.struggleFill.style.width = '0%';
+      this.struggleLabel.textContent = 'Struggle Meter';
+      return;
+    }
+
+    const gainMeter = strugglePressed ? WRESTLE_STRUGGLE_METER_GAIN : 0;
+    const gainMomentum = strugglePressed ? WRESTLE_STRUGGLE_MOMENTUM_GAIN : 0;
+    captureEffect.struggleMeter = clamp(
+      (captureEffect.struggleMeter ?? 0) + gainMeter - deltaSeconds * WRESTLE_STRUGGLE_METER_DECAY,
+      0,
+      1
+    );
+    captureEffect.struggleMomentum = clamp(
+      (captureEffect.struggleMomentum ?? 0) + gainMomentum - deltaSeconds * WRESTLE_STRUGGLE_MOMENTUM_DECAY,
+      0,
+      1
+    );
+    const fillPercent = Math.round((captureEffect.struggleMeter ?? 0) * 100);
+    this.struggleFill.style.width = `${fillPercent}%`;
+    this.struggleLabel.textContent = `Struggle Meter ${fillPercent}%`;
+    this.struggleOverlay.hidden = false;
+    this.struggleOverlay.style.display = 'grid';
   }
 
   private advanceCaptureBeat(effect: CaptureEffect, progress: number): void {
@@ -981,7 +1120,7 @@ class GymBuddyRenderer {
     this.camera.aspect = this.width / this.height;
     this.camera.updateProjectionMatrix();
     this.renderer.setPixelRatio(1);
-    const pixelScale = getPixelCanvasScale(this.touchOptimized);
+    const pixelScale = getPixelCanvasScale(this.touchOptimized, this.settings.pixelFilter);
     this.renderer.setSize(
       Math.max(1, Math.floor(this.width / pixelScale)),
       Math.max(1, Math.floor(this.height / pixelScale)),
@@ -1035,13 +1174,34 @@ function createCameraRelativeActions(actions: ActionState, basis: MovementBasis)
 
 export function createGymBuddyGame(root: HTMLElement): void {
   const hud = new GameHud(root);
+  const initialSettings = loadGameSettingsFromStorage();
+  hud.setSettings(initialSettings);
   const input = new InputController();
   input.setInputMode(hud.getInputMode());
   const world = new GymBuddyWorld();
+  const savedProgress = loadProgressFromStorage();
+  const initialTutorialCompleted = Boolean(savedProgress?.tutorialCompleted);
+
+  if (savedProgress) {
+    world.loadSaveData(savedProgress);
+  }
+
   const initialSnapshot = world.getSnapshot();
-  const renderer = new GymBuddyRenderer(hud.canvasMount, initialSnapshot);
-  const previewRenderer = new CharacterPreviewRenderer(hud.creatorPreviewMount);
+  const renderer = new GymBuddyRenderer(hud.canvasMount, initialSnapshot, initialSettings);
+  const previewRenderer = new CharacterPreviewRenderer(hud.creatorPreviewMount, initialSettings);
   let gameStarted = false;
+  let tutorialCompleted = initialTutorialCompleted;
+  let tutorialStep = tutorialCompleted ? TUTORIAL_STEPS.length : 0;
+  let tutorialMoveOrigin: Vec2 | undefined;
+  let tutorialBuddyReadTimer = 0;
+  let tutorialExoticNoticeTimer = 0;
+
+  const saveProgress = (): void => {
+    saveProgressToStorage({
+      ...world.getSaveData(),
+      tutorialCompleted
+    });
+  };
 
   input.bindTouchControls(hud.touchControls);
   input.bindMouseControls(hud.canvasMount);
@@ -1052,9 +1212,15 @@ export function createGymBuddyGame(root: HTMLElement): void {
   hud.onPreviewRotationChange((rotation) => {
     previewRenderer.setRotation(rotation);
   });
+  hud.onSettingsChange((settings) => {
+    saveGameSettingsToStorage(settings);
+    renderer.applySettings(settings);
+    previewRenderer.applySettings(settings);
+  });
   hud.onStart(() => {
     gameStarted = true;
     hud.pushMessage('The safari has opened.');
+    tutorialMoveOrigin = undefined;
   });
   hud.onWorkoutComplete((station) => {
     world.completeWorkout(station);
@@ -1080,11 +1246,35 @@ export function createGymBuddyGame(root: HTMLElement): void {
   hud.onRosterUseSteroid((rosterId) => {
     world.useSteroid(rosterId);
   });
+  hud.onRosterRename((rosterId, displayName) => {
+    world.renameBuddy(rosterId, displayName);
+  });
+  hud.onResetSave(() => {
+    clearProgressStorage();
+    world.reset();
+    tutorialCompleted = false;
+    tutorialStep = 0;
+    tutorialMoveOrigin = undefined;
+    tutorialBuddyReadTimer = 0;
+    tutorialExoticNoticeTimer = 0;
+    hud.hideTutorialPopup();
+    saveProgress();
+  });
   hud.onBossChallenge(() => {
     world.challengeBoss();
   });
   hud.onInputModeChange((mode: InputMode) => {
     input.setInputMode(mode);
+  });
+  hud.onTutorialSkip(() => {
+    if (tutorialCompleted) {
+      return;
+    }
+
+    tutorialCompleted = true;
+    tutorialStep = TUTORIAL_STEPS.length;
+    hud.hideTutorialPopup();
+    saveProgress();
   });
   renderer.updatePlayerAppearance(hud.getAppearance());
   previewRenderer.updateAppearance(hud.getAppearance());
@@ -1092,6 +1282,128 @@ export function createGymBuddyGame(root: HTMLElement): void {
   let lastTime = performance.now();
   let proximityTimer = 0;
   let lastProximityPosition: Vec2 | undefined;
+
+  function isTutorialExotic(definitionId: string): boolean {
+    const definition = getBuddyDefinition(definitionId);
+    return definition.rarity === 'exotic' || definition.isExotic === true;
+  }
+
+  function completeTutorialStep(): boolean {
+    if (tutorialCompleted) {
+      return false;
+    }
+
+    tutorialStep += 1;
+
+    if (tutorialStep >= TUTORIAL_STEPS.length) {
+      tutorialCompleted = true;
+      tutorialStep = TUTORIAL_STEPS.length;
+      return true;
+    }
+
+    return true;
+  }
+
+  function updateTutorial(
+    preUpdateSnapshot: WorldSnapshot,
+    postUpdateSnapshot: WorldSnapshot,
+    deltaSeconds: number,
+    inputActions: ActionState,
+    events: WorldEvent[]
+  ): boolean {
+    if (!gameStarted || tutorialCompleted) {
+      return false;
+    }
+
+    if (!tutorialMoveOrigin) {
+      tutorialMoveOrigin = { ...postUpdateSnapshot.player.position };
+    }
+
+    if (tutorialStep === 0) {
+      const moved = Math.hypot(
+        postUpdateSnapshot.player.position.x - tutorialMoveOrigin.x,
+        postUpdateSnapshot.player.position.z - tutorialMoveOrigin.z
+      );
+
+      if (moved >= TUTORIAL_MOVE_DISTANCE) {
+        return completeTutorialStep();
+      }
+    } else if (tutorialStep === 1) {
+      if (postUpdateSnapshot.nearestBuddy && postUpdateSnapshot.nearestBuddy.distance <= postUpdateSnapshot.captureRange * 1.6) {
+        return completeTutorialStep();
+      }
+    } else if (tutorialStep === 2) {
+      const readBuddy =
+        preUpdateSnapshot.nearestBuddy &&
+        preUpdateSnapshot.nearestBuddy.distance <= preUpdateSnapshot.captureRange;
+
+      if (readBuddy) {
+        tutorialBuddyReadTimer += deltaSeconds;
+      } else {
+        tutorialBuddyReadTimer = 0;
+      }
+
+      if (tutorialBuddyReadTimer >= TUTORIAL_BUDDY_READ_TIME) {
+        return completeTutorialStep();
+      }
+    } else if (tutorialStep === 3) {
+      if (
+        preUpdateSnapshot.nearestBuddy &&
+        preUpdateSnapshot.nearestBuddy.distance <= preUpdateSnapshot.captureRange &&
+        preUpdateSnapshot.captureCutsceneRemaining <= 0 &&
+        inputActions.catchPressed
+      ) {
+        return completeTutorialStep();
+      }
+    } else if (tutorialStep === 4) {
+      if (events.some((event) => event.type === 'capture' && event.result === 'success')) {
+        return completeTutorialStep();
+      }
+    } else if (tutorialStep === 5) {
+      if (events.some((event) => event.type === 'roster' && event.steroidUsed)) {
+        return completeTutorialStep();
+      }
+    } else if (tutorialStep === 6) {
+      const nearest = postUpdateSnapshot.nearestBuddy;
+      const isExotic = Boolean(
+        nearest && isTutorialExotic(nearest.buddy.definitionId) && nearest.distance <= postUpdateSnapshot.captureRange * 1.4
+      );
+
+      if (isExotic) {
+        tutorialExoticNoticeTimer += deltaSeconds;
+      } else {
+        tutorialExoticNoticeTimer = 0;
+      }
+
+      if (tutorialExoticNoticeTimer >= TUTORIAL_EXOTIC_NOTICE_TIME) {
+        return completeTutorialStep();
+      }
+    }
+
+    if (tutorialCompleted) {
+      return true;
+    }
+
+    return false;
+  }
+
+  function showTutorialPopup(): void {
+    if (!gameStarted || tutorialCompleted || hud.isInteractionActive()) {
+      hud.hideTutorialPopup();
+      return;
+    }
+
+    if (tutorialStep < TUTORIAL_STEPS.length) {
+      hud.setTutorialStep(TUTORIAL_STEPS[tutorialStep]);
+      return;
+    }
+
+    hud.hideTutorialPopup();
+  }
+
+  if (initialTutorialCompleted) {
+    hud.hideTutorialPopup();
+  }
 
   function refreshNearbyPrompts(playerPosition: Vec2): void {
     if (!gameStarted) {
@@ -1153,6 +1465,19 @@ export function createGymBuddyGame(root: HTMLElement): void {
     world.update(shouldAdvanceWorld ? deltaSeconds : 0, actions);
     const events = world.drainEvents();
     const snapshot = world.getSnapshot();
+    const tutorialAdvanced = updateTutorial(preUpdateSnapshot, snapshot, deltaSeconds, inputActions, events);
+
+    if (
+      events.some(
+        (event) => event.type === 'capture' || event.type === 'roster' || event.type === 'workout'
+      )
+    ) {
+      saveProgress();
+    }
+
+    if (tutorialAdvanced) {
+      saveProgress();
+    }
 
     if (!gameStarted || shouldRefreshNearbyPrompts(snapshot.player.position, deltaSeconds)) {
       refreshNearbyPrompts(snapshot.player.position);
@@ -1162,7 +1487,8 @@ export function createGymBuddyGame(root: HTMLElement): void {
       hud.pushMessage(event.message);
     }
 
-    renderer.update(snapshot, events, deltaSeconds);
+    showTutorialPopup();
+    renderer.update(snapshot, events, deltaSeconds, inputActions);
     previewRenderer.update(deltaSeconds, !gameStarted);
     hud.update(snapshot, inputActions, deltaSeconds);
     requestAnimationFrame(frame);

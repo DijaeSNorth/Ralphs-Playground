@@ -1,0 +1,20 @@
+Stage Update Reference
+====================
+Date: 2026-06-21
+Branch: feature/pixel-arm-wrestle-capture
+Stage: arm-wrestle catch rule replacement
+
+Files changed:
+- src/game/simulation/world.ts
+  - Added pure helper `getArmWrestleCatchChance(buddy, definition): number`.
+  - Replaced old capture formula in `tryCapture()` with exact table-based chance output.
+  - Updated capture success/fail messages to reference arm-wrestling instead of dodging/form wording.
+  - Retained WorldEvent chance payload in capture event.
+
+Behavioral outcome:
+- Level-based catch chance now returns one of: 0.9, 0.85, 0.8, 0.7.
+- Exotic (`rarity: 'exotic'` or `isExotic`) catch chance always returns 0.4.
+- Range/close checks and existing capture flow remain unchanged.
+
+Validation:
+- `npm run build` passed.

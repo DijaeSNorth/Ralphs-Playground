@@ -1,0 +1,21 @@
+Stage: Settings menu and GitHub Pages deployment readiness
+
+Important files:
+- src/game/settings.ts stores local settings with localStorage key gym-buddy-swole-safari-settings.
+- src/ui/hud.ts renders and persists settings controls through GameHud.onSettingsChange().
+- src/render/app/createGymBuddyGame.ts applies settings to camera distance, pixel scale, and reduced-motion capture animation.
+- src/style.css styles the settings panel and root classes game-root--pixel-filter-off and game-root--reduced-motion.
+- docs/deployment-checklist.md records build, preview, GitHub Pages notes, verification, and known issues.
+
+Behavior notes:
+- Music and SFX volume controls are placeholders and save locally.
+- Pixel filter can be toggled without disabling gameplay rendering.
+- Camera distance supports close, normal, and far.
+- Reduced motion reduces player bob, capture camera movement, wobble, squash, and UI transitions.
+- Show catch odds toggles the catch percentage in the target preview while keeping creature name/level/rarity visible.
+- Reset Save appears in Settings and still requires confirmation.
+
+Deployment notes:
+- vite.config.ts keeps base: './' for GitHub Pages project paths.
+- public/.nojekyll is present.
+- Character preview public HTML uses relative SVG paths.

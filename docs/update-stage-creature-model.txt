@@ -1,0 +1,33 @@
+Stage Update Reference
+====================
+Date: 2026-06-21
+Branch: feature/pixel-arm-wrestle-capture
+Objective: Wild buddy animal-inspired creature metadata + level-aware spawning/capture persistence.
+
+Files changed:
+- src/game/types.ts
+  - Added BuddyRarity union: common, uncommon, rare, exotic.
+  - Added BuddySpecies type + BuddyVisualHints + BuddyMythicMetadata types.
+  - Extended BuddyDefinition with species, optional isExotic, optional visualHints, optional mythicMetadata.
+  - Extended BuddyState with level:number for wild/roster creatures.
+
+- src/game/content/buddies.ts
+  - Kept existing IDs/stability and converted names and data to animal-inspired originals.
+  - Added species + visualHints per definition.
+  - Added rare/exotic-tier metadata (isExotic + mythicMetadata on Chrome Rhino).
+  - Added at least one exotic definition entry (rarity: exotic).
+
+- src/game/simulation/world.ts
+  - Wild spawns now call getWildBuddyLevel() and assign level when creating BuddyState.
+  - Added progression logic using capturedTotal and crew average level to raise max spawn level over time.
+  - Early game remains capped around 1-15 with bias to low levels.
+  - Captured roster entries now preserve wild buddy level via createRosterEntry(level).
+
+Implementation details:
+- Created new helper getWildBuddyLevel() in world simulation.
+- Updated capture path to pass buddy.level into crew entry creation.
+- Existing capture, roster flow, and RepDex structures remained unchanged.
+- No renderer/UI styling changes in this stage.
+
+Acceptance outcome:
+- `npm run build` passed.

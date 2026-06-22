@@ -1,0 +1,28 @@
+Stage: Exotic Mythical Spawns (muscular animals)
+
+Files changed:
+ - src/game/content/buddies.ts
+ - src/game/types.ts
+ - src/game/simulation/world.ts
+ - src/render/objects/lowPolyFactory.ts
+ - src/ui/hud.ts
+ - src/style.css
+
+Implemented:
+ - Added buddy species: minotaur, griffin, dragon, cyclops.
+ - Added rare exotics:
+   - minotaur-maximus (Minotaur Maximus)
+   - griffin-gains (Griffin Gains)
+   - dragon-deadlift (Dragon Deadlift)
+   - cyclops-curl (Cyclops Curl)
+   - chrome-rhino retained but flagged exotic for rarity balance.
+ - Set rarity/isExotic to exotic and added mythicMetadata.
+ - Spawn logic in world.ts weighted to make exotics very uncommon (~2.4% total combined).
+ - Exotic catch chance is forced to 0.4 via existing arm-wrestle helper.
+ - Low-poly buddy rendering now includes species silhouettes for griffin/minotaur/dragon/cyclops.
+ - Exotics render with scale bump + aura glow accents.
+ - HUD/RepDex now annotates exotic names with “✦ EXOTIC”.
+ - Added style accents for exotic dex/crew rows.
+
+Note:
+ - `npm run build` succeeds after the lowPolyFactory optional isExotic boolean fix.

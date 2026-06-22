@@ -2,6 +2,8 @@
 import type { InputMode } from '../game/input/actions';
 import { normalizeManifestHairId, normalizeManifestSex } from '../game/content/characterAssetManifest';
 import { getArmWrestleCatchChance } from '../game/simulation/world';
+import { BUDDY_DEFINITIONS } from '../game/content/buddies';
+import { DEFAULT_GAME_SETTINGS, type CameraDistanceSetting, type GameSettings } from '../game/settings';
 import {
   BODY_SIZE_CONTROLS,
   SEX_OPTIONS,
@@ -45,12 +47,36 @@ const SPOT_HOLD_DURATION = 0.55;
 const CONTROL_HINTS: Record<InputMode, string> = {
   'keyboard-mouse':
     'WASD Move / Shift Sprint / Left Click Arm Wrestle / Right Click Use',
-  touch: 'Virtual joystick to move / Sprint / Wrestle while moving'
+  touch: 'Virtual joystick to move / Sprint / Wrestle / Use'
 };
 const SWITCH_MODE_BUTTON_LABELS: Record<InputMode, string> = {
   'keyboard-mouse': 'Switch to Touch Controls',
   touch: 'Switch to Keyboard + Mouse'
 };
+const GOAL_TARGETS = {
+  capture_3: 3,
+  capture_6: 6,
+  capture_10: 10,
+  capture_first_exotic: 1,
+  roster_level_10_any: 1,
+  repdex_half: Math.ceil(BUDDY_DEFINITIONS.length / 2)
+} as const;
+const GOAL_LABELS = {
+  capture_3: 'Capture 3 creatures',
+  capture_6: 'Capture 6 creatures',
+  capture_10: 'Capture 10 creatures',
+  capture_first_exotic: 'Find your first exotic',
+  roster_level_10_any: 'Level a crew member to 10',
+  repdex_half: 'Fill half the RepDex'
+} as const;
+const RARITY_SORT_ORDER: Record<string, number> = {
+  normal: 0,
+  common: 0,
+  uncommon: 1,
+  rare: 2,
+  exotic: 3
+};
+type CrewSortMode = 'level' | 'rarity' | 'strength' | 'recent';
 
 export class GameHud {
   readonly canvasMount: HTMLDivElement;
@@ -69,17 +95,46 @@ export class GameHud {
   private readonly targetPreviewName: HTMLDivElement;
   private readonly targetPreviewRarity: HTMLDivElement;
   private readonly targetPreviewChance: HTMLDivElement;
+  private readonly goalsList: HTMLDivElement;
+  private readonly goalsPanel: HTMLElement;
+  private readonly goalsPanelToggle: HTMLButtonElement;
+  private readonly goalsPanelBody: HTMLDivElement;
+  private readonly crewSortSelect: HTMLSelectElement;
   private readonly dexList: HTMLDivElement;
+  private readonly repdexPanel: HTMLElement;
+  private readonly repdexPanelToggle: HTMLButtonElement;
+  private readonly repdexPanelBody: HTMLDivElement;
   private readonly repDexDetail: HTMLDivElement;
   private readonly repDexDetailClose: HTMLButtonElement;
   private readonly repDexDetailTitle: HTMLHeadingElement;
   private readonly repDexDetailSpecies: HTMLDivElement;
   private readonly repDexDetailType: HTMLDivElement;
   private readonly repDexDetailRarity: HTMLDivElement;
+  private readonly repDexDetailPersonality: HTMLDivElement;
+  private readonly repDexDetailFavoriteWorkout: HTMLDivElement;
   private readonly repDexDetailCount: HTMLDivElement;
   private readonly repDexDetailDescription: HTMLDivElement;
   private readonly repDexDetailOdds: HTMLDivElement;
   private readonly repDexDetailFlavor: HTMLDivElement;
+  private readonly crewPanel: HTMLElement;
+  private readonly crewPanelToggle: HTMLButtonElement;
+  private readonly crewPanelBody: HTMLElement;
+  private readonly crewDetail: HTMLDivElement;
+  private readonly crewDetailClose: HTMLButtonElement;
+  private readonly crewDetailTitle: HTMLHeadingElement;
+  private readonly crewDetailSpecies: HTMLDivElement;
+  private readonly crewDetailType: HTMLDivElement;
+  private readonly crewDetailRarity: HTMLDivElement;
+  private readonly crewDetailLevel: HTMLDivElement;
+  private readonly crewDetailStrength: HTMLDivElement;
+  private readonly crewDetailEndurance: HTMLDivElement;
+  private readonly crewDetailFocus: HTMLDivElement;
+  private readonly crewDetailEnergy: HTMLDivElement;
+  private readonly crewDetailCaughtAt: HTMLDivElement;
+  private readonly crewDetailNameInput: HTMLInputElement;
+  private readonly crewDetailRenameButton: HTMLButtonElement;
+  private readonly crewDetailUseSteroidButton: HTMLButtonElement;
+  private readonly crewDetailReleaseButton: HTMLButtonElement;
   private readonly crewCount: HTMLSpanElement;
   private readonly crewList: HTMLDivElement;
   private readonly bossPanel: HTMLDivElement;
@@ -90,6 +145,22 @@ export class GameHud {
   private readonly inputStatus: HTMLDivElement;
   private readonly controlHint: HTMLDivElement;
   private readonly inputModeButton: HTMLButtonElement;
+  private readonly resetSaveButton: HTMLButtonElement;
+  private readonly settingsButton: HTMLButtonElement;
+  private readonly settingsPanel: HTMLDivElement;
+  private readonly settingsCloseButton: HTMLButtonElement;
+  private readonly settingsMusicInput: HTMLInputElement;
+  private readonly settingsMusicValue: HTMLSpanElement;
+  private readonly settingsSfxInput: HTMLInputElement;
+  private readonly settingsSfxValue: HTMLSpanElement;
+  private readonly settingsPixelInput: HTMLInputElement;
+  private readonly settingsCameraSelect: HTMLSelectElement;
+  private readonly settingsReducedInput: HTMLInputElement;
+  private readonly settingsCatchOddsInput: HTMLInputElement;
+  private readonly settingsResetSaveButton: HTMLButtonElement;
+  private readonly tutorialPopup: HTMLDivElement;
+  private readonly tutorialText: HTMLDivElement;
+  private readonly tutorialSkip: HTMLButtonElement;
   private readonly workoutPrompt: HTMLDivElement;
   private readonly workoutPromptName: HTMLSpanElement;
   private readonly freeWeightPrompt: HTMLDivElement;
@@ -127,10 +198,15 @@ export class GameHud {
   private readonly rosterSpotListeners: Array<(rosterId: number) => void> = [];
   private readonly rosterRemoveListeners: Array<(rosterId: number) => void> = [];
   private readonly rosterUseSteroidListeners: Array<(rosterId: number) => void> = [];
+  private readonly rosterRenameListeners: Array<(rosterId: number, displayName?: string) => void> = [];
   private readonly bossChallengeListeners: Array<() => void> = [];
   private readonly previewRotationListeners: Array<(rotation: number) => void> = [];
   private readonly inputModeListeners: Array<(mode: InputMode) => void> = [];
+  private readonly resetSaveListeners: Array<() => void> = [];
+  private readonly settingsChangeListeners: Array<(settings: GameSettings) => void> = [];
+  private readonly tutorialSkipListeners: Array<() => void> = [];
   private inputMode: InputMode = 'keyboard-mouse';
+  private settings: GameSettings = { ...DEFAULT_GAME_SETTINGS };
   private appearance: PlayerAppearance = { ...DEFAULT_PLAYER_APPEARANCE };
   private nearbyStation?: WorkoutStation;
   private nearbyVending?: VendingMachine;
@@ -155,7 +231,10 @@ export class GameHud {
   private renderedTargetPreviewName = '';
   private renderedTargetPreviewRarity = '';
   private renderedTargetPreviewChance = '';
+  private renderedGoalsMarkup = '';
   private renderedToastVisible = false;
+  private availableSteroids = 0;
+  private renderedTutorialText = '';
   private renderedWorkoutPromptName = '';
   private renderedFreeWeightPromptName = '';
   private renderedFreeWeightPromptButton = '';
@@ -170,7 +249,10 @@ export class GameHud {
   private renderedWorkoutCursorLeft = '';
   private renderedSpotMeterWidth = '';
   private readonly repDexEntriesById = new Map<string, RepDexEntry>();
+  private readonly rosterEntriesById = new Map<number, BuddyRosterEntry>();
   private readonly rosterNameById = new Map<number, string>();
+  private activeCrewDetailId?: number;
+  private crewSort: CrewSortMode = 'recent';
   private spotTargetRosterId?: number;
   private spotHoldProgress = 0;
   private spotHoldActive = false;
@@ -199,6 +281,15 @@ export class GameHud {
             <div class="target-preview-rarity" data-target-preview-rarity></div>
             <div class="target-preview-chance" data-target-preview-chance></div>
           </section>
+          <section class="goals-panel hud-panel--collapsible" data-panel="goals" aria-label="Progress goals">
+            <div class="panel-title">
+              <span>Goals</span>
+              <button type="button" class="panel-toggle" data-panel-toggle="goals" aria-expanded="true" aria-controls="goals-body">▾</button>
+            </div>
+            <div class="panel-body" id="goals-body">
+              <div class="goals-list" data-goals-list></div>
+            </div>
+          </section>
         </section>
         <section class="hud-cluster hud-cluster--right" aria-label="Player status">
           <div class="stat-row">
@@ -225,9 +316,14 @@ export class GameHud {
             </div>
           </div>
         </section>
-        <section class="repdex-panel" aria-label="RepDex entries">
-          <div class="panel-title">RepDex</div>
-          <div class="dex-list" data-dex-list></div>
+        <section class="repdex-panel hud-panel--collapsible" data-panel="repdex" aria-label="RepDex entries">
+          <div class="panel-title">
+            <span>RepDex</span>
+            <button type="button" class="panel-toggle" data-panel-toggle="repdex" aria-expanded="true" aria-controls="repdex-body">▾</button>
+          </div>
+          <div class="panel-body" id="repdex-body">
+            <div class="dex-list" data-dex-list></div>
+          </div>
         </section>
         <section class="repdex-detail" data-repdex-detail hidden aria-label="RepDex creature detail">
           <button type="button" class="repdex-detail-close" data-repdex-detail-close aria-label="Close creature card">×</button>
@@ -236,15 +332,57 @@ export class GameHud {
             <div class="repdex-detail-field"><span>Species</span><strong data-repdex-detail-species>Unknown</strong></div>
             <div class="repdex-detail-field"><span>Type</span><strong data-repdex-detail-type>Normal</strong></div>
             <div class="repdex-detail-field"><span>Rarity</span><strong data-repdex-detail-rarity>Normal</strong></div>
+            <div class="repdex-detail-field repdex-detail-full"><span>Personality</span><strong data-repdex-detail-personality>—</strong></div>
+            <div class="repdex-detail-field repdex-detail-full"><span>Favorite Workout</span><strong data-repdex-detail-fav-workout>—</strong></div>
             <div class="repdex-detail-field repdex-detail-full"><span>Caught</span><strong data-repdex-detail-count>0</strong></div>
           </div>
           <p class="repdex-detail-description" data-repdex-detail-description>Capture a creature to add details.</p>
           <div class="repdex-detail-odds" data-repdex-detail-odds></div>
           <p class="repdex-detail-flavor" data-repdex-detail-flavor>...</p>
         </section>
-        <section class="crew-panel" aria-label="Crew buddies">
-            <div class="panel-title">Crew</div>
+        <section class="crew-panel hud-panel--collapsible" data-panel="crew" aria-label="Crew buddies">
+          <div class="panel-title">
+            <span>Crew</span>
+            <button type="button" class="panel-toggle" data-panel-toggle="crew" aria-expanded="true" aria-controls="crew-body">▾</button>
+          </div>
+          <div class="panel-body" id="crew-body">
+          <label class="crew-sort-control">
+            <span>Sort</span>
+            <select class="crew-sort-select" data-crew-sort>
+              <option value="level">Level</option>
+              <option value="rarity">Rarity</option>
+              <option value="strength">Strength</option>
+              <option value="recent" selected>Recently Caught</option>
+            </select>
+          </label>
           <div class="crew-list" data-crew-list></div>
+          </div>
+        </section>
+        <section class="crew-detail" data-crew-detail hidden aria-label="Crew creature detail">
+          <button type="button" class="crew-detail-close" data-crew-detail-close aria-label="Close crew detail">×</button>
+          <h2 class="crew-detail-title" data-crew-detail-title>Creature</h2>
+          <div class="crew-detail-grid">
+            <div class="crew-detail-field"><span>Species</span><strong data-crew-detail-species>Unknown</strong></div>
+            <div class="crew-detail-field"><span>Type</span><strong data-crew-detail-type>Normal</strong></div>
+            <div class="crew-detail-field"><span>Rarity</span><strong data-crew-detail-rarity>normal</strong></div>
+            <div class="crew-detail-field"><span>Level</span><strong data-crew-detail-level>1</strong></div>
+            <div class="crew-detail-field"><span>Strength</span><strong data-crew-detail-strength>0</strong></div>
+            <div class="crew-detail-field"><span>Endurance</span><strong data-crew-detail-endurance>0</strong></div>
+            <div class="crew-detail-field"><span>Focus</span><strong data-crew-detail-focus>0</strong></div>
+            <div class="crew-detail-field"><span>Energy</span><strong data-crew-detail-energy>100</strong></div>
+            <div class="crew-detail-field"><span>Caught</span><strong data-crew-detail-caught>—</strong></div>
+            <div class="crew-detail-field crew-detail-field--wide">
+              <span>Rename this buddy</span>
+              <div class="crew-detail-rename">
+                <input type="text" maxlength="22" data-crew-detail-rename-input />
+                <button type="button" data-crew-detail-rename>Save</button>
+              </div>
+            </div>
+            </div>
+          <div class="crew-detail-actions">
+            <button type="button" class="crew-detail-use" data-crew-detail-use>Use</button>
+            <button type="button" class="crew-detail-release" data-crew-detail-release>Release</button>
+          </div>
         </section>
         <section class="boss-panel" data-boss-panel hidden aria-label="Boss challenge">
           <div>
@@ -257,7 +395,49 @@ export class GameHud {
         <div class="toast" data-toast></div>
         <div class="input-status" data-input-status>Keyboard + Mouse</div>
         <button type="button" class="input-mode-toggle" data-input-mode>Keyboard + Mouse</button>
+        <button type="button" class="settings-toggle" data-settings-open aria-expanded="false">Settings</button>
+        <section class="settings-panel" data-settings-panel hidden aria-label="Settings">
+          <div class="settings-head">
+            <h2>Settings</h2>
+            <button type="button" data-settings-close aria-label="Close settings">Close</button>
+          </div>
+          <label class="settings-control">
+            <span>Music</span>
+            <input type="range" min="0" max="100" step="5" data-settings-music />
+            <strong data-settings-music-value>60</strong>
+          </label>
+          <label class="settings-control">
+            <span>SFX</span>
+            <input type="range" min="0" max="100" step="5" data-settings-sfx />
+            <strong data-settings-sfx-value>75</strong>
+          </label>
+          <label class="settings-check">
+            <input type="checkbox" data-settings-pixel />
+            <span>Pixel filter</span>
+          </label>
+          <label class="settings-control">
+            <span>Camera</span>
+            <select data-settings-camera>
+              <option value="close">Close</option>
+              <option value="normal">Normal</option>
+              <option value="far">Far</option>
+            </select>
+          </label>
+          <label class="settings-check">
+            <input type="checkbox" data-settings-reduced-motion />
+            <span>Reduced motion</span>
+          </label>
+          <label class="settings-check">
+            <input type="checkbox" data-settings-catch-odds />
+            <span>Show catch odds</span>
+          </label>
+          <button type="button" class="settings-reset-save" data-settings-reset-save>Reset Save</button>
+        </section>
         <div class="control-hint" data-control-hint>WASD Move / Shift Sprint / Left Click Arm Wrestle / Right Click Use</div>
+        <section class="tutorial-popup" data-tutorial-popup hidden>
+          <div class="tutorial-popup__text" data-tutorial-text></div>
+          <button type="button" class="tutorial-popup__skip" data-tutorial-skip>Skip Tutorial</button>
+        </section>
         <div class="workout-prompt" data-workout-prompt hidden>
           <span data-workout-prompt-name>Workout station</span>
           <button type="button" data-workout-start>Use</button>
@@ -406,7 +586,10 @@ export class GameHud {
                 ).join('')}
               </div>
             </div>
-            <button type="button" class="creator-start" data-start-game>Enter Safari</button>
+            <div class="creator-action-row">
+              <button type="button" class="creator-start" data-start-game>Enter Safari</button>
+              <button type="button" class="creator-reset-save" data-reset-save>Reset Save</button>
+            </div>
           </div>
         </section>
         <div class="touch-controls" data-touch-controls aria-label="Touch controls">
@@ -415,6 +598,7 @@ export class GameHud {
             <div class="touch-joystick-knob" data-joystick-knob></div>
           </div>
           <div class="touch-actions">
+            <button type="button" class="touch-action touch-action--interact" data-interact>Use</button>
             <button type="button" class="touch-action touch-action--sprint" data-sprint>Sprint</button>
             <button type="button" class="touch-action touch-action--catch" data-catch>Wrestle</button>
           </div>
@@ -428,23 +612,53 @@ export class GameHud {
     const steroidsValue = root.querySelector<HTMLSpanElement>('[data-steroids]');
     const capturedValue = root.querySelector<HTMLSpanElement>('[data-captured]');
     const crewCount = root.querySelector<HTMLSpanElement>('[data-crew-count]');
+    const resetSaveButton = root.querySelector<HTMLButtonElement>('[data-reset-save]');
     const objective = root.querySelector<HTMLDivElement>('[data-objective]');
     const target = root.querySelector<HTMLDivElement>('[data-target]');
     const targetPreview = root.querySelector<HTMLDivElement>('[data-target-preview]');
     const targetPreviewName = root.querySelector<HTMLDivElement>('[data-target-preview-name]');
     const targetPreviewRarity = root.querySelector<HTMLDivElement>('[data-target-preview-rarity]');
     const targetPreviewChance = root.querySelector<HTMLDivElement>('[data-target-preview-chance]');
+    const goalsList = root.querySelector<HTMLDivElement>('[data-goals-list]');
+    const goalsPanel = root.querySelector<HTMLElement>('.goals-panel[data-panel="goals"]');
+    const goalsPanelToggle = root.querySelector<HTMLButtonElement>('[data-panel-toggle="goals"]');
+    const goalsPanelBody = root.querySelector<HTMLDivElement>('[id="goals-body"]');
+    const crewSortSelect = root.querySelector<HTMLSelectElement>('[data-crew-sort]');
     const dexList = root.querySelector<HTMLDivElement>('[data-dex-list]');
+    const repdexPanel = root.querySelector<HTMLElement>('.repdex-panel[data-panel="repdex"]');
+    const repdexPanelToggle = root.querySelector<HTMLButtonElement>('[data-panel-toggle="repdex"]');
+    const repdexPanelBody = root.querySelector<HTMLDivElement>('[id="repdex-body"]');
     const repDexDetail = root.querySelector<HTMLDivElement>('[data-repdex-detail]');
     const repDexDetailClose = root.querySelector<HTMLButtonElement>('[data-repdex-detail-close]');
     const repDexDetailTitle = root.querySelector<HTMLHeadingElement>('[data-repdex-detail-title]');
     const repDexDetailSpecies = root.querySelector<HTMLDivElement>('[data-repdex-detail-species]');
     const repDexDetailType = root.querySelector<HTMLDivElement>('[data-repdex-detail-type]');
     const repDexDetailRarity = root.querySelector<HTMLDivElement>('[data-repdex-detail-rarity]');
+    const repDexDetailPersonality = root.querySelector<HTMLDivElement>('[data-repdex-detail-personality]');
+    const repDexDetailFavoriteWorkout = root.querySelector<HTMLDivElement>('[data-repdex-detail-fav-workout]');
     const repDexDetailCount = root.querySelector<HTMLDivElement>('[data-repdex-detail-count]');
     const repDexDetailDescription = root.querySelector<HTMLDivElement>('[data-repdex-detail-description]');
     const repDexDetailOdds = root.querySelector<HTMLDivElement>('[data-repdex-detail-odds]');
     const repDexDetailFlavor = root.querySelector<HTMLDivElement>('[data-repdex-detail-flavor]');
+    const crewPanel = root.querySelector<HTMLElement>('.crew-panel[data-panel="crew"]');
+    const crewPanelToggle = root.querySelector<HTMLButtonElement>('[data-panel-toggle="crew"]');
+    const crewPanelBody = root.querySelector<HTMLElement>('[id="crew-body"]');
+    const crewDetail = root.querySelector<HTMLDivElement>('[data-crew-detail]');
+    const crewDetailClose = root.querySelector<HTMLButtonElement>('[data-crew-detail-close]');
+    const crewDetailTitle = root.querySelector<HTMLHeadingElement>('[data-crew-detail-title]');
+    const crewDetailSpecies = root.querySelector<HTMLDivElement>('[data-crew-detail-species]');
+    const crewDetailType = root.querySelector<HTMLDivElement>('[data-crew-detail-type]');
+    const crewDetailRarity = root.querySelector<HTMLDivElement>('[data-crew-detail-rarity]');
+    const crewDetailLevel = root.querySelector<HTMLDivElement>('[data-crew-detail-level]');
+    const crewDetailStrength = root.querySelector<HTMLDivElement>('[data-crew-detail-strength]');
+    const crewDetailEndurance = root.querySelector<HTMLDivElement>('[data-crew-detail-endurance]');
+    const crewDetailFocus = root.querySelector<HTMLDivElement>('[data-crew-detail-focus]');
+    const crewDetailEnergy = root.querySelector<HTMLDivElement>('[data-crew-detail-energy]');
+    const crewDetailCaughtAt = root.querySelector<HTMLDivElement>('[data-crew-detail-caught]');
+    const crewDetailNameInput = root.querySelector<HTMLInputElement>('[data-crew-detail-rename-input]');
+    const crewDetailRenameButton = root.querySelector<HTMLButtonElement>('[data-crew-detail-rename]');
+    const crewDetailUseSteroidButton = root.querySelector<HTMLButtonElement>('[data-crew-detail-use]');
+    const crewDetailReleaseButton = root.querySelector<HTMLButtonElement>('[data-crew-detail-release]');
     const crewList = root.querySelector<HTMLDivElement>('[data-crew-list]');
     const bossPanel = root.querySelector<HTMLDivElement>('[data-boss-panel]');
     const bossName = root.querySelector<HTMLSpanElement>('[data-boss-name]');
@@ -454,6 +668,21 @@ export class GameHud {
     const inputStatus = root.querySelector<HTMLDivElement>('[data-input-status]');
     const controlHint = root.querySelector<HTMLDivElement>('[data-control-hint]');
     const inputModeButton = root.querySelector<HTMLButtonElement>('[data-input-mode]');
+    const settingsButton = root.querySelector<HTMLButtonElement>('[data-settings-open]');
+    const settingsPanel = root.querySelector<HTMLDivElement>('[data-settings-panel]');
+    const settingsCloseButton = root.querySelector<HTMLButtonElement>('[data-settings-close]');
+    const settingsMusicInput = root.querySelector<HTMLInputElement>('[data-settings-music]');
+    const settingsMusicValue = root.querySelector<HTMLSpanElement>('[data-settings-music-value]');
+    const settingsSfxInput = root.querySelector<HTMLInputElement>('[data-settings-sfx]');
+    const settingsSfxValue = root.querySelector<HTMLSpanElement>('[data-settings-sfx-value]');
+    const settingsPixelInput = root.querySelector<HTMLInputElement>('[data-settings-pixel]');
+    const settingsCameraSelect = root.querySelector<HTMLSelectElement>('[data-settings-camera]');
+    const settingsReducedInput = root.querySelector<HTMLInputElement>('[data-settings-reduced-motion]');
+    const settingsCatchOddsInput = root.querySelector<HTMLInputElement>('[data-settings-catch-odds]');
+    const settingsResetSaveButton = root.querySelector<HTMLButtonElement>('[data-settings-reset-save]');
+    const tutorialPopup = root.querySelector<HTMLDivElement>('[data-tutorial-popup]');
+    const tutorialText = root.querySelector<HTMLDivElement>('[data-tutorial-text]');
+    const tutorialSkip = root.querySelector<HTMLButtonElement>('[data-tutorial-skip]');
     const touchControls = root.querySelector<HTMLDivElement>('[data-touch-controls]');
     const characterCreator = root.querySelector<HTMLDivElement>('[data-character-creator]');
     const creatorPreviewMount = root.querySelector<HTMLDivElement>('[data-character-preview]');
@@ -504,16 +733,45 @@ export class GameHud {
       !targetPreviewName ||
       !targetPreviewRarity ||
       !targetPreviewChance ||
+      !goalsList ||
+      !goalsPanel ||
+      !goalsPanelToggle ||
+      !goalsPanelBody ||
+      !crewSortSelect ||
       !repDexDetail ||
       !repDexDetailClose ||
       !repDexDetailTitle ||
       !repDexDetailSpecies ||
       !repDexDetailType ||
       !repDexDetailRarity ||
+      !repDexDetailPersonality ||
+      !repDexDetailFavoriteWorkout ||
       !repDexDetailCount ||
       !repDexDetailDescription ||
       !repDexDetailOdds ||
       !repDexDetailFlavor ||
+      !repdexPanel ||
+      !repdexPanelToggle ||
+      !repdexPanelBody ||
+      !crewDetail ||
+      !crewDetailClose ||
+      !crewDetailTitle ||
+      !crewDetailSpecies ||
+      !crewDetailType ||
+      !crewDetailRarity ||
+      !crewDetailLevel ||
+      !crewDetailStrength ||
+      !crewDetailEndurance ||
+      !crewDetailFocus ||
+      !crewDetailEnergy ||
+      !crewDetailCaughtAt ||
+      !crewDetailNameInput ||
+      !crewDetailRenameButton ||
+      !crewDetailUseSteroidButton ||
+      !crewDetailReleaseButton ||
+      !crewPanel ||
+      !crewPanelToggle ||
+      !crewPanelBody ||
       !dexList ||
       !crewList ||
       !bossPanel ||
@@ -524,6 +782,21 @@ export class GameHud {
       !inputStatus ||
       !controlHint ||
       !inputModeButton ||
+      !settingsButton ||
+      !settingsPanel ||
+      !settingsCloseButton ||
+      !settingsMusicInput ||
+      !settingsMusicValue ||
+      !settingsSfxInput ||
+      !settingsSfxValue ||
+      !settingsPixelInput ||
+      !settingsCameraSelect ||
+      !settingsReducedInput ||
+      !settingsCatchOddsInput ||
+      !settingsResetSaveButton ||
+      !tutorialPopup ||
+      !tutorialText ||
+      !tutorialSkip ||
       !touchControls ||
       !characterCreator ||
       !creatorPreviewMount ||
@@ -559,6 +832,7 @@ export class GameHud {
       !creatorSexButtons ||
       !creatorMuscleButtons ||
       !creatorFrameButtons ||
+      !resetSaveButton ||
       !creatorBodySizeInputs
     ) {
       throw new Error('HUD failed to initialize');
@@ -578,17 +852,46 @@ export class GameHud {
     this.targetPreviewName = targetPreviewName;
     this.targetPreviewRarity = targetPreviewRarity;
     this.targetPreviewChance = targetPreviewChance;
+    this.goalsList = goalsList;
+    this.goalsPanel = goalsPanel;
+    this.goalsPanelToggle = goalsPanelToggle;
+    this.goalsPanelBody = goalsPanelBody;
+    this.crewSortSelect = crewSortSelect;
     this.dexList = dexList;
+    this.repdexPanel = repdexPanel;
+    this.repdexPanelToggle = repdexPanelToggle;
+    this.repdexPanelBody = repdexPanelBody;
     this.repDexDetail = repDexDetail;
     this.repDexDetailClose = repDexDetailClose;
     this.repDexDetailTitle = repDexDetailTitle;
     this.repDexDetailSpecies = repDexDetailSpecies;
     this.repDexDetailType = repDexDetailType;
     this.repDexDetailRarity = repDexDetailRarity;
+    this.repDexDetailPersonality = repDexDetailPersonality;
+    this.repDexDetailFavoriteWorkout = repDexDetailFavoriteWorkout;
     this.repDexDetailCount = repDexDetailCount;
     this.repDexDetailDescription = repDexDetailDescription;
     this.repDexDetailOdds = repDexDetailOdds;
     this.repDexDetailFlavor = repDexDetailFlavor;
+    this.crewDetail = crewDetail;
+    this.crewDetailClose = crewDetailClose;
+    this.crewDetailTitle = crewDetailTitle;
+    this.crewDetailSpecies = crewDetailSpecies;
+    this.crewDetailType = crewDetailType;
+    this.crewDetailRarity = crewDetailRarity;
+    this.crewDetailLevel = crewDetailLevel;
+    this.crewDetailStrength = crewDetailStrength;
+    this.crewDetailEndurance = crewDetailEndurance;
+    this.crewDetailFocus = crewDetailFocus;
+    this.crewDetailEnergy = crewDetailEnergy;
+    this.crewDetailCaughtAt = crewDetailCaughtAt;
+    this.crewDetailNameInput = crewDetailNameInput;
+    this.crewDetailRenameButton = crewDetailRenameButton;
+    this.crewDetailUseSteroidButton = crewDetailUseSteroidButton;
+    this.crewDetailReleaseButton = crewDetailReleaseButton;
+    this.crewPanel = crewPanel;
+    this.crewPanelToggle = crewPanelToggle;
+    this.crewPanelBody = crewPanelBody;
     this.crewList = crewList;
     this.bossPanel = bossPanel;
     this.bossName = bossName;
@@ -598,6 +901,22 @@ export class GameHud {
     this.inputStatus = inputStatus;
     this.controlHint = controlHint;
     this.inputModeButton = inputModeButton;
+    this.settingsButton = settingsButton;
+    this.settingsPanel = settingsPanel;
+    this.settingsCloseButton = settingsCloseButton;
+    this.settingsMusicInput = settingsMusicInput;
+    this.settingsMusicValue = settingsMusicValue;
+    this.settingsSfxInput = settingsSfxInput;
+    this.settingsSfxValue = settingsSfxValue;
+    this.settingsPixelInput = settingsPixelInput;
+    this.settingsCameraSelect = settingsCameraSelect;
+    this.settingsReducedInput = settingsReducedInput;
+    this.settingsCatchOddsInput = settingsCatchOddsInput;
+    this.settingsResetSaveButton = settingsResetSaveButton;
+    this.resetSaveButton = resetSaveButton;
+    this.tutorialPopup = tutorialPopup;
+    this.tutorialText = tutorialText;
+    this.tutorialSkip = tutorialSkip;
     this.touchControls = touchControls;
     this.workoutPrompt = workoutPrompt;
     this.workoutPromptName = workoutPromptName;
@@ -653,7 +972,11 @@ export class GameHud {
     this.bindCrewUi();
     this.bindBossUi();
     this.bindInputModeUi();
+    this.bindSettingsUi();
+    this.bindTutorialUi();
+    this.bindMobilePanelToggle();
     this.applyInputMode();
+    this.applySettings();
     this.syncCreatorControls();
   }
 
@@ -677,6 +1000,7 @@ export class GameHud {
       this.renderedSteroidsValue,
       String(snapshot.player.steroids)
     );
+    this.availableSteroids = snapshot.player.steroids;
     this.renderedCapturedValue = this.setText(
       this.capturedValue,
       this.renderedCapturedValue,
@@ -693,6 +1017,7 @@ export class GameHud {
       actions.inputLabel
     );
     this.setHidden(this.repDexDetail, this.root.classList.contains('game-root--creating'));
+    this.setHidden(this.crewDetail, this.root.classList.contains('game-root--creating'));
 
     const carriedFreeWeight = snapshot.freeWeights.find((freeWeight) => freeWeight.status === 'carried');
     let targetText = 'No target';
@@ -715,7 +1040,9 @@ export class GameHud {
       const targetName = this.getBuddyDisplayName(definition, snapshot.nearestBuddy.buddy.displayName);
       const distance = snapshot.nearestBuddy.distance;
       const inRange = distance <= snapshot.captureRange;
-      const chance = this.formatCatchChanceText(definition, snapshot.nearestBuddy.buddy);
+      const chance = this.settings.showCatchOdds
+        ? this.formatCatchChanceText(definition, snapshot.nearestBuddy.buddy)
+        : '';
       targetText = inRange
         ? `Ready to wrestle: ${targetName}`
         : `${targetName} - ${distance.toFixed(1)}m`;
@@ -756,6 +1083,8 @@ export class GameHud {
       this.renderedTargetPreviewChance = '';
     }
 
+    this.updateGoals(snapshot.goals);
+
     const dexMarkup = snapshot.repDex
       .map(
         (entry) => `
@@ -769,6 +1098,7 @@ export class GameHud {
               <span class="dex-row-name">${this.getBuddyDisplayName(entry.definition)}</span>
               <span class="dex-row-meta">Species ${entry.definition.species}</span>
               <span class="dex-row-meta">Rarity ${entry.definition.rarity.toUpperCase()}</span>
+              <span class="dex-row-meta">Personality ${entry.definition.personalityTag}</span>
               <span class="dex-row-meta">${entry.count} caught · Best Lv ${entry.highestLevel}</span>
             </div>
           </div>
@@ -785,16 +1115,32 @@ export class GameHud {
       this.repDexEntriesById.set(entry.definition.id, entry);
     });
 
+    this.rosterEntriesById.clear();
     this.rosterNameById.clear();
     snapshot.roster.forEach((entry) => {
       const definition = getBuddyDefinition(entry.definitionId);
+      this.rosterEntriesById.set(entry.rosterId, entry);
       this.rosterNameById.set(entry.rosterId, this.getBuddyDisplayName(definition, entry.displayName));
     });
 
-    const crewMarkup = this.renderCrew(snapshot.roster, snapshot.player.steroids);
+    const selectedCrewSort = this.resolveCrewSort(this.crewSortSelect.value);
+    if (this.crewSort !== selectedCrewSort) {
+      this.crewSort = selectedCrewSort;
+      this.renderedCrewMarkup = '';
+    }
+    if (this.crewSortSelect.value !== this.crewSort) {
+      this.crewSortSelect.value = this.crewSort;
+    }
+
+    const sortedRoster = this.sortCrewRoster(snapshot.roster);
+    const crewMarkup = this.renderCrew(sortedRoster, snapshot.player.steroids);
     if (crewMarkup !== this.renderedCrewMarkup) {
       this.crewList.innerHTML = crewMarkup;
       this.renderedCrewMarkup = crewMarkup;
+    }
+
+    if (this.activeCrewDetailId !== undefined && !this.rosterEntriesById.has(this.activeCrewDetailId)) {
+      this.closeCrewDetail();
     }
     const nearbyStationBusy = this.isWorkoutStationInUse(this.nearbyStation, snapshot);
     this.updateWorkoutStation(this.nearbyStation, nearbyStationBusy);
@@ -833,6 +1179,108 @@ export class GameHud {
 
   private isExoticBuddyDefinition(definition: Pick<BuddyDefinition, 'rarity' | 'isExotic'>): boolean {
     return definition.rarity === 'exotic' || definition.isExotic === true;
+  }
+
+  private resolveCrewSort(value: string): CrewSortMode {
+    return value === 'level' || value === 'rarity' || value === 'strength' || value === 'recent' ? value : 'recent';
+  }
+
+  private sortCrewRoster(roster: BuddyRosterEntry[]): BuddyRosterEntry[] {
+    return [...roster].sort((left, right) => {
+      const leftDefinition = getBuddyDefinition(left.definitionId);
+      const rightDefinition = getBuddyDefinition(right.definitionId);
+
+      if (this.crewSort === 'level') {
+        if (left.level !== right.level) {
+          return right.level - left.level;
+        }
+      } else if (this.crewSort === 'strength') {
+        if (left.strength !== right.strength) {
+          return right.strength - left.strength;
+        }
+      } else if (this.crewSort === 'rarity') {
+        const leftRarity = RARITY_SORT_ORDER[leftDefinition.rarity] ?? 0;
+        const rightRarity = RARITY_SORT_ORDER[rightDefinition.rarity] ?? 0;
+        if (leftRarity !== rightRarity) {
+          return rightRarity - leftRarity;
+        }
+      }
+
+      const leftTime = left.capturedAt ?? 0;
+      const rightTime = right.capturedAt ?? 0;
+      if (leftTime !== rightTime) {
+        return this.crewSort === 'recent' ? rightTime - leftTime : rightTime - leftTime;
+      }
+
+      return left.rosterId - right.rosterId;
+    });
+  }
+
+  private getCrewCaughtLabel(entry: BuddyRosterEntry): string {
+    if (!entry.capturedAt) {
+      return 'Unknown';
+    }
+
+    const date = new Date(entry.capturedAt);
+    if (Number.isNaN(date.getTime())) {
+      return 'Unknown';
+    }
+
+    return `Caught ${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  }
+
+  private openCrewDetail(entry: BuddyRosterEntry): void {
+    const definition = getBuddyDefinition(entry.definitionId);
+    const name = this.getBuddyDisplayName(definition, entry.displayName);
+    const isExotic = this.isExoticBuddyDefinition(definition);
+    this.activeCrewDetailId = entry.rosterId;
+    this.crewDetailTitle.textContent = `${name}`;
+    this.crewDetailSpecies.textContent = definition.species;
+    this.crewDetailType.textContent = isExotic ? 'Exotic' : 'Normal';
+    this.crewDetailRarity.textContent = definition.rarity;
+    this.crewDetailLevel.textContent = `${entry.level}`;
+    this.crewDetailStrength.textContent = `${entry.strength}`;
+    this.crewDetailEndurance.textContent = `${entry.endurance}`;
+    this.crewDetailFocus.textContent = `${entry.focus}`;
+    this.crewDetailEnergy.textContent = `${Math.round(entry.energy)}%`;
+    this.crewDetailCaughtAt.textContent = this.getCrewCaughtLabel(entry);
+    this.crewDetailNameInput.value = entry.displayName ?? '';
+    this.crewDetailUseSteroidButton.disabled = this.availableSteroids <= 0;
+    this.crewDetailReleaseButton.disabled = false;
+    this.crewDetail.hidden = false;
+  }
+
+  private closeCrewDetail(): void {
+    this.crewDetail.hidden = true;
+    this.activeCrewDetailId = undefined;
+  }
+
+  private updateGoals(goals: WorldSnapshot['goals']): void {
+    const markup = `
+      ${Object.entries(GOAL_TARGETS)
+        .map(([goalId, target]) => {
+          const typedGoalId = goalId as keyof typeof GOAL_TARGETS;
+          const state = goals[typedGoalId];
+          const progress = Math.min(state.progress, target);
+          const complete = state.completed;
+          const status = complete ? 'DONE' : `${progress}/${target}`;
+          const rowClass = complete ? 'goal-row goal-row--done' : 'goal-row';
+          const prefix = complete ? '✓ ' : '';
+
+          return `
+            <div class="${rowClass}">
+              <span class="goal-row-title">${prefix}${GOAL_LABELS[typedGoalId]}</span>
+              <span class="goal-row-status">${status}</span>
+            </div>
+          `;
+        })
+        .join('')}
+    `.trim();
+
+    if (markup !== this.renderedGoalsMarkup) {
+      this.goalsList.innerHTML = markup;
+      this.renderedGoalsMarkup = markup;
+    }
   }
 
   private getBuddyDisplayName(
@@ -914,6 +1362,8 @@ export class GameHud {
     this.repDexDetailSpecies.textContent = definition.species;
     this.repDexDetailType.textContent = this.isExoticBuddyDefinition(definition) ? 'Exotic' : 'Normal';
     this.repDexDetailRarity.textContent = definition.rarity;
+    this.repDexDetailPersonality.textContent = definition.personalityTag;
+    this.repDexDetailFavoriteWorkout.textContent = definition.favoriteWorkout;
     this.repDexDetailCount.textContent = `${entry.count} caught · Best Lv ${entry.highestLevel}`;
     this.repDexDetailDescription.textContent = this.getRepDexDescription(definition);
     this.repDexDetailOdds.innerHTML = `
@@ -987,6 +1437,10 @@ export class GameHud {
     this.rosterUseSteroidListeners.push(callback);
   }
 
+  onRosterRename(callback: (rosterId: number, displayName?: string) => void): void {
+    this.rosterRenameListeners.push(callback);
+  }
+
   onBossChallenge(callback: () => void): void {
     this.bossChallengeListeners.push(callback);
   }
@@ -997,6 +1451,41 @@ export class GameHud {
 
   onInputModeChange(callback: (mode: InputMode) => void): void {
     this.inputModeListeners.push(callback);
+  }
+
+  onResetSave(callback: () => void): void {
+    this.resetSaveListeners.push(callback);
+  }
+
+  onSettingsChange(callback: (settings: GameSettings) => void): void {
+    this.settingsChangeListeners.push(callback);
+  }
+
+  setSettings(settings: GameSettings, notify = false): void {
+    this.settings = { ...settings };
+    this.applySettings();
+
+    if (notify) {
+      this.settingsChangeListeners.forEach((callback) => callback({ ...this.settings }));
+    }
+  }
+
+  getSettings(): GameSettings {
+    return { ...this.settings };
+  }
+
+  onTutorialSkip(callback: () => void): void {
+    this.tutorialSkipListeners.push(callback);
+  }
+
+  setTutorialStep(text: string): void {
+    this.renderedTutorialText = this.setText(this.tutorialText, this.renderedTutorialText, text);
+    this.setHidden(this.tutorialPopup, false);
+  }
+
+  hideTutorialPopup(): void {
+    this.setHidden(this.tutorialPopup, true);
+    this.renderedTutorialText = this.setText(this.tutorialText, this.renderedTutorialText, '');
   }
 
   getInputMode(): InputMode {
@@ -1026,6 +1515,34 @@ export class GameHud {
       isTouch ? 'Switch to Keyboard + Mouse controls' : 'Switch to Touch controls'
     );
     this.inputModeButton.setAttribute('aria-pressed', String(isTouch));
+  }
+
+  private applySettings(): void {
+    this.settingsMusicInput.value = String(this.settings.musicVolume);
+    this.settingsMusicValue.textContent = String(this.settings.musicVolume);
+    this.settingsSfxInput.value = String(this.settings.sfxVolume);
+    this.settingsSfxValue.textContent = String(this.settings.sfxVolume);
+    this.settingsPixelInput.checked = this.settings.pixelFilter;
+    this.settingsCameraSelect.value = this.settings.cameraDistance;
+    this.settingsReducedInput.checked = this.settings.reducedMotion;
+    this.settingsCatchOddsInput.checked = this.settings.showCatchOdds;
+    this.targetPreviewChance.hidden = !this.settings.showCatchOdds;
+    this.root.classList.toggle('game-root--pixel-filter-off', !this.settings.pixelFilter);
+    this.root.classList.toggle('game-root--reduced-motion', this.settings.reducedMotion);
+  }
+
+  private updateSettings(next: Partial<GameSettings>): void {
+    this.settings = {
+      ...this.settings,
+      ...next
+    };
+    this.applySettings();
+    this.settingsChangeListeners.forEach((callback) => callback({ ...this.settings }));
+  }
+
+  private setSettingsPanelOpen(open: boolean): void {
+    this.setHidden(this.settingsPanel, !open);
+    this.settingsButton.setAttribute('aria-expanded', String(open));
   }
 
   isWorkoutActive(): boolean {
@@ -1207,6 +1724,13 @@ export class GameHud {
       this.closeCharacterCreator();
       this.startListeners.forEach((callback) => callback());
     });
+    this.resetSaveButton.addEventListener('click', () => {
+      if (!window.confirm('Reset your save data and start fresh?')) {
+        return;
+      }
+
+      this.resetSaveListeners.forEach((callback) => callback());
+    });
   }
 
   private bindInputModeUi(): void {
@@ -1214,6 +1738,123 @@ export class GameHud {
       const nextMode: InputMode = this.inputMode === 'keyboard-mouse' ? 'touch' : 'keyboard-mouse';
       this.setInputMode(nextMode);
     });
+  }
+
+  private bindSettingsUi(): void {
+    this.bindMobilePress(this.settingsButton, () => {
+      this.setSettingsPanelOpen(this.settingsPanel.hidden);
+    });
+
+    this.bindMobilePress(this.settingsCloseButton, () => {
+      this.setSettingsPanelOpen(false);
+    });
+
+    this.settingsMusicInput.addEventListener('input', () => {
+      this.updateSettings({ musicVolume: Number(this.settingsMusicInput.value) });
+    });
+
+    this.settingsSfxInput.addEventListener('input', () => {
+      this.updateSettings({ sfxVolume: Number(this.settingsSfxInput.value) });
+    });
+
+    this.settingsPixelInput.addEventListener('change', () => {
+      this.updateSettings({ pixelFilter: this.settingsPixelInput.checked });
+    });
+
+    this.settingsCameraSelect.addEventListener('change', () => {
+      this.updateSettings({ cameraDistance: this.settingsCameraSelect.value as CameraDistanceSetting });
+    });
+
+    this.settingsReducedInput.addEventListener('change', () => {
+      this.updateSettings({ reducedMotion: this.settingsReducedInput.checked });
+    });
+
+    this.settingsCatchOddsInput.addEventListener('change', () => {
+      this.updateSettings({ showCatchOdds: this.settingsCatchOddsInput.checked });
+    });
+
+    this.bindMobilePress(this.settingsResetSaveButton, () => {
+      if (!window.confirm('Reset your save data and start fresh?')) {
+        return;
+      }
+
+      this.resetSaveListeners.forEach((callback) => callback());
+    });
+  }
+
+  private bindTutorialUi(): void {
+    this.bindMobilePress(this.tutorialSkip, () => {
+      this.tutorialSkipListeners.forEach((callback) => callback());
+    });
+  }
+
+  private bindMobilePanelToggle(): void {
+    const mediaQuery = window.matchMedia('(max-width: 820px)');
+    const panelMap: Array<{
+      panel: HTMLElement;
+      toggle: HTMLButtonElement;
+      body: HTMLElement;
+    }> = [
+      {
+        panel: this.repdexPanel,
+        toggle: this.repdexPanelToggle,
+        body: this.repdexPanelBody
+      },
+      {
+        panel: this.crewPanel,
+        toggle: this.crewPanelToggle,
+        body: this.crewPanelBody
+      },
+      {
+        panel: this.goalsPanel,
+        toggle: this.goalsPanelToggle,
+        body: this.goalsPanelBody
+      }
+    ];
+
+    const updateCollapsedState = (): void => {
+      const isTouchDenseViewport = mediaQuery.matches;
+      panelMap.forEach(({ panel, toggle, body }) => {
+        this.setPanelCollapsed(panel, body, toggle, isTouchDenseViewport);
+      });
+    };
+
+    const onMediaChange = (): void => {
+      updateCollapsedState();
+    };
+
+    panelMap.forEach(({ panel, toggle, body }) => {
+      this.bindMobilePress(toggle, () => {
+        this.setPanelCollapsed(panel, body, toggle, !panel.classList.contains('hud-panel--collapsed'));
+      });
+    });
+
+    updateCollapsedState();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', onMediaChange);
+    } else {
+      mediaQuery.addListener(onMediaChange);
+    }
+  }
+
+  private setPanelCollapsed(
+    panel: HTMLElement,
+    body: HTMLElement,
+    toggle: HTMLButtonElement,
+    collapsed: boolean
+  ): void {
+    panel.classList.toggle('hud-panel--collapsed', collapsed);
+    toggle.setAttribute('aria-expanded', String(!collapsed));
+    body.hidden = false;
+    toggle.textContent = collapsed ? '▸' : '▾';
+    if (collapsed) {
+      body.classList.add('panel-body--collapsed');
+      body.setAttribute('aria-hidden', 'true');
+    } else {
+      body.classList.remove('panel-body--collapsed');
+      body.removeAttribute('aria-hidden');
+    }
   }
 
   private bindMobilePress(button: HTMLButtonElement, handler: () => void): void {
@@ -1388,10 +2029,107 @@ export class GameHud {
   }
 
   private bindCrewUi(): void {
+    this.crewSortSelect.addEventListener('change', () => {
+      this.crewSort = this.resolveCrewSort(this.crewSortSelect.value);
+      this.renderedCrewMarkup = '';
+    });
+
+    this.bindMobilePress(this.crewDetailClose, () => {
+      this.closeCrewDetail();
+    });
+
+    this.bindMobilePress(this.crewDetailRenameButton, () => {
+      if (this.activeCrewDetailId === undefined) {
+        return;
+      }
+
+      const rosterId = this.activeCrewDetailId;
+      const target = this.rosterEntriesById.get(rosterId);
+      if (!target) {
+        return;
+      }
+
+      const inputName = this.crewDetailNameInput.value.trim();
+      const definition = getBuddyDefinition(target.definitionId);
+      const currentName = this.getBuddyDisplayName(definition, target.displayName);
+      if (!inputName) {
+        if (!window.confirm(`Clear custom name on ${currentName}?`)) {
+          return;
+        }
+      }
+
+      this.rosterRenameListeners.forEach((callback) => callback(rosterId, inputName));
+      this.openCrewDetail({
+        ...target,
+        displayName: inputName.length > 0 ? inputName : undefined
+      });
+    });
+
+    this.bindMobilePress(this.crewDetailUseSteroidButton, () => {
+      if (this.activeCrewDetailId === undefined) {
+        return;
+      }
+
+      const rosterId = this.activeCrewDetailId;
+      const target = this.rosterEntriesById.get(rosterId);
+      if (!target) {
+        return;
+      }
+
+      const definition = getBuddyDefinition(target.definitionId);
+      const name = this.getBuddyDisplayName(definition, target.displayName);
+      const hasMore = this.availableSteroids > 0;
+      if (!hasMore) {
+        this.pushMessage('No steroids left. Hit workouts or vending machines for more.');
+        return;
+      }
+
+      this.rosterUseSteroidListeners.forEach((callback) => callback(rosterId));
+      this.openCrewDetail({
+        ...target,
+        displayName: target.displayName
+      });
+      this.crewDetailUseSteroidButton.disabled = true;
+      this.pushMessage(`${name} got unreasonably swole!`);
+    });
+
+    this.bindMobilePress(this.crewDetailReleaseButton, () => {
+      if (this.activeCrewDetailId === undefined) {
+        return;
+      }
+
+      const rosterId = this.activeCrewDetailId;
+      const target = this.rosterEntriesById.get(rosterId);
+      if (!target) {
+        return;
+      }
+
+      const definition = getBuddyDefinition(target.definitionId);
+      const name = this.getBuddyDisplayName(definition, target.displayName);
+      if (!window.confirm(`Release ${name} from your crew?`)) {
+        return;
+      }
+
+      this.rosterRemoveListeners.forEach((callback) => callback(rosterId));
+      this.closeCrewDetail();
+    });
+
     this.crewList.addEventListener('click', (event) => {
       const target = event.target;
 
       if (!(target instanceof HTMLButtonElement)) {
+        const row = target instanceof Element ? target.closest('.crew-row[data-roster-id]') : null;
+        if (!(row instanceof HTMLElement)) {
+          return;
+        }
+
+        const rosterId = Number(row.dataset.rosterId);
+        const entry = this.rosterEntriesById.get(rosterId);
+        if (!entry) {
+          return;
+        }
+
+        this.openCrewDetail(entry);
         return;
       }
 
@@ -1403,19 +2141,66 @@ export class GameHud {
         this.rosterTrainListeners.forEach((callback) => callback(Number(trainId)));
       }
 
+      if (removeId) {
+        const id = Number(removeId);
+        const row = this.rosterEntriesById.get(id);
+        if (row) {
+          const name = this.getBuddyDisplayName(getBuddyDefinition(row.definitionId), row.displayName);
+          if (!window.confirm(`Release ${name} from your crew?`)) {
+            return;
+          }
+        }
+
+        this.rosterRemoveListeners.forEach((callback) => callback(id));
+        if (this.activeCrewDetailId === id) {
+          this.closeCrewDetail();
+        }
+      }
+
       if (steroidId) {
         const rosterId = Number(steroidId);
         const name = this.rosterNameById.get(rosterId) ?? 'this buddy';
-        if (this.rosterNameById.size > 1 && !window.confirm(`Use Steroids on ${name}?`)) {
+        if (!window.confirm(`Use Steroids on ${name}?`)) {
           return;
         }
 
         this.rosterUseSteroidListeners.forEach((callback) => callback(rosterId));
+        if (this.activeCrewDetailId === rosterId) {
+          const targetEntry = this.rosterEntriesById.get(rosterId);
+          if (targetEntry) {
+            this.openCrewDetail(targetEntry);
+          }
+        }
+      }
+    });
+
+    this.crewList.addEventListener('keydown', (event) => {
+      if (!(event instanceof KeyboardEvent)) {
+        return;
       }
 
-      if (removeId) {
-        this.rosterRemoveListeners.forEach((callback) => callback(Number(removeId)));
+      if (event.key !== 'Enter' && event.key !== ' ') {
+        return;
       }
+
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      const row = target.closest('.crew-row[data-roster-id]');
+      const rosterId = row instanceof HTMLElement ? Number(row.dataset.rosterId) : NaN;
+      if (!Number.isFinite(rosterId)) {
+        return;
+      }
+
+      const entry = this.rosterEntriesById.get(rosterId);
+      if (!entry) {
+        return;
+      }
+
+      this.openCrewDetail(entry);
+      event.preventDefault();
     });
   }
 
@@ -1544,7 +2329,12 @@ export class GameHud {
         }
 
         return `
-          <div class="crew-row crew-row--${entry.status}${exoticClass}">
+          <div
+            class="crew-row crew-row--${entry.status}${exoticClass}"
+            role="button"
+            tabindex="0"
+            data-roster-id="${entry.rosterId}"
+          >
             <div class="crew-main">
               <span>${displayName}</span>
               <strong>Lv ${entry.level}</strong>
@@ -1564,7 +2354,7 @@ export class GameHud {
                 class="crew-steroid"
                 data-use-steroid="${entry.rosterId}"
                 ${steroidsAvailable <= 0 ? 'disabled' : ''}
-              >Use Steroids</button>
+              >Use</button>
               <button type="button" data-train-buddy="${entry.rosterId}" ${busy ? 'disabled' : ''}>Train</button>
               <button type="button" class="crew-remove" data-remove-buddy="${entry.rosterId}">Remove</button>
             </div>

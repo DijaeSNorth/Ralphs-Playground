@@ -164,4 +164,4 @@ export function getSexOption(id: CharacterSex): (typeof SEX_OPTIONS)[number] {
   return getOptionById(SEX_OPTIONS, id) ?? SEX_OPTIONS[0];
 }
 
-export const CHARACTER_ASSET_MANIFEST_PATH = '/assets/characters/character_asset_manifest.json';
+export const CHARACTER_ASSET_MANIFEST_PATH = 'assets/characters/character_asset_manifest.json';

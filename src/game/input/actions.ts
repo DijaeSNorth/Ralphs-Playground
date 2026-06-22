@@ -239,7 +239,7 @@ export class InputController {
     });
 
     root.querySelectorAll<HTMLButtonElement>('[data-catch]').forEach((button) => {
-      button.addEventListener('pointerdown', (event) => {
+      const activate = (event: PointerEvent) => {
         if (this.mode !== 'touch') {
           return;
         }
@@ -247,7 +247,57 @@ export class InputController {
         event.preventDefault();
         this.catchQueued = true;
         this.lastInputLabel = 'Touch';
-      });
+        button.setPointerCapture(event.pointerId);
+      };
+
+      const release = (event: PointerEvent) => {
+        if (this.mode !== 'touch') {
+          return;
+        }
+
+        event.preventDefault();
+        this.catchQueued = false;
+
+        if (button.hasPointerCapture(event.pointerId)) {
+          button.releasePointerCapture(event.pointerId);
+        }
+      };
+
+      button.addEventListener('pointerdown', activate);
+      button.addEventListener('pointerup', release);
+      button.addEventListener('pointercancel', release);
+      button.addEventListener('pointerleave', release);
+    });
+
+    root.querySelectorAll<HTMLButtonElement>('[data-interact]').forEach((button) => {
+      const activate = (event: PointerEvent) => {
+        if (this.mode !== 'touch') {
+          return;
+        }
+
+        event.preventDefault();
+        this.interactQueued = true;
+        this.lastInputLabel = 'Touch';
+        button.setPointerCapture(event.pointerId);
+      };
+
+      const release = (event: PointerEvent) => {
+        if (this.mode !== 'touch') {
+          return;
+        }
+
+        event.preventDefault();
+        this.interactQueued = false;
+
+        if (button.hasPointerCapture(event.pointerId)) {
+          button.releasePointerCapture(event.pointerId);
+        }
+      };
+
+      button.addEventListener('pointerdown', activate);
+      button.addEventListener('pointerup', release);
+      button.addEventListener('pointercancel', release);
+      button.addEventListener('pointerleave', release);
     });
 
     root.querySelectorAll<HTMLButtonElement>('[data-sprint]').forEach((button) => {

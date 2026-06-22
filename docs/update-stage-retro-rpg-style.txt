@@ -1,0 +1,15 @@
+RETRO RPG STYLE UPDATE STAGE
+Date: 2026-06-21
+Status: Completed
+
+Files changed in this stage:
+- C:\Users\jaysl\Documents\Ralph's Playground\src/render/app/createGymBuddyGame.ts
+- C:\Users\jaysl\Documents\Ralph's Playground\src/style.css
+
+Implementation order:
+1. Add low-resolution rendering pipeline helpers (reduced pixel canvas scale and pixel canvas sizing) in renderer and preview paths.
+2. Remove high-cost/polished lighting and shadows for flatter, less realistic gym scene light behavior.
+3. Shift camera height/offset to a more top-down RPG-like composition.
+4. Add pixel rendering treatment in CSS (`image-rendering: pixelated`) and stronger border/outline HUD styling.
+5. Refresh palette, button/Panel borders, and control panel colors to read like a handheld pixel RPG interface.
+6. Keep Three.js game loop, world rules, capture events, and deployment behavior unchanged.

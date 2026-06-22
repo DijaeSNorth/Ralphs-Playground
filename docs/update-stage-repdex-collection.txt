@@ -1,0 +1,24 @@
+REPDex COLLECTION SCREEN UPGRADE STAGE
+Date: 2026-06-21
+Status: Completed
+
+Files changed in this stage:
+- C:\Users\jaysl\Documents\Ralph's Playground\src/ui/hud.ts
+- C:\Users\jaysl\Documents\Ralph's Playground\src/style.css
+
+Implementation details:
+1. RepDex list entries now show creature name, species, rarity, caught count, and best level.
+2. Added exotic badge cue by appending `[EXOTIC]` to the creature name via existing helper.
+3. Added a detail panel (`.repdex-detail`) with fields for species, type (Normal/Exotic), rarity, and caught stats.
+4. Added detail content for:
+   - Description text
+   - Catch odds by level tiers
+   - Normal vs. Exotic catch label behavior
+   - Flavor text
+5. Wired row click + keyboard (Enter/Space) interaction to open detail card; close button wired to dismiss.
+6. Reused `getArmWrestleCatchChance` helper in HUD preview/odds rendering so RepDex odds stay source-of-truth aligned.
+7. Updated mobile positioning and panel constraints in `src/style.css` for touch readability.
+
+Notes:
+- `repDex` data already includes `count` and `highestLevel` in snapshot and persists in `world.ts`, so UI rendering is read-only.
+- Build/test command already executes successfully: `npm run build`.
