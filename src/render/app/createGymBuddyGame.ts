@@ -842,8 +842,8 @@ class GymBuddyRenderer {
     const cameraOffset = RETRO_CAMERA_OFFSET * cameraSettings.offset;
     const cameraHeight = RETRO_CAMERA_HEIGHT * cameraSettings.height;
     const backward = {
-      x: -Math.sin(player.heading),
-      z: -Math.cos(player.heading)
+      x: 0,
+      z: 1
     };
     const defaultPosition = new Vector3(
       player.position.x + backward.x * cameraOffset,

@@ -3451,7 +3451,9 @@ button {
 }
 
 .creator-settings,
+.creator-customize-toggle,
 .settings-help,
+.settings-customize,
 .capture-result-card__button {
   border: 2px solid var(--ink);
   background: var(--accent-yellow);
@@ -3694,6 +3696,102 @@ button {
 
 .game-root--creating .creator-action-row {
   justify-content: center;
+}
+
+/* Priority menu/customization cleanup: keep gameplay controls visible and make drawers reachable. */
+.game-root:not(.game-root--creating) .hud-menu-bar {
+  top: calc(102px + env(safe-area-inset-top, 0px));
+  right: calc(14px + env(safe-area-inset-right, 0px));
+  bottom: auto;
+  left: auto;
+  width: 172px;
+  transform: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  z-index: 26;
+}
+
+.game-root:not(.game-root--creating) .hud-menu-button[data-menu-open='crew'],
+.game-root:not(.game-root--creating) .hud-menu-button[data-menu-open='repdex'],
+.game-root:not(.game-root--creating) .hud-menu-button[data-menu-open='goals'],
+.game-root:not(.game-root--creating) .hud-menu-button[data-menu-open='settings'] {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-root--creating .creator-customize,
+.game-root--customizing .creator-customize {
+  display: block !important;
+}
+
+.game-root--creating.game-root--customizing .character-creator,
+.game-root--customizing .character-creator {
+  grid-template-columns: minmax(280px, 520px) minmax(170px, 420px);
+  justify-content: center;
+}
+
+.game-root--creating .creator-customize[open] ~ .creator-action-row,
+.game-root--customizing .creator-action-row {
+  margin-top: 8px;
+}
+
+.game-root--creating:has(.creator-customize[open]) .creator-preview-wrap,
+.game-root--customizing .creator-preview-wrap {
+  display: grid !important;
+}
+
+.game-root--customizing .character-creator {
+  z-index: 82;
+  pointer-events: auto;
+}
+
+.creator-preview-controls {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.settings-customize {
+  color: var(--ink);
+  background: var(--accent-yellow);
+}
+
+@media (max-width: 820px) {
+  .game-root:not(.game-root--creating) .hud-menu-bar {
+    top: calc(96px + env(safe-area-inset-top, 0px));
+    right: calc(8px + env(safe-area-inset-right, 0px));
+    bottom: auto;
+    width: 148px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+    padding: 5px;
+  }
+
+  .game-root:not(.game-root--creating) .hud-menu-button {
+    min-width: 0;
+    min-height: 36px;
+    padding: 7px 6px;
+    font-size: 0.54rem;
+  }
+
+  .creator-preview-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .creator-preview-rotate[data-preview-rotate-reset] {
+    grid-column: span 2;
+  }
+
+  .game-root--creating.game-root--customizing .character-creator,
+  .game-root--customizing .character-creator {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .game-root:not(.game-root--creating) .hud-menu-bar {
+    top: calc(92px + env(safe-area-inset-top, 0px));
+    width: 136px;
+  }
 }
 
 /* Creature Data safety: hidden detail sheets must never trap gameplay. */

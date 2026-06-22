@@ -1,0 +1,20 @@
+Priority Fix Reference - Menus, Customization, Movement
+
+Scope:
+- Fixed Crew, RepDex, Goals, and Settings menu access without adding new gameplay systems.
+- Moved the gameplay menu to a compact top-right grid so it no longer covers movement instructions, touch controls, target preview, or stamina.
+- Restored title-screen character customization with a clear Customize Character button.
+- Added Front View and Back View controls to the existing character preview, alongside Rotate Left, Rotate Right, and Reset View.
+- Reused the Settings panel to reopen customization after gameplay has started.
+
+Movement:
+- Keyboard input is screen-relative for the fixed 2.5D camera: W/Up moves visually upward, S/Down moves downward, A/Left moves left, and D/Right moves right.
+- Pointer movement now supports click/tap-and-hold on the playfield, using the screen position relative to the canvas center.
+- UI pointer events remain separate from playfield movement.
+
+Files touched:
+- src/ui/hud.ts
+- src/game/input/actions.ts
+- src/render/app/createGymBuddyGame.ts
+- src/style.css
+- docs/priority-fix-reference.txt
