@@ -4,6 +4,42 @@ export type Vec2 = {
 };
 
 export type BuddyArchetype = 'yogi' | 'runner' | 'lifter' | 'spinner' | 'climber';
+export type BuddyRarity = 'common' | 'uncommon' | 'rare' | 'exotic';
+export type BuddySpecies =
+  | 'bunny'
+  | 'bear'
+  | 'fox'
+  | 'corgi'
+  | 'deer'
+  | 'rhino'
+  | 'panther'
+  | 'gorilla'
+  | 'jaguar'
+  | 'penguin'
+  | 'raccoon'
+  | 'squirrel'
+  | 'tiger'
+  | 'buffalo'
+  | 'minotaur'
+  | 'griffin'
+  | 'hydra'
+  | 'dragon'
+  | 'kraken'
+  | 'pegasus'
+  | 'phoenix'
+  | 'sphinx'
+  | 'werewolf'
+  | 'cyclops';
+
+export type BuddyVisualHints = {
+  silhouette?: 'feline' | 'canine' | 'ungulate' | 'mustelid' | 'avian' | 'reptilian';
+  pattern?: 'stripes' | 'spots' | 'banded' | 'solid';
+};
+
+export type BuddyMythicMetadata = {
+  title: string;
+  note: string;
+};
 
 export type HairStyle =
   | 'buzz-cut'
@@ -158,10 +194,16 @@ export type BuddyDefinition = {
   name: string;
   archetype: BuddyArchetype;
   gender?: BuddyGender;
+  description?: string;
+  flavorText?: string;
+  species: BuddySpecies;
+  isExotic?: boolean;
   color: number;
   accent: number;
   displayNames?: string[];
-  rarity: 'common' | 'uncommon' | 'rare';
+  rarity: BuddyRarity;
+  visualHints?: BuddyVisualHints;
+  mythicMetadata?: BuddyMythicMetadata;
   baseCatchRate: number;
   staminaReward: number;
 };
@@ -221,6 +263,7 @@ export type BuddyState = {
   dodgeTimer: number;
   holdTimer: number;
   ragdollTimer: number;
+  level: number;
 };
 
 export type PlayerState = {
@@ -228,19 +271,49 @@ export type PlayerState = {
   heading: number;
   stamina: number;
   proteinShakers: number;
+  steroids: number;
   capturedTotal: number;
 };
 
 export type CaptureResult = 'success' | 'miss' | 'empty' | 'too-far';
+export type CaptureStyle = 'arm-wrestle';
+export type ArmWrestleBeatType = 'grapple' | 'lockout';
+
+export type ArmWrestleCapturePose = {
+  player: {
+    position: Vec2;
+    heading: number;
+  };
+  creature: {
+    position: Vec2;
+    heading: number;
+  };
+};
+
+export type ArmWrestleDramaticBeat = {
+  beat: ArmWrestleBeatType;
+  winner: 'player' | 'creature';
+  caption: string;
+};
+
+export type ArmWrestleBeat = {
+  at: number;
+  text: string;
+};
 
 export type WorldEvent =
   | {
       type: 'capture';
       result: CaptureResult;
+      captureStyle: CaptureStyle;
       buddy?: BuddyState;
       chance?: number;
       start: Vec2;
       target?: Vec2;
+      capturePose?: ArmWrestleCapturePose;
+      dramaticBeat?: ArmWrestleDramaticBeat;
+      captureBeatSequence?: ArmWrestleBeat[];
+      captureDuration?: number;
       message: string;
     }
   | {
@@ -286,6 +359,7 @@ export type ActionState = {
 export type RepDexEntry = {
   definition: BuddyDefinition;
   count: number;
+  highestLevel: number;
 };
 
 export type WorldSnapshot = {
@@ -311,4 +385,6 @@ export type WorldSnapshot = {
   activeBuddyCount: number;
   captureRange: number;
   arenaRadius: number;
+  captureCutsceneRemaining: number;
+  captureCutsceneDuration: number;
 };
