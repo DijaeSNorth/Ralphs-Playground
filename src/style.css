@@ -1,18 +1,19 @@
 :root {
   color-scheme: light;
   font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --ink: #172436;
-  --muted: #617083;
-  --line: rgba(23, 36, 54, 0.16);
-  --panel: rgba(255, 255, 255, 0.86);
-  --panel-strong: rgba(255, 255, 255, 0.96);
-  --green: #49b779;
-  --green-dark: #1d7f58;
-  --teal: #21a7a5;
+    "VT323", "Press Start 2P", "Courier New", "Lucida Console", monospace;
+  --ink: #12263f;
+  --muted: #314c71;
+  --line: #153255;
+  --panel: #e7f4ff;
+  --panel-strong: #f8fcff;
+  --green: #43e6a8;
+  --green-dark: #0c8d63;
+  --teal: #2fc6ca;
   --coral: #ff705c;
-  --gold: #f6c85f;
-  --shadow: 0 18px 40px rgba(23, 36, 54, 0.18);
+  --gold: #ffce58;
+  --shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.4), 0 6px 0 #12263f;
+  --pixel-edge: #1a3960;
 }
 
 * {
@@ -35,14 +36,21 @@ html {
 body {
   overflow: hidden;
   overscroll-behavior: none;
-  background: #c7d8dc;
+  background: #8cc5f8;
   color: var(--ink);
   touch-action: none;
   user-select: none;
+  -webkit-font-smoothing: none;
+  image-rendering: pixelated;
 }
 
 button {
   font: inherit;
+  border-radius: 0;
+  border: 2px solid var(--line);
+  background: var(--panel);
+  box-shadow: 2px 2px 0 var(--pixel-edge);
+  padding: 0 8px;
 }
 
 .boot-screen {
@@ -55,7 +63,7 @@ button {
   align-content: center;
   gap: 12px;
   color: var(--ink);
-  background: #c7d8dc;
+  background: #8cc5f8;
   font-size: 0.84rem;
   font-weight: 840;
 }
@@ -93,13 +101,15 @@ button {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  background: #c7d8dc;
+  background: #7fbfef;
 }
 
 .game-canvas canvas {
   display: block;
   width: 100%;
   height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 .hud {
@@ -142,11 +152,11 @@ button {
 .freeweight-prompt,
 .vending-prompt,
 .vending-panel {
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 2px solid var(--line);
+  border-radius: 0;
   background: var(--panel);
   box-shadow: var(--shadow);
-  backdrop-filter: blur(12px);
+  backdrop-filter: none;
 }
 
 .objective-chip,
@@ -157,6 +167,43 @@ button {
   line-height: 1.22;
 }
 
+.target-preview {
+  display: grid;
+  gap: 3px;
+  width: min(360px, calc(100vw - 36px));
+  padding: 8px 10px;
+  color: var(--ink);
+  background: var(--panel);
+  border: 2px solid var(--line);
+  box-shadow: var(--shadow);
+  transition: opacity 120ms ease;
+}
+
+.target-preview--hidden {
+  display: none;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.target-preview-name {
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 820;
+  letter-spacing: 0.01em;
+}
+
+.target-preview-rarity {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 820;
+}
+
+.target-preview-chance {
+  color: var(--coral);
+  font-size: 0.78rem;
+  font-weight: 860;
+}
+
 .objective-chip {
   max-width: 280px;
   color: var(--ink);
@@ -164,7 +211,8 @@ button {
 
 .target-chip {
   color: #ffffff;
-  background: rgba(23, 36, 54, 0.82);
+  border-color: var(--line);
+  background: #2f4f79;
 }
 
 .target-chip--ready {
@@ -202,6 +250,17 @@ button {
   text-align: right;
 }
 
+.steroid-flavor {
+  margin-top: 3px;
+  padding: 8px 9px;
+  color: #2a3c4a;
+  font-size: 0.61rem;
+  line-height: 1.2;
+  border: 2px dashed var(--line);
+  background: #dfe6d4;
+  box-shadow: var(--shadow);
+}
+
 .stamina-wrap {
   display: grid;
   gap: 7px;
@@ -212,7 +271,7 @@ button {
 .stamina-track {
   height: 9px;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: 0;
   background: #dce5df;
 }
 
@@ -230,7 +289,13 @@ button {
   bottom: 18px;
   width: 220px;
   padding: 10px;
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  pointer-events: auto;
+  max-height: min(300px, calc(100vh - 240px));
+  overflow: hidden;
+  display: grid;
+  gap: 6px;
 }
 
 .crew-panel {
@@ -242,7 +307,8 @@ button {
   width: 188px;
   max-height: min(310px, calc(100vh - 430px));
   padding: 8px;
-  background: rgba(255, 255, 255, 0.86);
+  background: var(--panel);
+  box-shadow: var(--shadow);
   pointer-events: auto;
 }
 
@@ -257,6 +323,9 @@ button {
 .dex-list {
   display: grid;
   gap: 5px;
+  max-height: calc(min(300px, calc(100vh - 240px)) - 28px);
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
 .crew-list {
@@ -270,23 +339,23 @@ button {
 .crew-empty {
   padding: 7px;
   border: 1px dashed rgba(23, 36, 54, 0.18);
-  border-radius: 6px;
+  border-radius: 0;
   color: var(--muted);
   font-size: 0.68rem;
   font-weight: 760;
 }
 
 .dex-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: center;
-  min-height: 27px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 46px;
   padding: 6px 8px;
   border: 1px solid rgba(23, 36, 54, 0.08);
-  border-radius: 6px;
-  color: rgba(23, 36, 54, 0.45);
-  background: rgba(255, 255, 255, 0.58);
+  border-radius: 0;
+  color: rgba(23, 36, 54, 0.68);
+  background: rgba(255, 255, 255, 0.72);
   font-size: 0.76rem;
   font-weight: 720;
 }
@@ -298,13 +367,151 @@ button {
   white-space: nowrap;
 }
 
-.dex-row strong {
-  color: inherit;
+.dex-row-main {
+  display: grid;
+  gap: 2px;
+}
+
+.dex-row-name {
+  color: var(--ink);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.dex-row-meta {
+  color: rgba(23, 36, 54, 0.68);
+  font-size: 0.64rem;
+  letter-spacing: 0.01em;
+}
+
+.dex-row--exotic .dex-row-name {
+  color: #7b0e4f;
 }
 
 .dex-row--caught {
   color: var(--ink);
-  background: rgba(73, 183, 121, 0.18);
+  background: rgba(67, 230, 168, 0.22);
+}
+
+.dex-row--exotic {
+  color: #5c1f3f;
+  background: rgba(237, 145, 199, 0.28);
+  border-color: rgba(237, 145, 199, 0.42);
+}
+
+.dex-row--exotic strong {
+  color: #7b0e4f;
+}
+
+.repdex-detail {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  width: min(360px, calc(100vw - 36px));
+  max-height: min(420px, calc(100vh - 120px));
+  padding: 10px;
+  color: var(--ink);
+  background: var(--panel-strong);
+  border: 2px solid var(--line);
+  box-shadow: var(--shadow);
+  pointer-events: auto;
+  z-index: 5;
+  overflow: auto;
+}
+
+.repdex-detail[hidden] {
+  display: none;
+}
+
+.repdex-detail-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0 2px;
+  line-height: 1;
+  border: 2px solid var(--line);
+  background: rgba(255, 255, 255, 0.84);
+  font-size: 0.78rem;
+}
+
+.repdex-detail-title {
+  margin: 0 0 7px 0;
+  font-size: 0.98rem;
+  line-height: 1.1;
+}
+
+.repdex-detail-grid {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.repdex-detail-field {
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px 3px;
+  border: 1px solid rgba(23, 36, 54, 0.08);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.repdex-detail-field span {
+  color: var(--muted);
+  font-size: 0.63rem;
+  font-weight: 780;
+}
+
+.repdex-detail-field strong {
+  color: var(--ink);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+}
+
+.repdex-detail-full {
+  grid-column: 1 / -1;
+}
+
+.repdex-detail-description {
+  margin: 0 0 8px;
+  padding: 6px 7px;
+  min-height: 48px;
+  border: 1px dashed rgba(23, 36, 54, 0.3);
+  background: rgba(255, 255, 255, 0.72);
+  color: #1e3558;
+  font-size: 0.7rem;
+}
+
+.repdex-detail-odds {
+  padding: 5px 7px 7px;
+  margin-bottom: 6px;
+  border: 1px solid rgba(23, 36, 54, 0.2);
+  background: rgba(255, 255, 255, 0.72);
+  color: #1e3558;
+  font-size: 0.65rem;
+}
+
+.repdex-detail-odds-title {
+  margin-bottom: 4px;
+  color: var(--coral);
+  font-weight: 840;
+}
+
+.repdex-detail-odds div {
+  margin-bottom: 2px;
+}
+
+.repdex-detail-flavor {
+  margin: 0;
+  padding: 6px 7px;
+  border: 1px dashed rgba(23, 36, 54, 0.3);
+  background: #dbefff;
+  color: #1e3558;
+  font-size: 0.67rem;
+  font-style: italic;
+  line-height: 1.3;
 }
 
 .crew-row {
@@ -312,9 +519,9 @@ button {
   gap: 4px;
   min-height: 0;
   padding: 6px;
-  border: 1px solid rgba(23, 36, 54, 0.1);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.62);
+  border: 2px solid rgba(23, 36, 54, 0.2);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.68);
 }
 
 .crew-row--training {
@@ -324,7 +531,21 @@ button {
 
 .crew-row--needs-spot {
   border-color: rgba(232, 92, 79, 0.34);
-  background: rgba(232, 92, 79, 0.12);
+  background: rgba(232, 92, 79, 0.2);
+}
+
+.crew-row--exotic {
+  border-color: rgba(237, 145, 199, 0.42);
+  background: rgba(237, 145, 199, 0.26);
+}
+
+.crew-row--training.crew-row--exotic {
+  border-color: rgba(237, 145, 199, 0.52);
+  background: rgba(237, 145, 199, 0.3);
+}
+
+.crew-row--needs-spot.crew-row--exotic {
+  border-color: rgba(237, 145, 199, 0.56);
 }
 
 .crew-main,
@@ -363,7 +584,7 @@ button {
 .crew-meter {
   height: 5px;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: 0;
   background: #dce5df;
 }
 
@@ -375,7 +596,7 @@ button {
 
 .crew-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 4px;
 }
 
@@ -393,13 +614,14 @@ button {
 .crew-actions button,
 .boss-panel button {
   min-height: 25px;
-  border: 1px solid rgba(23, 36, 54, 0.12);
-  border-radius: 6px;
+  border: 2px solid var(--line);
+  border-radius: 0;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.86);
   font-size: 0.62rem;
   font-weight: 840;
   cursor: pointer;
+  box-shadow: 1px 1px 0 var(--pixel-edge);
 }
 
 .crew-actions button:disabled {
@@ -409,6 +631,10 @@ button {
 
 .crew-actions .crew-remove {
   color: var(--coral);
+}
+
+.crew-actions .crew-steroid {
+  color: var(--teal);
 }
 
 .boss-panel {
@@ -422,9 +648,11 @@ button {
   align-items: center;
   padding: 10px;
   color: #ffffff;
-  background: rgba(23, 36, 54, 0.9);
+  color: var(--ink);
+  background: var(--panel);
   pointer-events: auto;
   transform: translateX(-50%);
+  box-shadow: var(--shadow);
 }
 
 .boss-panel[hidden] {
@@ -448,7 +676,7 @@ button {
 }
 
 .boss-panel > span {
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
   font-size: 0.7rem;
   font-weight: 820;
 }
@@ -465,8 +693,8 @@ button {
   bottom: 88px;
   width: min(420px, calc(100vw - 36px));
   padding: 12px 14px;
-  color: #ffffff;
-  background: rgba(23, 36, 54, 0.86);
+  color: var(--ink);
+  background: var(--panel);
   font-size: 0.88rem;
   font-weight: 760;
   line-height: 1.28;
@@ -500,8 +728,8 @@ button {
   bottom: 50px;
   pointer-events: auto;
   min-height: 30px;
-  border: 1px solid rgba(23, 36, 54, 0.16);
-  border-radius: 7px;
+  border: 2px solid var(--line);
+  border-radius: 0;
   padding: 8px 10px;
   color: var(--ink);
   background: var(--panel-strong);
@@ -518,7 +746,7 @@ button {
   max-width: min(520px, calc(100vw - 36px));
   padding: 8px 12px;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.76);
+  background: var(--panel);
   font-size: 0.78rem;
   font-weight: 780;
   line-height: 1.2;
@@ -535,8 +763,8 @@ button {
   gap: 8px;
   max-width: min(360px, calc(100vw - 36px));
   padding: 8px 8px 8px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 2px solid var(--line);
+  border-radius: 0;
   color: var(--ink);
   background: var(--panel-strong);
   box-shadow: var(--shadow);
@@ -554,7 +782,7 @@ button {
   max-width: min(360px, calc(100vw - 36px));
   padding: 8px 8px 8px 12px;
   color: var(--ink);
-  background: var(--panel-strong);
+  background: var(--panel);
   pointer-events: auto;
   transform: translateX(-50%);
 }
@@ -569,7 +797,7 @@ button {
   max-width: min(360px, calc(100vw - 36px));
   padding: 8px 8px 8px 12px;
   color: var(--ink);
-  background: var(--panel-strong);
+  background: var(--panel);
   pointer-events: auto;
   transform: translateX(-50%);
 }
@@ -621,11 +849,12 @@ button {
 .workout-head button,
 .spot-callout button,
 .workout-buttons button {
-  border: 1px solid rgba(23, 36, 54, 0.14);
-  border-radius: 8px;
+  border: 2px solid var(--line);
+  border-radius: 0;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.86);
   cursor: pointer;
+  box-shadow: 1px 1px 0 var(--pixel-edge);
 }
 
 .workout-prompt button {
@@ -664,7 +893,7 @@ button {
   gap: 12px;
   padding: 14px;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--panel-strong);
   pointer-events: auto;
   transform: translateX(-50%);
 }
@@ -739,12 +968,12 @@ button {
   display: grid;
   gap: 12px;
   padding: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.66);
-  border-radius: 8px;
+  border: 2px solid var(--line);
+  border-radius: 0;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.93);
+  background: var(--panel-strong);
   box-shadow: var(--shadow);
-  backdrop-filter: blur(14px);
+  backdrop-filter: none;
   pointer-events: auto;
   transform: translateX(-50%);
 }
@@ -796,8 +1025,8 @@ button {
   pointer-events: auto;
   touch-action: manipulation;
   z-index: 5;
-  border: 1px solid rgba(232, 92, 79, 0.24);
-  border-radius: 8px;
+  border: 2px solid rgba(232, 92, 79, 0.24);
+  border-radius: 0;
   background: rgba(232, 92, 79, 0.1);
 }
 
@@ -839,7 +1068,7 @@ button {
   height: 5px;
   overflow: hidden;
   border: 1px solid rgba(23, 36, 54, 0.22);
-  border-radius: 999px;
+  border-radius: 0;
   background: #dce5df;
 }
 
@@ -867,7 +1096,7 @@ button {
   height: 28px;
   overflow: hidden;
   border: 1px solid rgba(23, 36, 54, 0.14);
-  border-radius: 8px;
+  border-radius: 0;
   background: #dce5df;
 }
 
@@ -887,7 +1116,7 @@ button {
   left: 30%;
   width: 52%;
   border: 2px solid rgba(255, 255, 255, 0.82);
-  border-radius: 6px;
+  border-radius: 0;
   background: rgba(246, 200, 95, 0.34);
 }
 
@@ -967,7 +1196,7 @@ button {
   justify-items: start;
   padding: clamp(10px, 2vw, 18px);
   pointer-events: auto;
-  background: linear-gradient(90deg, rgba(23, 36, 54, 0.34), rgba(23, 36, 54, 0));
+  background: linear-gradient(90deg, rgba(140, 197, 248, 0.82), rgba(255, 255, 255, 0.02));
 }
 
 .character-creator[hidden] {
@@ -987,6 +1216,9 @@ button {
   gap: 6px;
   justify-items: center;
   width: fit-content;
+  border: 2px solid var(--line);
+  background: var(--panel);
+  padding: 4px;
 }
 
 .creator-preview-wrap .creator-preview {
@@ -1006,8 +1238,8 @@ button {
 
 .creator-preview-rotate {
   min-height: 30px;
-  border: 1px solid rgba(23, 36, 54, 0.14);
-  border-radius: 8px;
+  border: 2px solid var(--line);
+  border-radius: 0;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.82);
   font-size: 0.68rem;
@@ -1021,6 +1253,8 @@ button {
   display: block;
   width: 100%;
   height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 .creator-preview::after {
@@ -1030,7 +1264,7 @@ button {
   left: 19%;
   z-index: 0;
   height: 22px;
-  border-radius: 999px;
+  border-radius: 0;
   background: radial-gradient(ellipse at center, rgba(23, 36, 54, 0.28), rgba(23, 36, 54, 0));
   content: "";
   filter: blur(5px);
@@ -1057,12 +1291,12 @@ button {
   display: grid;
   gap: clamp(8px, 1.4vw, 12px);
   padding: clamp(10px, 1.8vw, 16px);
-  border: 1px solid rgba(255, 255, 255, 0.58);
-  border-radius: 8px;
+  border: 2px solid var(--line);
+  border-radius: 0;
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--panel-strong);
   box-shadow: var(--shadow);
-  backdrop-filter: blur(14px);
+  backdrop-filter: none;
 }
 
 .creator-head {
@@ -1108,8 +1342,8 @@ button {
 .creator-choice,
 .creator-start {
   min-height: clamp(34px, 3.8vw, 46px);
-  border: 1px solid rgba(23, 36, 54, 0.14);
-  border-radius: 8px;
+  border: 2px solid var(--line);
+  border-radius: 0;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.78);
   font-size: clamp(0.68rem, 1.7vw, 0.8rem);
@@ -1134,7 +1368,7 @@ button {
 
 .creator-choice--selected {
   color: #ffffff;
-  border-color: transparent;
+  border-color: var(--line);
   background: var(--ink);
 }
 
@@ -1164,8 +1398,8 @@ button {
   gap: clamp(4px, 1vw, 6px);
   min-width: 0;
   padding: clamp(6px, 1.3vw, 8px);
-  border: 1px solid rgba(23, 36, 54, 0.12);
-  border-radius: 8px;
+  border: 2px solid var(--line);
+  border-radius: 0;
   background: rgba(255, 255, 255, 0.58);
 }
 
@@ -1217,7 +1451,7 @@ button {
   position: relative;
   width: 132px;
   height: 132px;
-  border-radius: 999px;
+  border-radius: 0;
   pointer-events: auto;
   touch-action: none;
 }
@@ -1227,26 +1461,29 @@ button {
   position: absolute;
   top: 50%;
   left: 50%;
-  border-radius: 999px;
+  border-radius: 0;
   transform: translate(-50%, -50%);
 }
 
 .touch-joystick-ring {
   width: 102px;
   height: 102px;
-  border: 1px solid rgba(23, 36, 54, 0.16);
+  border: 2px solid var(--line);
   background:
-    radial-gradient(circle at center, rgba(255, 255, 255, 0.88) 0 28%, rgba(255, 255, 255, 0.52) 29% 100%);
-  box-shadow: 0 14px 28px rgba(23, 36, 54, 0.18);
-  backdrop-filter: blur(12px);
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.88) 0 12px,
+      rgba(255, 255, 255, 0.56) 12px 20px
+    );
+  box-shadow: 2px 2px 0 var(--pixel-edge);
 }
 
 .touch-joystick-knob {
   width: 46px;
   height: 46px;
-  border: 1px solid rgba(23, 36, 54, 0.18);
+  border: 2px solid rgba(23, 36, 54, 0.22);
   background: var(--ink);
-  box-shadow: 0 10px 22px rgba(23, 36, 54, 0.22);
+  box-shadow: 1px 1px 0 var(--pixel-edge);
   will-change: transform;
 }
 
@@ -1259,11 +1496,11 @@ button {
 }
 
 .touch-action {
-  border: 1px solid rgba(23, 36, 54, 0.16);
-  border-radius: 8px;
+  border: 2px solid var(--line);
+  border-radius: 0;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 12px 24px rgba(23, 36, 54, 0.16);
+  box-shadow: 1px 1px 0 var(--pixel-edge);
   touch-action: none;
   pointer-events: auto;
 }
@@ -1309,10 +1546,22 @@ button {
     left: 12px;
   }
 
-  .repdex-panel,
   .input-status,
   .control-hint {
     display: none;
+  }
+
+  .repdex-panel {
+    width: min(198px, calc(100vw - 24px));
+    max-height: min(240px, calc(100vh - 360px));
+    top: auto;
+    right: 12px;
+    left: auto;
+    bottom: 12px;
+  }
+
+  .dex-list {
+    max-height: calc(min(240px, calc(100vh - 360px)) - 28px);
   }
 
   .toast {
@@ -1360,6 +1609,13 @@ button {
   .boss-panel {
     top: 154px;
     width: min(300px, calc(100vw - 24px));
+  }
+
+  .repdex-detail {
+    inset: 70px 12px auto 12px;
+    transform: none;
+    width: auto;
+    max-height: min(360px, calc(100vh - 150px));
   }
 
   .workout-prompt {

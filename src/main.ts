@@ -13,7 +13,7 @@ const appRoot = app;
 appRoot.innerHTML = `
   <div class="boot-screen" aria-live="polite" aria-busy="true">
     <div class="boot-mark"></div>
-    <span>Loading Mega Gym</span>
+    <span>Loading Ralph's Swole Safari</span>
   </div>
 `;
 
@@ -26,6 +26,6 @@ async function boot(): Promise<void> {
 }
 
 boot().catch((error) => {
-  appRoot.innerHTML = '<div class="boot-screen boot-screen--error">Mega Gym failed to load.</div>';
+  appRoot.innerHTML = '<div class="boot-screen boot-screen--error">Ralph\'s Swole Safari failed to load.</div>';
   throw error;
 });
