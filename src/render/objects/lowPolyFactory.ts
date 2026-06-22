@@ -658,57 +658,43 @@ function createFreeWeightBenchStation(station: WorkoutStation): Group {
 
 export function createWorkoutEquipment(stations: WorkoutStation[]): Group {
   const group = new Group();
-
-  for (const station of stations) {
-    const stationGroup = new Group();
-    stationGroup.userData.cullCenter = station.position;
-    stationGroup.userData.renderDistance = 25;
-    addStationMarker(stationGroup, station);
-
-    if (station.type === 'bench') {
-      stationGroup.add(createBenchStation(station));
+  const palettes = [
+    { mat: 0x77d7c2, face: 0xf8e3a0, accent: 0x24324a },
+    { mat: 0xf37b6c, face: 0xffffff, accent: 0x803c58 },
+    { mat: 0xf7d56a, face: 0x70c46b, accent: 0x24324a },
+    { mat: 0x8bb7ff, face: 0xffffff, accent: 0x425b9a }
+  ];
+  stations.forEach((station, index) => {
+    const palette = palettes[index % palettes.length];
+    const x = station.position.x;
+    const z = station.position.z;
+    const shadow = box(2.7, 0.06, 1.48, 0x141d33, x + 0.18, 0.04, z + 0.18);
+    const floorMat = box(2.52, 0.08, 1.32, palette.mat, x, 0.12, z);
+    const backPlate = box(1.58, 1.05, 0.12, 0x141d33, x, 0.78, z - 0.46);
+    const sign = box(1.42, 0.9, 0.14, palette.face, x, 0.82, z - 0.39);
+    const stripe = box(1.18, 0.12, 0.16, palette.accent, x, 1.06, z - 0.3);
+    const baseStripe = box(1.22, 0.1, 0.16, palette.accent, x, 0.56, z - 0.29);
+    group.add(shadow, floorMat, backPlate, sign, stripe, baseStripe);
+    const iconBar = cylinder(0.035, 0.035, 0.92, palette.accent, 6);
+    iconBar.rotation.z = Math.PI / 2;
+    iconBar.position.set(x, 0.83, z - 0.2);
+    const plateLeft = cylinder(0.15, 0.15, 0.08, palette.accent, 8);
+    plateLeft.rotation.z = Math.PI / 2;
+    plateLeft.position.set(x - 0.56, 0.83, z - 0.2);
+    const plateRight = plateLeft.clone();
+    plateRight.position.x = x + 0.56;
+    group.add(iconBar, plateLeft, plateRight);
+    if (index % 3 === 1) {
+      const punch = box(0.34, 0.34, 0.16, palette.mat, x + 0.38, 0.78, z - 0.12);
+      punch.rotation.z = 0.55;
+      group.add(punch);
+    } else if (index % 3 === 2) {
+      const sparkleA = box(0.12, 0.44, 0.14, palette.mat, x + 0.38, 0.83, z - 0.12);
+      const sparkleB = box(0.44, 0.12, 0.14, palette.mat, x + 0.38, 0.83, z - 0.12);
+      group.add(sparkleA, sparkleB);
     }
-
-    if (station.type === 'incline-bench') {
-      stationGroup.add(createInclineBenchStation(station));
-    }
-
-    if (station.type === 'squat-rack') {
-      stationGroup.add(createSquatRackStation(station));
-    }
-
-    if (station.type === 'leg-press') {
-      stationGroup.add(createLegPressStation(station));
-    }
-
-    if (station.type === 'cable') {
-      stationGroup.add(createCableTowerStation(station));
-    }
-
-    if (station.type === 'free-weights') {
-      stationGroup.add(createFreeWeightsStation(station));
-    }
-
-    if (station.type === 'machine-press') {
-      stationGroup.add(createMachinePressStation(station));
-    }
-
-    if (station.type === 'lat-pulldown') {
-      stationGroup.add(createLatPulldownStation(station));
-    }
-
-    if (station.type === 'hack-squat') {
-      stationGroup.add(createHackSquatStation(station));
-    }
-
-    if (station.type === 'free-weight-bench') {
-      stationGroup.add(createFreeWeightBenchStation(station));
-    }
-
-    group.add(stationGroup);
-  }
-
-  return group;
+  });
+  return markShadows(group) as Group;
 }
 
 function createVendingMachine(machine: VendingMachine): Group {
@@ -756,12 +742,21 @@ function createVendingMachine(machine: VendingMachine): Group {
 
 export function createVendingMachines(machines: VendingMachine[]): Group {
   const group = new Group();
-
   for (const machine of machines) {
-    group.add(createVendingMachine(machine));
+    const x = machine.position.x;
+    const z = machine.position.z;
+    const shadow = box(1.95, 0.06, 1.15, 0x141d33, x + 0.16, 0.04, z + 0.16);
+    const kioskBack = box(1.18, 1.82, 0.18, 0x141d33, x, 1.02, z - 0.08);
+    const kiosk = box(1.02, 1.66, 0.2, 0xef3d4f, x, 1.04, z);
+    const screen = box(0.64, 0.46, 0.12, 0x9bd9ec, x - 0.04, 1.32, z + 0.13);
+    const slot = box(0.58, 0.12, 0.14, 0xffe56d, x - 0.02, 0.86, z + 0.14);
+    const buttonA = box(0.13, 0.13, 0.14, 0xffffff, x + 0.36, 1.06, z + 0.15);
+    const buttonB = box(0.13, 0.13, 0.14, 0xf7d56a, x + 0.36, 0.86, z + 0.15);
+    const awning = box(1.28, 0.18, 0.34, 0xffe56d, x, 1.96, z + 0.03);
+    const floorMat = box(1.72, 0.08, 0.82, 0x77d7c2, x, 0.12, z + 0.46);
+    group.add(shadow, floorMat, kioskBack, kiosk, screen, slot, buttonA, buttonB, awning);
   }
-
-  return group;
+  return markShadows(group) as Group;
 }
 
 type CanonicalMuscleBuild = Exclude<MuscleBuild, 'lean' | 'power' | 'sculpted'>;
@@ -2696,19 +2691,19 @@ export function createBabyCryingDrops(): Group {
 
 export function createFreeWeightMesh(): Group {
   const group = new Group();
-  const grip = cylinder(0.045, 0.045, 0.48, 0xf9f7ef, 8);
-  grip.rotation.z = Math.PI / 2;
-  const headA = cylinder(0.16, 0.16, 0.16, 0x303b4d, 6);
-  headA.rotation.z = Math.PI / 2;
-  headA.position.x = -0.34;
-  const headB = headA.clone();
-  headB.position.x = 0.34;
-  const rimA = cylinder(0.18, 0.18, 0.055, 0x59667a, 6);
-  rimA.rotation.z = Math.PI / 2;
-  rimA.position.x = -0.45;
-  const rimB = rimA.clone();
-  rimB.position.x = 0.45;
-  group.add(grip, headA, headB, rimA, rimB);
+  const outline = 0x141d33;
+  const metal = 0xf8e3a0;
+  const accent = 0x24324a;
+  const shadow = box(0.92, 0.035, 0.34, outline, 0.05, 0.02, 0.05);
+  const gripBack = box(0.68, 0.08, 0.12, outline, 0, 0.12, -0.03);
+  const grip = box(0.58, 0.055, 0.14, metal, 0, 0.14, 0.02);
+  const plateA = box(0.18, 0.24, 0.16, accent, -0.42, 0.14, 0.02);
+  const plateB = plateA.clone();
+  plateB.position.x = 0.42;
+  const shineA = box(0.08, 0.16, 0.18, 0xffffff, -0.42, 0.16, 0.12);
+  const shineB = shineA.clone();
+  shineB.position.x = 0.42;
+  group.add(shadow, gripBack, grip, plateA, plateB, shineA, shineB);
   return markShadows(group) as Group;
 }
 
@@ -2723,5 +2718,6 @@ export function createCaptureRing(color: number): Mesh {
   mat.position.y = 0.015;
   return mat;
 }
+
 
 

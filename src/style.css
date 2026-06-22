@@ -3651,3 +3651,47 @@ button {
     display: flex;
   }
 }
+
+/* Visual sanity pass: make first screen a title screen, not a 3D character editor. */
+.game-root--creating .creator-preview-wrap,
+.game-root--creating .creator-customize,
+.game-root--creating .creator-event,
+.game-root--creating .creator-reset-save {
+  display: none !important;
+}
+
+.game-root--creating .character-creator {
+  justify-content: center;
+  grid-template-columns: minmax(280px, 520px);
+  padding: clamp(18px, 5vw, 48px);
+}
+
+.game-root--creating .creator-panel {
+  max-width: 520px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.game-root--creating .creator-head {
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+}
+
+.game-root--creating .creator-head h1 {
+  font-size: clamp(1.45rem, 4.8vw, 2.45rem);
+}
+
+.game-root--creating .creator-head span {
+  max-width: 430px;
+  margin: 0 auto;
+}
+
+.game-root--creating .creator-short-instruction {
+  margin: 18px auto;
+  max-width: 430px;
+}
+
+.game-root--creating .creator-action-row {
+  justify-content: center;
+}

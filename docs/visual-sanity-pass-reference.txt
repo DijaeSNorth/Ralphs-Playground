@@ -1,0 +1,21 @@
+Visual sanity pass reference
+
+Scope:
+- No gameplay systems added.
+- Changes are visual presentation only.
+
+Files changed:
+- src/render/objects/lowPolyFactory.ts
+- src/style.css
+
+Sanity fixes:
+- Title screen now hides the 3D character preview and customization drawer by default so first load reads as a clean title screen.
+- Title screen is centered around title, short loop description, Start Game, Settings, and version.
+- Workout stations now render as flat retro mat/sign set pieces instead of realistic low-poly gym equipment.
+- Vending machines now render as flat arcade kiosks.
+- Free weights now render as chunky flat pickup props.
+
+Intent:
+- Reduce the remaining "old 3D gym with pixel filter" feeling.
+- Preserve existing station/vending/free-weight positions and interactions.
+- Keep the 2.5D staged world, orthographic camera, buff creatures, arm-wrestling capture, and minimal HUD intact.
