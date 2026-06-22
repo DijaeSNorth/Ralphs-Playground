@@ -1,0 +1,16 @@
+Stage: Lightweight retro Web Audio sound effects
+
+Important files:
+- src/game/audio.ts defines RetroAudio, a no-file Web Audio synth for short arcade-style effects.
+- src/game/settings.ts adds muted to saved settings.
+- src/ui/hud.ts adds a Mute checkbox to the Settings panel.
+- src/render/app/createGymBuddyGame.ts unlocks audio on first pointer/touch/key interaction and maps world/UI events to sound effects.
+- src/game/types.ts and src/game/simulation/world.ts add a levelUp marker to roster events so XP and steroid level-ups can play sound.
+
+Sound behavior:
+- No AudioContext is created until first user interaction.
+- SFX respect settings.sfxVolume and settings.muted.
+- Reduced motion does not disable audio.
+- Capture start and final result sounds are separated by a short delay.
+- Arm-wrestle struggle taps play a short sound with a 0.12s cooldown.
+- Exotic spawns, steroid use, level-up, goal-complete, and menu/select actions have distinct short retro tones.

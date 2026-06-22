@@ -1,8 +1,9 @@
 ﻿import { getBuddyDefinition } from '../game/content/buddies';
 import type { InputMode } from '../game/input/actions';
 import { normalizeManifestHairId, normalizeManifestSex } from '../game/content/characterAssetManifest';
-import { getArmWrestleCatchChance } from '../game/simulation/world';
+import { getArmWrestleCatchChance, getBuddyXpForNextLevel } from '../game/simulation/world';
 import { BUDDY_DEFINITIONS } from '../game/content/buddies';
+import { getCurrentGymEvent } from '../game/content/gymEvents';
 import { DEFAULT_GAME_SETTINGS, type CameraDistanceSetting, type GameSettings } from '../game/settings';
 import {
   BODY_SIZE_CONTROLS,
@@ -26,6 +27,7 @@ import type {
   VendingMachine,
   WorkoutStation,
   WorkoutType,
+  WorldEvent,
   WorldSnapshot
 } from '../game/types';
 
@@ -91,6 +93,7 @@ export class GameHud {
   private readonly capturedValue: HTMLSpanElement;
   private readonly objective: HTMLDivElement;
   private readonly target: HTMLDivElement;
+  private readonly eventChip: HTMLDivElement;
   private readonly targetPreview: HTMLDivElement;
   private readonly targetPreviewName: HTMLDivElement;
   private readonly targetPreviewRarity: HTMLDivElement;
@@ -137,15 +140,29 @@ export class GameHud {
   private readonly crewDetailReleaseButton: HTMLButtonElement;
   private readonly crewCount: HTMLSpanElement;
   private readonly crewList: HTMLDivElement;
+  private readonly storageList: HTMLDivElement;
   private readonly bossPanel: HTMLDivElement;
   private readonly bossName: HTMLSpanElement;
   private readonly bossStats: HTMLSpanElement;
   private readonly bossTimer: HTMLSpanElement;
+  private readonly bossBattlePanel: HTMLDivElement;
+  private readonly bossBattleName: HTMLSpanElement;
+  private readonly bossBattleResult: HTMLSpanElement;
+  private readonly bossBattleMeter: HTMLDivElement;
+  private readonly bossBattleScores: HTMLDivElement;
+  private readonly bossBattleLog: HTMLDivElement;
+  private readonly bossBattleRewards: HTMLDivElement;
+  private readonly captureResultCard: HTMLDivElement;
+  private readonly captureResultContent: HTMLDivElement;
+  private readonly captureResultClose: HTMLButtonElement;
   private readonly toast: HTMLDivElement;
   private readonly inputStatus: HTMLDivElement;
   private readonly controlHint: HTMLDivElement;
   private readonly inputModeButton: HTMLButtonElement;
   private readonly resetSaveButton: HTMLButtonElement;
+  private readonly creatorEvent: HTMLDivElement;
+  private readonly creatorEventName: HTMLDivElement;
+  private readonly creatorEventBonus: HTMLDivElement;
   private readonly settingsButton: HTMLButtonElement;
   private readonly settingsPanel: HTMLDivElement;
   private readonly settingsCloseButton: HTMLButtonElement;
@@ -153,6 +170,7 @@ export class GameHud {
   private readonly settingsMusicValue: HTMLSpanElement;
   private readonly settingsSfxInput: HTMLInputElement;
   private readonly settingsSfxValue: HTMLSpanElement;
+  private readonly settingsMuteInput: HTMLInputElement;
   private readonly settingsPixelInput: HTMLInputElement;
   private readonly settingsCameraSelect: HTMLSelectElement;
   private readonly settingsReducedInput: HTMLInputElement;
@@ -197,8 +215,10 @@ export class GameHud {
   private readonly rosterTrainListeners: Array<(rosterId: number) => void> = [];
   private readonly rosterSpotListeners: Array<(rosterId: number) => void> = [];
   private readonly rosterRemoveListeners: Array<(rosterId: number) => void> = [];
+  private readonly rosterStoreListeners: Array<(rosterId: number) => void> = [];
   private readonly rosterUseSteroidListeners: Array<(rosterId: number) => void> = [];
   private readonly rosterRenameListeners: Array<(rosterId: number, displayName?: string) => void> = [];
+  private readonly storageActivateListeners: Array<(rosterId: number) => void> = [];
   private readonly bossChallengeListeners: Array<() => void> = [];
   private readonly previewRotationListeners: Array<(rotation: number) => void> = [];
   private readonly inputModeListeners: Array<(mode: InputMode) => void> = [];
@@ -219,6 +239,7 @@ export class GameHud {
   private toastTimer = 0;
   private renderedDexMarkup = '';
   private renderedCrewMarkup = '';
+  private renderedStorageMarkup = '';
   private renderedStaminaWidth = '';
   private renderedShakersValue = '';
   private renderedSteroidsValue = '';
@@ -227,6 +248,8 @@ export class GameHud {
   private renderedInputStatus = '';
   private renderedObjective = '';
   private renderedTarget = '';
+  private renderedEventName = '';
+  private renderedEventBonus = '';
   private renderedTargetReady = false;
   private renderedTargetPreviewName = '';
   private renderedTargetPreviewRarity = '';
@@ -242,6 +265,18 @@ export class GameHud {
   private renderedBossName = '';
   private renderedBossStats = '';
   private renderedBossTimer = '';
+  private renderedBossBattleName = '';
+  private renderedBossBattleResult = '';
+  private renderedBossBattleMeter = '';
+  private renderedBossBattleScores = '';
+  private renderedBossBattleLog = '';
+  private renderedBossBattleRewards = '';
+  private captureResultTimer = 0;
+  private pendingCaptureResult?: {
+    delay: number;
+    html: string;
+    visibleSeconds: number;
+  };
   private renderedSpotCalloutText = '';
   private renderedVendingEnergyMeta = '';
   private renderedVendingSnackMeta = '';
@@ -250,6 +285,7 @@ export class GameHud {
   private renderedSpotMeterWidth = '';
   private readonly repDexEntriesById = new Map<string, RepDexEntry>();
   private readonly rosterEntriesById = new Map<number, BuddyRosterEntry>();
+  private readonly storageEntriesById = new Map<number, BuddyRosterEntry>();
   private readonly rosterNameById = new Map<number, string>();
   private activeCrewDetailId?: number;
   private crewSort: CrewSortMode = 'recent';
@@ -269,12 +305,18 @@ export class GameHud {
 
   constructor(root: HTMLElement) {
     this.root = root;
+    const initialEvent = getCurrentGymEvent();
     root.className = 'game-root game-root--creating';
     root.innerHTML = `
       <div class="game-canvas" data-canvas-mount></div>
       <div class="hud" aria-live="polite">
         <section class="hud-cluster hud-cluster--left">
           <div class="objective-chip" data-objective>Arm-wrestle wild gym beasts. Build the strongest crew.</div>
+          <div class="event-chip" data-event-chip>
+            <span>Today</span>
+            <strong>${initialEvent.name}</strong>
+            <small>${initialEvent.bonusLabel}</small>
+          </div>
           <div class="target-chip" data-target>No target</div>
           <section class="target-preview target-preview--hidden" data-target-preview>
             <div class="target-preview-name" data-target-preview-name></div>
@@ -346,16 +388,19 @@ export class GameHud {
             <button type="button" class="panel-toggle" data-panel-toggle="crew" aria-expanded="true" aria-controls="crew-body">▾</button>
           </div>
           <div class="panel-body" id="crew-body">
-          <label class="crew-sort-control">
-            <span>Sort</span>
-            <select class="crew-sort-select" data-crew-sort>
-              <option value="level">Level</option>
-              <option value="rarity">Rarity</option>
-              <option value="strength">Strength</option>
-              <option value="recent" selected>Recently Caught</option>
-            </select>
-          </label>
-          <div class="crew-list" data-crew-list></div>
+            <label class="crew-sort-control">
+              <span>Sort</span>
+              <select class="crew-sort-select" data-crew-sort>
+                <option value="level">Level</option>
+                <option value="rarity">Rarity</option>
+                <option value="strength">Strength</option>
+                <option value="recent" selected>Recently Caught</option>
+              </select>
+            </label>
+            <div class="crew-section-label">Active Crew</div>
+            <div class="crew-list" data-crew-list></div>
+            <div class="crew-section-label crew-section-label--storage">Storage</div>
+            <div class="storage-list" data-storage-list></div>
           </div>
         </section>
         <section class="crew-detail" data-crew-detail hidden aria-label="Crew creature detail">
@@ -392,6 +437,22 @@ export class GameHud {
           <span data-boss-stats>Power set</span>
           <button type="button" data-boss-challenge>Challenge</button>
         </section>
+        <section class="boss-battle-panel" data-boss-battle-panel hidden aria-label="Boss battle">
+          <div class="boss-battle-head">
+            <span data-boss-battle-name>Boss Battle</span>
+            <strong data-boss-battle-result>VS</strong>
+          </div>
+          <div class="boss-battle-meter" aria-hidden="true">
+            <div data-boss-battle-meter></div>
+          </div>
+          <div class="boss-battle-scores" data-boss-battle-scores></div>
+          <div class="boss-battle-log" data-boss-battle-log></div>
+          <div class="boss-battle-rewards" data-boss-battle-rewards></div>
+        </section>
+        <section class="capture-result-card" data-capture-result hidden aria-label="Capture result">
+          <button type="button" class="capture-result-card__close" data-capture-result-close aria-label="Close capture result">Skip</button>
+          <div class="capture-result-card__content" data-capture-result-content></div>
+        </section>
         <div class="toast" data-toast></div>
         <div class="input-status" data-input-status>Keyboard + Mouse</div>
         <button type="button" class="input-mode-toggle" data-input-mode>Keyboard + Mouse</button>
@@ -410,6 +471,10 @@ export class GameHud {
             <span>SFX</span>
             <input type="range" min="0" max="100" step="5" data-settings-sfx />
             <strong data-settings-sfx-value>75</strong>
+          </label>
+          <label class="settings-check">
+            <input type="checkbox" data-settings-muted />
+            <span>Mute</span>
           </label>
           <label class="settings-check">
             <input type="checkbox" data-settings-pixel />
@@ -431,6 +496,16 @@ export class GameHud {
             <input type="checkbox" data-settings-catch-odds />
             <span>Show catch odds</span>
           </label>
+          <details class="feedback-notes">
+            <summary>Feedback Notes</summary>
+            <ul>
+              <li>Was the first capture goal clear?</li>
+              <li>Did the catch odds and result screen make sense?</li>
+              <li>Were touch, keyboard, and buttons easy to use?</li>
+              <li>Which creature, boss, or menu felt confusing?</li>
+              <li>Report browser, device, screen size, and any console errors.</li>
+            </ul>
+          </details>
           <button type="button" class="settings-reset-save" data-settings-reset-save>Reset Save</button>
         </section>
         <div class="control-hint" data-control-hint>WASD Move / Shift Sprint / Left Click Arm Wrestle / Right Click Use</div>
@@ -502,6 +577,11 @@ export class GameHud {
             <div class="creator-head">
               <h1>Start Your Safari</h1>
               <span>Ralph's Swole Safari</span>
+            </div>
+            <div class="creator-event" data-creator-event>
+              <span>Local Gym Event</span>
+              <strong data-creator-event-name>${initialEvent.name}</strong>
+              <small data-creator-event-bonus>${initialEvent.bonusLabel}</small>
             </div>
             <div class="creator-group" aria-label="Hair">
               <div class="creator-label">Hair</div>
@@ -615,6 +695,7 @@ export class GameHud {
     const resetSaveButton = root.querySelector<HTMLButtonElement>('[data-reset-save]');
     const objective = root.querySelector<HTMLDivElement>('[data-objective]');
     const target = root.querySelector<HTMLDivElement>('[data-target]');
+    const eventChip = root.querySelector<HTMLDivElement>('[data-event-chip]');
     const targetPreview = root.querySelector<HTMLDivElement>('[data-target-preview]');
     const targetPreviewName = root.querySelector<HTMLDivElement>('[data-target-preview-name]');
     const targetPreviewRarity = root.querySelector<HTMLDivElement>('[data-target-preview-rarity]');
@@ -660,10 +741,21 @@ export class GameHud {
     const crewDetailUseSteroidButton = root.querySelector<HTMLButtonElement>('[data-crew-detail-use]');
     const crewDetailReleaseButton = root.querySelector<HTMLButtonElement>('[data-crew-detail-release]');
     const crewList = root.querySelector<HTMLDivElement>('[data-crew-list]');
+    const storageList = root.querySelector<HTMLDivElement>('[data-storage-list]');
     const bossPanel = root.querySelector<HTMLDivElement>('[data-boss-panel]');
     const bossName = root.querySelector<HTMLSpanElement>('[data-boss-name]');
     const bossStats = root.querySelector<HTMLSpanElement>('[data-boss-stats]');
     const bossTimer = root.querySelector<HTMLSpanElement>('[data-boss-timer]');
+    const bossBattlePanel = root.querySelector<HTMLDivElement>('[data-boss-battle-panel]');
+    const bossBattleName = root.querySelector<HTMLSpanElement>('[data-boss-battle-name]');
+    const bossBattleResult = root.querySelector<HTMLSpanElement>('[data-boss-battle-result]');
+    const bossBattleMeter = root.querySelector<HTMLDivElement>('[data-boss-battle-meter]');
+    const bossBattleScores = root.querySelector<HTMLDivElement>('[data-boss-battle-scores]');
+    const bossBattleLog = root.querySelector<HTMLDivElement>('[data-boss-battle-log]');
+    const bossBattleRewards = root.querySelector<HTMLDivElement>('[data-boss-battle-rewards]');
+    const captureResultCard = root.querySelector<HTMLDivElement>('[data-capture-result]');
+    const captureResultContent = root.querySelector<HTMLDivElement>('[data-capture-result-content]');
+    const captureResultClose = root.querySelector<HTMLButtonElement>('[data-capture-result-close]');
     const toast = root.querySelector<HTMLDivElement>('[data-toast]');
     const inputStatus = root.querySelector<HTMLDivElement>('[data-input-status]');
     const controlHint = root.querySelector<HTMLDivElement>('[data-control-hint]');
@@ -675,6 +767,7 @@ export class GameHud {
     const settingsMusicValue = root.querySelector<HTMLSpanElement>('[data-settings-music-value]');
     const settingsSfxInput = root.querySelector<HTMLInputElement>('[data-settings-sfx]');
     const settingsSfxValue = root.querySelector<HTMLSpanElement>('[data-settings-sfx-value]');
+    const settingsMuteInput = root.querySelector<HTMLInputElement>('[data-settings-muted]');
     const settingsPixelInput = root.querySelector<HTMLInputElement>('[data-settings-pixel]');
     const settingsCameraSelect = root.querySelector<HTMLSelectElement>('[data-settings-camera]');
     const settingsReducedInput = root.querySelector<HTMLInputElement>('[data-settings-reduced-motion]');
@@ -686,6 +779,9 @@ export class GameHud {
     const touchControls = root.querySelector<HTMLDivElement>('[data-touch-controls]');
     const characterCreator = root.querySelector<HTMLDivElement>('[data-character-creator]');
     const creatorPreviewMount = root.querySelector<HTMLDivElement>('[data-character-preview]');
+    const creatorEvent = root.querySelector<HTMLDivElement>('[data-creator-event]');
+    const creatorEventName = root.querySelector<HTMLDivElement>('[data-creator-event-name]');
+    const creatorEventBonus = root.querySelector<HTMLDivElement>('[data-creator-event-bonus]');
     const previewRotateLeft = root.querySelector<HTMLButtonElement>('[data-preview-rotate-left]');
     const previewRotateRight = root.querySelector<HTMLButtonElement>('[data-preview-rotate-right]');
     const previewRotateReset = root.querySelector<HTMLButtonElement>('[data-preview-rotate-reset]');
@@ -729,6 +825,7 @@ export class GameHud {
       !crewCount ||
       !objective ||
       !target ||
+      !eventChip ||
       !targetPreview ||
       !targetPreviewName ||
       !targetPreviewRarity ||
@@ -774,10 +871,21 @@ export class GameHud {
       !crewPanelBody ||
       !dexList ||
       !crewList ||
+      !storageList ||
       !bossPanel ||
       !bossName ||
       !bossStats ||
       !bossTimer ||
+      !bossBattlePanel ||
+      !bossBattleName ||
+      !bossBattleResult ||
+      !bossBattleMeter ||
+      !bossBattleScores ||
+      !bossBattleLog ||
+      !bossBattleRewards ||
+      !captureResultCard ||
+      !captureResultContent ||
+      !captureResultClose ||
       !toast ||
       !inputStatus ||
       !controlHint ||
@@ -789,6 +897,7 @@ export class GameHud {
       !settingsMusicValue ||
       !settingsSfxInput ||
       !settingsSfxValue ||
+      !settingsMuteInput ||
       !settingsPixelInput ||
       !settingsCameraSelect ||
       !settingsReducedInput ||
@@ -800,6 +909,9 @@ export class GameHud {
       !touchControls ||
       !characterCreator ||
       !creatorPreviewMount ||
+      !creatorEvent ||
+      !creatorEventName ||
+      !creatorEventBonus ||
       !workoutPrompt ||
       !workoutPromptName ||
       !freeWeightPrompt ||
@@ -848,6 +960,7 @@ export class GameHud {
     this.crewCount = crewCount;
     this.objective = objective;
     this.target = target;
+    this.eventChip = eventChip;
     this.targetPreview = targetPreview;
     this.targetPreviewName = targetPreviewName;
     this.targetPreviewRarity = targetPreviewRarity;
@@ -893,10 +1006,21 @@ export class GameHud {
     this.crewPanelToggle = crewPanelToggle;
     this.crewPanelBody = crewPanelBody;
     this.crewList = crewList;
+    this.storageList = storageList;
     this.bossPanel = bossPanel;
     this.bossName = bossName;
     this.bossStats = bossStats;
     this.bossTimer = bossTimer;
+    this.bossBattlePanel = bossBattlePanel;
+    this.bossBattleName = bossBattleName;
+    this.bossBattleResult = bossBattleResult;
+    this.bossBattleMeter = bossBattleMeter;
+    this.bossBattleScores = bossBattleScores;
+    this.bossBattleLog = bossBattleLog;
+    this.bossBattleRewards = bossBattleRewards;
+    this.captureResultCard = captureResultCard;
+    this.captureResultContent = captureResultContent;
+    this.captureResultClose = captureResultClose;
     this.toast = toast;
     this.inputStatus = inputStatus;
     this.controlHint = controlHint;
@@ -908,12 +1032,16 @@ export class GameHud {
     this.settingsMusicValue = settingsMusicValue;
     this.settingsSfxInput = settingsSfxInput;
     this.settingsSfxValue = settingsSfxValue;
+    this.settingsMuteInput = settingsMuteInput;
     this.settingsPixelInput = settingsPixelInput;
     this.settingsCameraSelect = settingsCameraSelect;
     this.settingsReducedInput = settingsReducedInput;
     this.settingsCatchOddsInput = settingsCatchOddsInput;
     this.settingsResetSaveButton = settingsResetSaveButton;
     this.resetSaveButton = resetSaveButton;
+    this.creatorEvent = creatorEvent;
+    this.creatorEventName = creatorEventName;
+    this.creatorEventBonus = creatorEventBonus;
     this.tutorialPopup = tutorialPopup;
     this.tutorialText = tutorialText;
     this.tutorialSkip = tutorialSkip;
@@ -971,6 +1099,7 @@ export class GameHud {
     this.bindRepDexUi();
     this.bindCrewUi();
     this.bindBossUi();
+    this.bindCaptureResultUi();
     this.bindInputModeUi();
     this.bindSettingsUi();
     this.bindTutorialUi();
@@ -1009,7 +1138,9 @@ export class GameHud {
     this.renderedCrewCountValue = this.setText(
       this.crewCount,
       this.renderedCrewCountValue,
-      `${snapshot.roster.length}/${snapshot.maxRosterSize}`
+      snapshot.storage.length > 0
+        ? `${snapshot.roster.length}/${snapshot.maxRosterSize} +${snapshot.storage.length}`
+        : `${snapshot.roster.length}/${snapshot.maxRosterSize}`
     );
     this.renderedInputStatus = this.setText(
       this.inputStatus,
@@ -1018,6 +1149,7 @@ export class GameHud {
     );
     this.setHidden(this.repDexDetail, this.root.classList.contains('game-root--creating'));
     this.setHidden(this.crewDetail, this.root.classList.contains('game-root--creating'));
+    this.updateCurrentEvent(snapshot.currentEvent);
 
     const carriedFreeWeight = snapshot.freeWeights.find((freeWeight) => freeWeight.status === 'carried');
     let targetText = 'No target';
@@ -1026,6 +1158,7 @@ export class GameHud {
     let previewName = '';
     let previewRarity = '';
     let previewChance = '';
+    let previewRarityLevel: BuddyDefinition['rarity'] = 'common';
     let showTargetPreview = false;
     if (carriedFreeWeight) {
       targetText = 'Free weight ready';
@@ -1052,7 +1185,8 @@ export class GameHud {
       targetReady = inRange;
       showTargetPreview = true;
       previewName = `${targetName} Lv. ${snapshot.nearestBuddy.buddy.level}`;
-      previewRarity = `Rarity: ${definition.rarity}`;
+      previewRarity = this.getRarityDisplayName(definition.rarity);
+      previewRarityLevel = definition.rarity;
       previewChance = chance;
     }
 
@@ -1071,6 +1205,7 @@ export class GameHud {
         this.renderedTargetPreviewRarity,
         previewRarity
       );
+      this.setRarityBadgeClasses(this.targetPreviewRarity, previewRarityLevel, 'target-preview-rarity');
       this.renderedTargetPreviewChance = this.setText(
         this.targetPreviewChance,
         this.renderedTargetPreviewChance,
@@ -1081,6 +1216,7 @@ export class GameHud {
       this.renderedTargetPreviewName = '';
       this.renderedTargetPreviewRarity = '';
       this.renderedTargetPreviewChance = '';
+      this.setRarityBadgeClasses(this.targetPreviewRarity, 'common', 'target-preview-rarity');
     }
 
     this.updateGoals(snapshot.goals);
@@ -1089,7 +1225,7 @@ export class GameHud {
       .map(
         (entry) => `
           <div
-            class="dex-row ${entry.count > 0 ? 'dex-row--caught' : ''}${this.isExoticBuddyDefinition(entry.definition) ? ' dex-row--exotic' : ''}"
+            class="dex-row dex-row--${entry.definition.rarity} ${entry.count > 0 ? 'dex-row--caught' : ''}${this.isExoticBuddyDefinition(entry.definition) ? ' dex-row--exotic' : ''}"
             data-repdex-id="${entry.definition.id}"
             role="button"
             tabindex="0"
@@ -1097,7 +1233,7 @@ export class GameHud {
             <div class="dex-row-main">
               <span class="dex-row-name">${this.getBuddyDisplayName(entry.definition)}</span>
               <span class="dex-row-meta">Species ${entry.definition.species}</span>
-              <span class="dex-row-meta">Rarity ${entry.definition.rarity.toUpperCase()}</span>
+              ${this.renderRarityBadge(entry.definition.rarity)}
               <span class="dex-row-meta">Personality ${entry.definition.personalityTag}</span>
               <span class="dex-row-meta">${entry.count} caught · Best Lv ${entry.highestLevel}</span>
             </div>
@@ -1116,10 +1252,16 @@ export class GameHud {
     });
 
     this.rosterEntriesById.clear();
+    this.storageEntriesById.clear();
     this.rosterNameById.clear();
     snapshot.roster.forEach((entry) => {
       const definition = getBuddyDefinition(entry.definitionId);
       this.rosterEntriesById.set(entry.rosterId, entry);
+      this.rosterNameById.set(entry.rosterId, this.getBuddyDisplayName(definition, entry.displayName));
+    });
+    snapshot.storage.forEach((entry) => {
+      const definition = getBuddyDefinition(entry.definitionId);
+      this.storageEntriesById.set(entry.rosterId, entry);
       this.rosterNameById.set(entry.rosterId, this.getBuddyDisplayName(definition, entry.displayName));
     });
 
@@ -1139,7 +1281,17 @@ export class GameHud {
       this.renderedCrewMarkup = crewMarkup;
     }
 
-    if (this.activeCrewDetailId !== undefined && !this.rosterEntriesById.has(this.activeCrewDetailId)) {
+    const storageMarkup = this.renderStorage(snapshot.storage, snapshot.roster.length < snapshot.maxRosterSize);
+    if (storageMarkup !== this.renderedStorageMarkup) {
+      this.storageList.innerHTML = storageMarkup;
+      this.renderedStorageMarkup = storageMarkup;
+    }
+
+    if (
+      this.activeCrewDetailId !== undefined &&
+      !this.rosterEntriesById.has(this.activeCrewDetailId) &&
+      !this.storageEntriesById.has(this.activeCrewDetailId)
+    ) {
       this.closeCrewDetail();
     }
     const nearbyStationBusy = this.isWorkoutStationInUse(this.nearbyStation, snapshot);
@@ -1155,7 +1307,9 @@ export class GameHud {
 
     this.updateSpotCallout(snapshot);
     this.updateSpotHoldInteraction(deltaSeconds);
-    this.updateBossPanel(snapshot.activeBoss);
+    this.updateBossPanel(snapshot.activeBoss, snapshot.activeBossBattle);
+    this.updateBossBattlePanel(snapshot.activeBossBattle);
+    this.updateCaptureResult(deltaSeconds);
     this.updateVendingPanel(snapshot);
 
     if (this.toastTimer > 0) {
@@ -1170,15 +1324,112 @@ export class GameHud {
   }
 
   pushMessage(message: string): void {
-    if (this.toast.textContent !== message) {
-      this.toast.textContent = message;
+    const formattedMessage = this.formatToastMessage(message);
+    if (this.toast.innerHTML !== formattedMessage) {
+      this.toast.innerHTML = formattedMessage;
     }
 
     this.toastTimer = 2.35;
   }
 
+  showCaptureResult(event: WorldEvent): void {
+    if (
+      event.type !== 'capture' ||
+      event.captureStyle !== 'arm-wrestle' ||
+      !event.buddy ||
+      (event.result !== 'success' && event.result !== 'miss')
+    ) {
+      return;
+    }
+
+    const definition = getBuddyDefinition(event.buddy.definitionId);
+    const rarity = event.captureRarity ?? definition.rarity;
+    const displayName = event.captureDisplayName ?? this.getBuddyDisplayName(definition, event.buddy.displayName);
+    const level = event.captureLevel ?? event.buddy.level;
+    const chance = typeof event.chance === 'number' ? `${Math.round(event.chance * 100)}%` : '??';
+    const success = event.result === 'success';
+    const outcome = success
+      ? event.captureDestination === 'storage'
+        ? 'Sent to Storage'
+        : 'Joined Active Crew'
+      : 'It powered out!';
+    const reaction = success
+      ? event.flavorReactionLine ?? definition.reactionLines.victory
+      : 'It powered out!';
+    const toneClass = success ? 'capture-result-card--success' : 'capture-result-card--fail';
+    const safeName = this.escapeHtml(displayName);
+    const safeOutcome = this.escapeHtml(outcome);
+    const safeReaction = this.escapeHtml(reaction);
+    const html = `
+      <div class="capture-result-card__eyebrow">${success ? 'Captured' : 'Escaped'}</div>
+      <h2>${safeName}</h2>
+      <div class="capture-result-card__meta">
+        <span>Lv ${level}</span>
+        ${this.renderRarityBadge(rarity)}
+        <span>Catch ${chance}</span>
+      </div>
+      <div class="capture-result-card__outcome">${safeOutcome}</div>
+      <p>${safeReaction}</p>
+    `;
+
+    this.pendingCaptureResult = {
+      delay: Math.max(0.2, (event.captureDuration ?? 1.8) - 0.08),
+      html: `<div class="${toneClass}">${html}</div>`,
+      visibleSeconds: success ? 2.55 : 2.05
+    };
+    this.hideCaptureResult();
+  }
+
   private isExoticBuddyDefinition(definition: Pick<BuddyDefinition, 'rarity' | 'isExotic'>): boolean {
     return definition.rarity === 'exotic' || definition.isExotic === true;
+  }
+
+  private getRarityDisplayName(rarity: BuddyDefinition['rarity']): string {
+    if (rarity === 'common') {
+      return 'Common';
+    }
+
+    if (rarity === 'uncommon') {
+      return 'Uncommon';
+    }
+
+    if (rarity === 'rare') {
+      return 'Rare';
+    }
+
+    return 'Exotic';
+  }
+
+  private renderRarityBadge(rarity: BuddyDefinition['rarity']): string {
+    return `<span class="rarity-badge rarity-badge--${rarity}">${this.getRarityDisplayName(rarity)}</span>`;
+  }
+
+  private setRarityBadgeClasses(
+    element: HTMLElement,
+    rarity: BuddyDefinition['rarity'],
+    baseClass: string
+  ): void {
+    element.className = `${baseClass} rarity-badge rarity-badge--${rarity}`;
+  }
+
+  private formatToastMessage(message: string): string {
+    const escaped = this.escapeHtml(message);
+    return escaped.replace(
+      /\[(COMMON|UNCOMMON|RARE|EXOTIC)\]/g,
+      (_match, rarity: string) => {
+        const normalized = rarity.toLowerCase() as BuddyDefinition['rarity'];
+        return this.renderRarityBadge(normalized);
+      }
+    );
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   private resolveCrewSort(value: string): CrewSortMode {
@@ -1229,6 +1480,10 @@ export class GameHud {
     return `Caught ${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   }
 
+  private getOwnedEntry(rosterId: number): BuddyRosterEntry | undefined {
+    return this.rosterEntriesById.get(rosterId) ?? this.storageEntriesById.get(rosterId);
+  }
+
   private openCrewDetail(entry: BuddyRosterEntry): void {
     const definition = getBuddyDefinition(entry.definitionId);
     const name = this.getBuddyDisplayName(definition, entry.displayName);
@@ -1237,7 +1492,8 @@ export class GameHud {
     this.crewDetailTitle.textContent = `${name}`;
     this.crewDetailSpecies.textContent = definition.species;
     this.crewDetailType.textContent = isExotic ? 'Exotic' : 'Normal';
-    this.crewDetailRarity.textContent = definition.rarity;
+    this.crewDetailRarity.textContent = this.getRarityDisplayName(definition.rarity);
+    this.setRarityBadgeClasses(this.crewDetailRarity, definition.rarity, 'detail-rarity-badge');
     this.crewDetailLevel.textContent = `${entry.level}`;
     this.crewDetailStrength.textContent = `${entry.strength}`;
     this.crewDetailEndurance.textContent = `${entry.endurance}`;
@@ -1361,7 +1617,8 @@ export class GameHud {
     this.repDexDetailTitle.textContent = this.getBuddyDisplayName(definition);
     this.repDexDetailSpecies.textContent = definition.species;
     this.repDexDetailType.textContent = this.isExoticBuddyDefinition(definition) ? 'Exotic' : 'Normal';
-    this.repDexDetailRarity.textContent = definition.rarity;
+    this.repDexDetailRarity.textContent = this.getRarityDisplayName(definition.rarity);
+    this.setRarityBadgeClasses(this.repDexDetailRarity, definition.rarity, 'detail-rarity-badge');
     this.repDexDetailPersonality.textContent = definition.personalityTag;
     this.repDexDetailFavoriteWorkout.textContent = definition.favoriteWorkout;
     this.repDexDetailCount.textContent = `${entry.count} caught · Best Lv ${entry.highestLevel}`;
@@ -1369,6 +1626,8 @@ export class GameHud {
     this.repDexDetailOdds.innerHTML = `
       <div class="repdex-detail-odds-title">Catch odds by level</div>
       ${this.getRepDexCaptureOdds(definition)}
+      <div class="repdex-detail-odds-title">Passive</div>
+      <div>${definition.passive.name}: ${definition.passive.description}</div>
     `;
     this.repDexDetailFlavor.textContent = this.getRepDexFlavor(definition);
     this.repDexDetail.hidden = false;
@@ -1390,6 +1649,52 @@ export class GameHud {
   private setHidden<T extends HTMLElement>(element: T, hidden: boolean): void {
     if (element.hidden !== hidden) {
       element.hidden = hidden;
+    }
+  }
+
+  private updateCurrentEvent(event: WorldSnapshot['currentEvent']): void {
+    if (event.name !== this.renderedEventName || event.bonusLabel !== this.renderedEventBonus) {
+      this.eventChip.innerHTML = `
+        <span>Today</span>
+        <strong>${this.escapeHtml(event.name)}</strong>
+        <small>${this.escapeHtml(event.bonusLabel)}</small>
+      `;
+      this.creatorEventName.textContent = event.name;
+      this.creatorEventBonus.textContent = event.bonusLabel;
+      this.creatorEvent.title = event.description;
+      this.renderedEventName = event.name;
+      this.renderedEventBonus = event.bonusLabel;
+    }
+  }
+
+  private updateCaptureResult(deltaSeconds: number): void {
+    if (this.pendingCaptureResult) {
+      this.pendingCaptureResult.delay -= deltaSeconds;
+
+      if (this.pendingCaptureResult.delay <= 0) {
+        this.captureResultContent.innerHTML = this.pendingCaptureResult.html;
+        this.captureResultCard.hidden = false;
+        this.captureResultTimer = this.pendingCaptureResult.visibleSeconds;
+        this.pendingCaptureResult = undefined;
+      }
+    }
+
+    if (this.captureResultCard.hidden) {
+      return;
+    }
+
+    this.captureResultTimer = Math.max(0, this.captureResultTimer - deltaSeconds);
+    if (this.captureResultTimer <= 0) {
+      this.hideCaptureResult(true);
+    }
+  }
+
+  private hideCaptureResult(clearPending = false): void {
+    this.captureResultCard.hidden = true;
+    this.captureResultTimer = 0;
+
+    if (clearPending) {
+      this.pendingCaptureResult = undefined;
     }
   }
 
@@ -1433,12 +1738,20 @@ export class GameHud {
     this.rosterRemoveListeners.push(callback);
   }
 
+  onRosterStore(callback: (rosterId: number) => void): void {
+    this.rosterStoreListeners.push(callback);
+  }
+
   onRosterUseSteroid(callback: (rosterId: number) => void): void {
     this.rosterUseSteroidListeners.push(callback);
   }
 
   onRosterRename(callback: (rosterId: number, displayName?: string) => void): void {
     this.rosterRenameListeners.push(callback);
+  }
+
+  onStorageActivate(callback: (rosterId: number) => void): void {
+    this.storageActivateListeners.push(callback);
   }
 
   onBossChallenge(callback: () => void): void {
@@ -1522,6 +1835,7 @@ export class GameHud {
     this.settingsMusicValue.textContent = String(this.settings.musicVolume);
     this.settingsSfxInput.value = String(this.settings.sfxVolume);
     this.settingsSfxValue.textContent = String(this.settings.sfxVolume);
+    this.settingsMuteInput.checked = this.settings.muted;
     this.settingsPixelInput.checked = this.settings.pixelFilter;
     this.settingsCameraSelect.value = this.settings.cameraDistance;
     this.settingsReducedInput.checked = this.settings.reducedMotion;
@@ -1755,6 +2069,10 @@ export class GameHud {
 
     this.settingsSfxInput.addEventListener('input', () => {
       this.updateSettings({ sfxVolume: Number(this.settingsSfxInput.value) });
+    });
+
+    this.settingsMuteInput.addEventListener('change', () => {
+      this.updateSettings({ muted: this.settingsMuteInput.checked });
     });
 
     this.settingsPixelInput.addEventListener('change', () => {
@@ -2044,7 +2362,7 @@ export class GameHud {
       }
 
       const rosterId = this.activeCrewDetailId;
-      const target = this.rosterEntriesById.get(rosterId);
+      const target = this.getOwnedEntry(rosterId);
       if (!target) {
         return;
       }
@@ -2071,7 +2389,7 @@ export class GameHud {
       }
 
       const rosterId = this.activeCrewDetailId;
-      const target = this.rosterEntriesById.get(rosterId);
+      const target = this.getOwnedEntry(rosterId);
       if (!target) {
         return;
       }
@@ -2099,14 +2417,14 @@ export class GameHud {
       }
 
       const rosterId = this.activeCrewDetailId;
-      const target = this.rosterEntriesById.get(rosterId);
+      const target = this.getOwnedEntry(rosterId);
       if (!target) {
         return;
       }
 
       const definition = getBuddyDefinition(target.definitionId);
       const name = this.getBuddyDisplayName(definition, target.displayName);
-      if (!window.confirm(`Release ${name} from your crew?`)) {
+      if (!window.confirm(`Release ${name} from your collection?`)) {
         return;
       }
 
@@ -2136,17 +2454,26 @@ export class GameHud {
       const trainId = target.dataset.trainBuddy;
       const steroidId = target.dataset.useSteroid;
       const removeId = target.dataset.removeBuddy;
+      const storeId = target.dataset.storeBuddy;
 
       if (trainId) {
         this.rosterTrainListeners.forEach((callback) => callback(Number(trainId)));
       }
 
+      if (storeId) {
+        const id = Number(storeId);
+        this.rosterStoreListeners.forEach((callback) => callback(id));
+        if (this.activeCrewDetailId === id) {
+          this.closeCrewDetail();
+        }
+      }
+
       if (removeId) {
         const id = Number(removeId);
-        const row = this.rosterEntriesById.get(id);
+        const row = this.getOwnedEntry(id);
         if (row) {
           const name = this.getBuddyDisplayName(getBuddyDefinition(row.definitionId), row.displayName);
-          if (!window.confirm(`Release ${name} from your crew?`)) {
+          if (!window.confirm(`Release ${name} from your collection?`)) {
             return;
           }
         }
@@ -2166,10 +2493,57 @@ export class GameHud {
 
         this.rosterUseSteroidListeners.forEach((callback) => callback(rosterId));
         if (this.activeCrewDetailId === rosterId) {
-          const targetEntry = this.rosterEntriesById.get(rosterId);
+          const targetEntry = this.getOwnedEntry(rosterId);
           if (targetEntry) {
             this.openCrewDetail(targetEntry);
           }
+        }
+      }
+    });
+
+    this.storageList.addEventListener('click', (event) => {
+      const target = event.target;
+
+      if (!(target instanceof HTMLButtonElement)) {
+        const row = target instanceof Element ? target.closest('.crew-row[data-storage-id]') : null;
+        if (!(row instanceof HTMLElement)) {
+          return;
+        }
+
+        const rosterId = Number(row.dataset.storageId);
+        const entry = this.storageEntriesById.get(rosterId);
+        if (!entry) {
+          return;
+        }
+
+        this.openCrewDetail(entry);
+        return;
+      }
+
+      const activateId = target.dataset.activateBuddy;
+      const removeId = target.dataset.removeBuddy;
+
+      if (activateId) {
+        const id = Number(activateId);
+        this.storageActivateListeners.forEach((callback) => callback(id));
+        if (this.activeCrewDetailId === id) {
+          this.closeCrewDetail();
+        }
+      }
+
+      if (removeId) {
+        const id = Number(removeId);
+        const row = this.storageEntriesById.get(id);
+        if (row) {
+          const name = this.getBuddyDisplayName(getBuddyDefinition(row.definitionId), row.displayName);
+          if (!window.confirm(`Release ${name} from your collection?`)) {
+            return;
+          }
+        }
+
+        this.rosterRemoveListeners.forEach((callback) => callback(id));
+        if (this.activeCrewDetailId === id) {
+          this.closeCrewDetail();
         }
       }
     });
@@ -2195,6 +2569,35 @@ export class GameHud {
       }
 
       const entry = this.rosterEntriesById.get(rosterId);
+      if (!entry) {
+        return;
+      }
+
+      this.openCrewDetail(entry);
+      event.preventDefault();
+    });
+
+    this.storageList.addEventListener('keydown', (event) => {
+      if (!(event instanceof KeyboardEvent)) {
+        return;
+      }
+
+      if (event.key !== 'Enter' && event.key !== ' ') {
+        return;
+      }
+
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      const row = target.closest('.crew-row[data-storage-id]');
+      const rosterId = row instanceof HTMLElement ? Number(row.dataset.storageId) : NaN;
+      if (!Number.isFinite(rosterId)) {
+        return;
+      }
+
+      const entry = this.storageEntriesById.get(rosterId);
       if (!entry) {
         return;
       }
@@ -2267,6 +2670,12 @@ export class GameHud {
     });
   }
 
+  private bindCaptureResultUi(): void {
+    this.bindMobilePress(this.captureResultClose, () => {
+      this.hideCaptureResult(true);
+    });
+  }
+
   private updateFreeWeightPrompt(snapshot: WorldSnapshot): void {
     const carried = snapshot.freeWeights.find((freeWeight) => freeWeight.status === 'carried');
     const nearest = snapshot.nearestFreeWeight;
@@ -2302,7 +2711,7 @@ export class GameHud {
 
   private renderCrew(roster: BuddyRosterEntry[], steroidsAvailable = 0): string {
     if (roster.length === 0) {
-      return '<div class="crew-empty">Catch up to 4 gym beasts.</div>';
+      return '<div class="crew-empty">No active crew. Activate storage or catch a beast.</div>';
     }
 
     return roster
@@ -2318,6 +2727,8 @@ export class GameHud {
           entry.taskDuration > 0
             ? Math.round(Math.max(0, Math.min(100, 100 - entry.taskTimer / entry.taskDuration * 100)))
             : Math.round(entry.energy);
+        const xpRequired = getBuddyXpForNextLevel(entry.level);
+        const xpProgress = Math.round(Math.max(0, Math.min(100, entry.xp / xpRequired * 100)));
         let status = `Energy ${Math.round(entry.energy)}`;
 
         if (entry.status === 'training') {
@@ -2339,13 +2750,22 @@ export class GameHud {
               <span>${displayName}</span>
               <strong>Lv ${entry.level}</strong>
             </div>
+            <div class="crew-rarity-line">${this.renderRarityBadge(definition.rarity)}</div>
             <div class="crew-stats">
               <span>S${entry.strength}</span>
               <span>E${entry.endurance}</span>
               <span>F${entry.focus}</span>
             </div>
+            <div class="crew-passive">Passive: ${definition.passive.name}</div>
             <div class="crew-meter" aria-hidden="true">
               <div style="width: ${progress}%"></div>
+            </div>
+            <div class="crew-xp-label">
+              <span>XP</span>
+              <strong>${entry.xp}/${xpRequired}</strong>
+            </div>
+            <div class="crew-meter crew-meter--xp" aria-hidden="true">
+              <div style="width: ${xpProgress}%"></div>
             </div>
             <div class="crew-actions">
               <span>${status}</span>
@@ -2356,7 +2776,64 @@ export class GameHud {
                 ${steroidsAvailable <= 0 ? 'disabled' : ''}
               >Use</button>
               <button type="button" data-train-buddy="${entry.rosterId}" ${busy ? 'disabled' : ''}>Train</button>
-              <button type="button" class="crew-remove" data-remove-buddy="${entry.rosterId}">Remove</button>
+              <button type="button" data-store-buddy="${entry.rosterId}" ${busy ? 'disabled' : ''}>Store</button>
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+  }
+
+  private renderStorage(storage: BuddyRosterEntry[], canActivate: boolean): string {
+    if (storage.length === 0) {
+      return '<div class="crew-empty">Storage empty. Extra catches wait here.</div>';
+    }
+
+    return storage
+      .map((entry) => {
+        const definition = getBuddyDefinition(entry.definitionId);
+        const displayName = this.getBuddyDisplayName(
+          definition,
+          entry.displayName
+        );
+        const exoticClass = this.isExoticBuddyDefinition(definition) ? ' crew-row--exotic' : '';
+        const progress = Math.round(Math.max(0, Math.min(100, entry.energy)));
+        const xpRequired = getBuddyXpForNextLevel(entry.level);
+        const xpProgress = Math.round(Math.max(0, Math.min(100, entry.xp / xpRequired * 100)));
+        return `
+          <div
+            class="crew-row crew-row--stored${exoticClass}"
+            role="button"
+            tabindex="0"
+            data-storage-id="${entry.rosterId}"
+          >
+            <div class="crew-main">
+              <span>${displayName}</span>
+              <strong>Lv ${entry.level}</strong>
+            </div>
+            <div class="crew-rarity-line">${this.renderRarityBadge(definition.rarity)}</div>
+            <div class="crew-stats">
+              <span>S${entry.strength}</span>
+              <span>E${entry.endurance}</span>
+              <span>F${entry.focus}</span>
+            </div>
+            <div class="crew-passive">Stored: passive inactive</div>
+            <div class="crew-meter" aria-hidden="true">
+              <div style="width: ${progress}%"></div>
+            </div>
+            <div class="crew-xp-label">
+              <span>XP</span>
+              <strong>${entry.xp}/${xpRequired}</strong>
+            </div>
+            <div class="crew-meter crew-meter--xp" aria-hidden="true">
+              <div style="width: ${xpProgress}%"></div>
+            </div>
+            <div class="crew-actions crew-actions--storage">
+              <span>Storage box</span>
+              <button type="button" data-activate-buddy="${entry.rosterId}" ${canActivate ? '' : 'disabled'}>
+                ${canActivate ? 'Activate' : 'Full'}
+              </button>
+              <button type="button" class="crew-remove" data-remove-buddy="${entry.rosterId}">Release</button>
             </div>
           </div>
         `;
@@ -2467,8 +2944,8 @@ export class GameHud {
     return nearest?.target;
   }
 
-  private updateBossPanel(boss?: BossState): void {
-    if (!boss || this.root.classList.contains('game-root--creating')) {
+  private updateBossPanel(boss?: BossState, battle?: WorldSnapshot['activeBossBattle']): void {
+    if (!boss || battle || this.root.classList.contains('game-root--creating')) {
       this.setHidden(this.bossPanel, true);
       return;
     }
@@ -2481,6 +2958,62 @@ export class GameHud {
     );
     this.renderedBossTimer = this.setText(this.bossTimer, this.renderedBossTimer, `${Math.ceil(boss.timer)}s`);
     this.setHidden(this.bossPanel, false);
+  }
+
+  private updateBossBattlePanel(battle?: WorldSnapshot['activeBossBattle']): void {
+    if (!battle || this.root.classList.contains('game-root--creating')) {
+      this.setHidden(this.bossBattlePanel, true);
+      return;
+    }
+
+    const activeRound = battle.rounds[battle.activeRound] ?? battle.rounds[battle.rounds.length - 1];
+    const progress = Math.round((1 - battle.timer / battle.duration) * 100);
+    const resultText = battle.phase === 'result'
+      ? battle.result === 'success'
+        ? 'CREW WINS'
+        : 'BOSS WINS'
+      : 'VS';
+    const scores = `Crew ${Math.round(battle.crewPower)} vs Boss ${Math.round(battle.bossPower)} - Win ${Math.round(battle.winChance * 100)}%`;
+    const log = activeRound
+      ? `${activeRound.label}: Crew ${Math.round(activeRound.crewScore)} / Boss ${Math.round(activeRound.bossScore)} - ${activeRound.winner === 'crew' ? 'crew takes the beat' : 'boss pushes back'}`
+      : battle.message;
+    const rewards = battle.result === 'success'
+      ? `Win: +${battle.rewardSteroids} Steroid, +${battle.rewardXp} XP, exotic boost +${Math.round(battle.exoticBoostReward * 1000) / 10}%`
+      : `Lose: -${battle.staminaCost} stamina. Progress stays safe.`;
+    const meterWidth = `${Math.max(0, Math.min(100, progress))}%`;
+
+    this.renderedBossBattleName = this.setText(
+      this.bossBattleName,
+      this.renderedBossBattleName,
+      battle.boss.name
+    );
+    this.renderedBossBattleResult = this.setText(
+      this.bossBattleResult,
+      this.renderedBossBattleResult,
+      resultText
+    );
+    this.renderedBossBattleScores = this.setText(
+      this.bossBattleScores,
+      this.renderedBossBattleScores,
+      scores
+    );
+    this.renderedBossBattleLog = this.setText(
+      this.bossBattleLog,
+      this.renderedBossBattleLog,
+      log
+    );
+    this.renderedBossBattleRewards = this.setText(
+      this.bossBattleRewards,
+      this.renderedBossBattleRewards,
+      rewards
+    );
+
+    if (meterWidth !== this.renderedBossBattleMeter) {
+      this.bossBattleMeter.style.width = meterWidth;
+      this.renderedBossBattleMeter = meterWidth;
+    }
+
+    this.setHidden(this.bossBattlePanel, false);
   }
 
   private startVending(machine: VendingMachine): void {

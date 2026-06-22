@@ -1,0 +1,19 @@
+Stage: Local rotating gym events
+
+Summary:
+- Added a local-only gym event rotation based on the browser date.
+- Title screen and HUD now show the current event and its bonus.
+- Chest Day boosts strength-focused workout XP by 10%.
+- Cardio Chaos boosts endurance-focused workout XP by 10%.
+- Mythic Monday slightly increases exotic spawn chance.
+- Flex Friday adds +1 to steroid rewards that already grant Steroids.
+- Beast Weekend increases boss rewards.
+- Event state is not saved because it is derived locally from the date.
+
+Important files:
+- src/game/content/gymEvents.ts: event table and local date rotation.
+- src/game/types.ts: LocalGymEvent types and WorldSnapshot.currentEvent.
+- src/game/simulation/world.ts: applies event bonuses in spawn, workout XP, steroid rewards, and boss rewards.
+- src/ui/hud.ts: title screen and HUD event display.
+- src/style.css: retro event chip/card styling.
+- docs/local-gym-events.md: rotation and implementation documentation.

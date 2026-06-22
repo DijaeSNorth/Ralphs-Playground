@@ -1,0 +1,15 @@
+Stage: Rarity presentation polish
+
+Summary:
+- Added a consistent pixel badge style for Common, Uncommon, Rare, and Exotic.
+- Target preview, RepDex rows/details, crew cards/details, storage cards, and capture toasts now use rarity badges.
+- Capture messages prefix results with a rarity token that the HUD renders as a safe badge chip.
+- Exotic UI cards get a restrained premium outline/glow while preserving text readability.
+- Exotic creature meshes keep the existing aura and now add a low-cost faceted outline ring.
+- Reduced motion disables exotic badge pulsing and tones down glow shadows.
+
+Important files:
+- src/ui/hud.ts: rarity badge helpers, target preview, RepDex, crew/storage cards, detail fields, toast formatting.
+- src/style.css: badge palette, exotic glow, reduced-motion overrides.
+- src/game/simulation/world.ts: capture result rarity badge tokens.
+- src/render/objects/lowPolyFactory.ts: lightweight exotic creature outline.

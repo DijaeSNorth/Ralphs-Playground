@@ -41,6 +41,22 @@ export type BuddyMythicMetadata = {
   note: string;
 };
 
+export type BuddyPassiveEffect =
+  | 'movement-speed'
+  | 'strength-training'
+  | 'steroid-boost'
+  | 'stamina-saver'
+  | 'sprint-recovery'
+  | 'boss-power';
+
+export type BuddyPassive = {
+  id: string;
+  name: string;
+  effect: BuddyPassiveEffect;
+  value: number;
+  description: string;
+};
+
 export type HairStyle =
   | 'buzz-cut'
   | 'fade'
@@ -156,6 +172,31 @@ export type ProgressGoalState = {
 
 export type ProgressGoals = Record<ProgressGoalId, ProgressGoalState>;
 
+export type LocalGymEventId =
+  | 'chest-day'
+  | 'cardio-chaos'
+  | 'mythic-monday'
+  | 'flex-friday'
+  | 'beast-weekend';
+
+export type LocalGymEventEffects = {
+  strengthWorkoutXpMultiplier?: number;
+  enduranceWorkoutXpMultiplier?: number;
+  exoticSpawnBonus?: number;
+  steroidRewardBonus?: number;
+  bossRewardMultiplier?: number;
+  bossSteroidRewardBonus?: number;
+};
+
+export type LocalGymEvent = {
+  id: LocalGymEventId;
+  name: string;
+  shortName: string;
+  description: string;
+  bonusLabel: string;
+  effects: LocalGymEventEffects;
+};
+
 export type WorkoutStation = {
   id: string;
   name: string;
@@ -225,6 +266,7 @@ export type BuddyDefinition = {
   rarity: BuddyRarity;
   visualHints?: BuddyVisualHints;
   mythicMetadata?: BuddyMythicMetadata;
+  passive: BuddyPassive;
   baseCatchRate: number;
   staminaReward: number;
 };
@@ -269,6 +311,34 @@ export type BossState = {
   focus: number;
   timer: number;
   ragdollTimer: number;
+};
+
+export type BossBattleResult = 'success' | 'fail';
+export type BossBattlePhase = 'intro' | 'clash' | 'result';
+
+export type BossBattleRound = {
+  label: string;
+  crewScore: number;
+  bossScore: number;
+  winner: 'crew' | 'boss';
+};
+
+export type BossBattleState = {
+  boss: BossState;
+  phase: BossBattlePhase;
+  result: BossBattleResult;
+  crewPower: number;
+  bossPower: number;
+  winChance: number;
+  rewardXp: number;
+  rewardSteroids: number;
+  exoticBoostReward: number;
+  staminaCost: number;
+  rounds: BossBattleRound[];
+  activeRound: number;
+  timer: number;
+  duration: number;
+  message: string;
 };
 
 export type BuddyState = {
@@ -336,6 +406,11 @@ export type WorldEvent =
       dramaticBeat?: ArmWrestleDramaticBeat;
       captureBeatSequence?: ArmWrestleBeat[];
       captureDuration?: number;
+      captureDestination?: 'active' | 'storage';
+      captureDisplayName?: string;
+      captureLevel?: number;
+      captureRarity?: BuddyRarity;
+      flavorReactionLine?: string;
       message: string;
     }
   | {
@@ -351,6 +426,7 @@ export type WorldEvent =
       type: 'roster';
       message: string;
       steroidUsed?: boolean;
+      levelUp?: boolean;
       rosterId?: number;
     }
   | {
@@ -390,6 +466,7 @@ export type WorldSnapshot = {
   player: PlayerState;
   buddies: BuddyState[];
   roster: BuddyRosterEntry[];
+  storage: BuddyRosterEntry[];
   maxRosterSize: number;
   freeWeights: FreeWeightState[];
   carriedFreeWeightId?: number;
@@ -401,7 +478,9 @@ export type WorldSnapshot = {
     snackCooldown: number;
   };
   repDex: RepDexEntry[];
+  currentEvent: LocalGymEvent;
   activeBoss?: BossState;
+  activeBossBattle?: BossBattleState;
   nearestBuddy?: {
     buddy: BuddyState;
     distance: number;

@@ -1,0 +1,17 @@
+Stage: Active crew slots and creature storage
+
+Summary:
+- Active crew remains capped at 4 creatures through MAX_ROSTER_SIZE.
+- Captures now join active crew only when a slot is open; otherwise they go to storage.
+- Stored creatures stay owned, persist in save data, count for RepDex, and can be renamed, released, or leveled with Steroids.
+- HUD crew management now has separate Active Crew and Storage sections.
+- Players can store ready active creatures and activate stored creatures when an active slot is available.
+- Passive abilities, workouts, boss calculations, and field crew behavior use active crew only.
+
+Important files:
+- src/game/types.ts: WorldSnapshot includes storage.
+- src/game/progress.ts: SavedProgress includes storage and old saves default safely.
+- src/game/simulation/world.ts: owns active roster/storage, capture destination, save/load, store/activate actions.
+- src/ui/hud.ts: renders active crew and storage lists, detail card, and store/activate/release controls.
+- src/render/app/createGymBuddyGame.ts: wires HUD store/activate callbacks to world actions.
+- src/style.css: styles the retro active/storage crew management panels.

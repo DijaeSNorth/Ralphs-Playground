@@ -1,0 +1,9 @@
+Stage: Playtest checklist and tester feedback guidance
+
+Files changed:
+- docs/playtest-checklist.md: tester handoff checklist covering URL, first actions, controls, capture, Steroids, exotics, feedback prompts, known issues, and device reporting.
+- src/ui/hud.ts: added an in-game Feedback Notes section inside the Settings panel.
+- src/style.css: added pixel/retro styling for the Feedback Notes section.
+
+Implementation note:
+- Feedback guidance is static UI only. It does not change save data, gameplay systems, capture odds, or deployment behavior.

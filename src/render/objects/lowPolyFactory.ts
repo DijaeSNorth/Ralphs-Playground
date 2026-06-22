@@ -2606,10 +2606,18 @@ function addExoticBuddyAura(group: Group, definition: BuddyDefinition): void {
   core.position.set(0, 1.33, 0.64);
   core.rotation.x = Math.PI / 2;
 
+  const baseOutline = new Mesh(new TorusGeometry(0.74, 0.025, 6, 24), basicMaterial(0xf9f7ef, 0.42));
+  baseOutline.position.set(0, 0.08, 0);
+  baseOutline.rotation.x = Math.PI / 2;
+
+  const shoulderOutline = new Mesh(new TorusGeometry(0.65, 0.022, 6, 18), basicMaterial(definition.accent, 0.28));
+  shoulderOutline.position.set(0, 0.88, 0.05);
+  shoulderOutline.rotation.x = Math.PI / 2;
+
   const marker = new Mesh(new SphereGeometry(0.12, 8, 5), standardMaterial(definition.accent));
   marker.position.set(0, 1.34, 0.68);
 
-  group.add(halo, core, marker);
+  group.add(halo, core, baseOutline, shoulderOutline, marker);
 }
 
 export function createBuddyMesh(

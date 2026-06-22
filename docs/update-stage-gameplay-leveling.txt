@@ -1,0 +1,17 @@
+Stage: Gameplay XP leveling
+
+Summary:
+- Creatures now level through normal play, not only Steroids.
+- Active crew gains XP from successful captures, workouts, boss battles, and completed goals.
+- Newly captured creatures receive a small capture XP bonus when added to active crew or storage.
+- XP thresholds now scale by level through getBuddyXpForNextLevel().
+- Level-ups improve strength, endurance, focus, and energy.
+- Steroids still instantly add one level and keep their stronger stat bump.
+- Boss events now trigger save so boss XP/rewards persist.
+- Crew and storage cards show XP progress bars.
+
+Important files:
+- src/game/simulation/world.ts: XP curve, XP awards, level-up helper, capture/workout/boss/goal rewards.
+- src/ui/hud.ts: imports XP curve helper and renders XP bars.
+- src/style.css: retro XP bar styling.
+- src/render/app/createGymBuddyGame.ts: includes boss events in auto-save trigger.

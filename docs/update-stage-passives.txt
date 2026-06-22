@@ -1,0 +1,14 @@
+Stage: Passive creature abilities
+
+Files touched:
+- src/game/types.ts: added BuddyPassive metadata and passive effect ids.
+- src/game/content/buddies.ts: every creature definition is exported with one passive ability attached.
+- src/game/simulation/world.ts: active roster passives now apply small movement, stamina, training, steroid, and boss-power modifiers.
+- src/ui/hud.ts: crew cards show the passive name; RepDex detail cards show passive name and effect text.
+- src/style.css: compact retro styling for crew passive rows.
+
+Runtime notes:
+- Passives are definition metadata, not saved renderer/runtime objects.
+- Save/load remains compatible because roster entries already save definitionId and levels.
+- Passives only apply while the creature is present in the active crew roster.
+- Stacking is capped in world.ts to keep balance small.

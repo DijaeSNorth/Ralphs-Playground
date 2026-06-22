@@ -1,0 +1,16 @@
+Stage: Capture result screen
+
+Summary:
+- Added a short retro capture result card after each arm-wrestling capture attempt.
+- Success result shows creature name, level, rarity, catch chance, active crew/storage destination, and flavor reaction.
+- Failure result shows creature name, level, rarity, catch chance, and "It powered out!".
+- Result data is emitted directly from capture WorldEvent metadata instead of parsing toast text.
+- The card appears after the arm-wrestling cutscene delay, auto-dismisses quickly, and has a Skip button.
+- The result card is non-blocking: it does not set interaction state or stop gameplay input.
+
+Important files:
+- src/game/types.ts: capture event result metadata.
+- src/game/simulation/world.ts: capture destination, display name, level, rarity, chance, and reaction line on events.
+- src/ui/hud.ts: capture result card rendering, timer, and skip handling.
+- src/render/app/createGymBuddyGame.ts: routes capture events into the HUD result card.
+- src/style.css: retro result card desktop/mobile styling.

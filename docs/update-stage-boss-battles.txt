@@ -1,0 +1,16 @@
+Stage: Boss battle loop
+
+Files touched:
+- src/game/types.ts: added BossBattleState, BossBattleRound, boss battle phase/result types, and activeBossBattle snapshots.
+- src/game/progress.ts: added sanitized bossExoticBoost save data.
+- src/game/simulation/world.ts: boss challenges now create a timed battle state instead of resolving only through a toast.
+- src/ui/hud.ts: added a retro boss battle panel showing matchup score, active battle beat, result, and rewards/loss.
+- src/style.css: added pixel-panel styling for the boss battle screen.
+
+Rules summary:
+- Bosses still appear occasionally through the existing boss spawn timer.
+- Player needs at least one captured creature to challenge.
+- Crew power includes levels, stats, rarity/exotic bonuses, and active passive synergy.
+- Winning grants Steroids, crew XP, stamina, and a capped exotic spawn chance boost.
+- Losing costs stamina and crew energy, delays the next boss, and does not wipe progress.
+- The exotic spawn boost is saved through localStorage progress data.

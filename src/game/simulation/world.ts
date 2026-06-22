@@ -1,9 +1,12 @@
 import { BUDDY_DEFINITIONS, getBuddyDefinition, getRandomBuddyName } from '../content/buddies';
 import { BOSS_DEFINITIONS, getBossDefinition } from '../content/bosses';
 import { FREE_WEIGHT_PICKUPS, WORKOUT_STATIONS } from '../content/equipment';
+import { getCurrentGymEvent } from '../content/gymEvents';
 import { VENDING_MACHINES } from '../content/vending';
 import type {
   ActionState,
+  BossBattleRound,
+  BossBattleState,
   BossState,
   BuddyArchetype,
   ProgressGoalId,
@@ -48,6 +51,9 @@ const BUDDY_DODGE_SPEED = 4.4;
 const TRAINING_DURATION = 12;
 const TRAINING_SPOT_WINDOW = 7;
 const BOSS_ACTIVE_DURATION = 26;
+const BOSS_BATTLE_DURATION = 2.45;
+const BOSS_EXOTIC_BOOST_REWARD = 0.006;
+const BOSS_EXOTIC_BOOST_MAX = 0.035;
 const ROSTER_SPOT_RANGE = 1.95;
 const FREE_WEIGHT_PICKUP_RANGE = 2.15;
 const FREE_WEIGHT_THROW_SPEED = 11.8;
@@ -73,13 +79,21 @@ const GOAL_STEROID_REWARDS = {
   roster_level_10_any: 0,
   repdex_half: 5
 } as const;
+const GOAL_CREW_XP_REWARDS = {
+  capture_3: 50,
+  capture_6: 60,
+  capture_10: 80,
+  capture_first_exotic: 120,
+  roster_level_10_any: 90,
+  repdex_half: 140
+} as const;
 const GOAL_MESSAGES = {
-  capture_3: 'Goal: +1 Steroid after 3 captures unlocked.',
+  capture_3: 'Goal complete: 3 captures reward unlocked.',
   capture_6: 'Goal complete: mid-tier gym beasts are now common.',
-  capture_10: 'Goal complete: +2 Steroids for reaching 10 captures.',
-  capture_first_exotic: 'Goal complete: rare exotic caught! +3 steroids.',
+  capture_10: 'Goal complete: 10 captures reward unlocked.',
+  capture_first_exotic: 'Goal complete: rare exotic caught reward unlocked.',
   roster_level_10_any: 'Goal complete: your crew can level up hard and loud.',
-  repdex_half: 'Goal complete: your RepDex is half full. +5 steroids!'
+  repdex_half: 'Goal complete: your RepDex is half full.'
 } as const;
 const BUDDY_BODY_TRAIT_RANGES: Record<keyof BuddyBodyTraits, { min: number; max: number }> = {
   chest: { min: 0.68, max: 1.36 },
@@ -96,6 +110,8 @@ const BUDDY_TRAIT_BIAS: Record<BuddyArchetype, Partial<Record<keyof BuddyBodyTra
   spinner: { chest: 0.04, glutes: -0.06 },
   climber: { thighs: 0.14, calfs: 0.12, glutes: 0.08 }
 };
+const CAPTURE_CREW_XP = 24;
+const CAPTURE_NEW_BUDDY_XP = 36;
 
 let nextBuddyId = 1;
 let nextRosterId = 1;
@@ -141,6 +157,11 @@ function headingVector(heading: number): Vec2 {
 
 function copyVec2(value: Vec2): Vec2 {
   return { x: value.x, z: value.z };
+}
+
+export function getBuddyXpForNextLevel(level: number): number {
+  const safeLevel = Math.max(1, Math.floor(level));
+  return Math.round(70 + safeLevel * 30 + Math.pow(safeLevel, 1.35) * 8);
 }
 
 function toNonNegativeInteger(value: number, fallback: number): number {
@@ -226,6 +247,15 @@ type WeightedBuddyOption = {
   weight: number;
 };
 
+type ActivePassiveTotals = {
+  movementSpeedBonus: number;
+  strengthTrainingChance: number;
+  steroidBoostChance: number;
+  staminaLossReduction: number;
+  sprintRecoveryBonus: number;
+  bossPowerBonus: number;
+};
+
 function pickWeightedBuddyId(options: WeightedBuddyOption[]): string {
   const total = options.reduce((sum, option) => sum + option.weight, 0);
 
@@ -246,9 +276,9 @@ function pickWeightedBuddyId(options: WeightedBuddyOption[]): string {
   return options[options.length - 1]?.id ?? 'buff-bunny';
 }
 
-function weightedBuddyDefinitionId(spawnProgress: number): string {
+function weightedBuddyDefinitionId(spawnProgress: number, exoticBoost = 0): string {
   const spawnStage = clamp(spawnProgress, 0, 1);
-  const exoticChance = clamp(0.001 + spawnStage * 0.01, 0.001, 0.011);
+  const exoticChance = clamp(0.001 + spawnStage * 0.01 + exoticBoost, 0.001, 0.046);
   const isExotic = Math.random() < exoticChance;
 
   if (isExotic) {
@@ -360,18 +390,21 @@ export class GymBuddyWorld {
 
   private readonly buddies: BuddyState[] = [];
   private readonly roster: BuddyRosterEntry[] = [];
+  private readonly storage: BuddyRosterEntry[] = [];
   private readonly freeWeights: FreeWeightState[] = [];
   private readonly captured = new Map<string, number>();
   private readonly capturedHighLevel = new Map<string, number>();
   private readonly events: WorldEvent[] = [];
   private goalState: ProgressGoals = createDefaultGoalState();
   private activeBoss?: BossState;
+  private activeBossBattle?: BossBattleState;
   private carriedFreeWeightId?: number;
   private catchCooldown = 0;
   private captureCutsceneTimer = 0;
   private shakerRechargeTimer = 0;
   private vendingSnackCooldown = 0;
   private bossSpawnTimer = 18;
+  private bossExoticBoost = 0;
 
   constructor() {
     this.reset();
@@ -389,18 +422,21 @@ export class GymBuddyWorld {
     };
     this.buddies.length = 0;
     this.roster.length = 0;
+    this.storage.length = 0;
     this.freeWeights.length = 0;
     this.captured.clear();
     this.capturedHighLevel.clear();
     this.goalState = createDefaultGoalState();
     this.events.length = 0;
     this.activeBoss = undefined;
+    this.activeBossBattle = undefined;
     this.carriedFreeWeightId = undefined;
     this.catchCooldown = 0;
     this.captureCutsceneTimer = 0;
     this.shakerRechargeTimer = 0;
     this.vendingSnackCooldown = 0;
     this.bossSpawnTimer = 18;
+    this.bossExoticBoost = 0;
 
     for (let index = 0; index < ACTIVE_BUDDIES; index += 1) {
       const buddy = this.createBuddy();
@@ -422,7 +458,7 @@ export class GymBuddyWorld {
 
   update(deltaSeconds: number, actions: ActionState): void {
     const dt = Math.min(deltaSeconds, 0.05);
-    const attemptingCapture = actions.catchPressed && this.captureCutsceneTimer <= 0;
+    const attemptingCapture = actions.catchPressed && this.captureCutsceneTimer <= 0 && !this.activeBossBattle;
 
     if (actions.resetPressed) {
       this.reset();
@@ -431,9 +467,10 @@ export class GymBuddyWorld {
 
     this.captureCutsceneTimer = Math.max(0, this.captureCutsceneTimer - dt);
     this.catchCooldown = Math.max(0, this.catchCooldown - dt);
+    this.updateBossBattle(dt);
     this.updatePlayer(
       dt,
-      this.captureCutsceneTimer > 0 || attemptingCapture
+      this.captureCutsceneTimer > 0 || Boolean(this.activeBossBattle) || attemptingCapture
         ? {
             ...actions,
             moveX: 0,
@@ -675,30 +712,45 @@ export class GymBuddyWorld {
     const definition = getBuddyDefinition(buddy.definitionId);
     buddy.energy = clamp(buddy.energy - 8, 0, 100);
     this.player.stamina = clamp(this.player.stamina - 5, 0, MAX_STAMINA);
-    this.applyTrainingResult(buddy, definition.archetype, 0.5);
+    const levelsGained = this.applyTrainingResult(buddy, definition.archetype, 0.5);
     this.finishRosterTask(buddy);
     this.events.push({
       type: 'roster',
-      message: `You spotted ${buddyName}. Successful rep: half credit XP gained.`
+      rosterId: buddy.rosterId,
+      levelUp: levelsGained > 0,
+      message: levelsGained > 0
+        ? `You spotted ${buddyName}. Half-credit XP pushed them to Lv ${buddy.level}!`
+        : `You spotted ${buddyName}. Successful rep: half credit XP gained.`
     });
   }
 
   removeBuddy(rosterId: number): void {
     const index = this.roster.findIndex((entry) => entry.rosterId === rosterId);
 
-    if (index === -1) {
+    if (index !== -1) {
+      const [removedBuddy] = this.roster.splice(index, 1);
+      this.events.push({
+        type: 'roster',
+        message: `${this.getRosterDisplayName(removedBuddy)} left your active crew.`
+      });
       return;
     }
 
-    const [, removedBuddy] = this.roster.splice(index, 1);
+    const storageIndex = this.storage.findIndex((entry) => entry.rosterId === rosterId);
+
+    if (storageIndex === -1) {
+      return;
+    }
+
+    const [removedBuddy] = this.storage.splice(storageIndex, 1);
     this.events.push({
       type: 'roster',
-      message: `${this.getRosterDisplayName(removedBuddy)} left your crew.`
+      message: `${this.getRosterDisplayName(removedBuddy)} left storage.`
     });
   }
 
   renameBuddy(rosterId: number, displayName?: string): void {
-    const buddy = this.roster.find((entry) => entry.rosterId === rosterId);
+    const buddy = this.findOwnedBuddy(rosterId);
 
     if (!buddy) {
       this.events.push({
@@ -719,8 +771,66 @@ export class GymBuddyWorld {
     });
   }
 
+  storeBuddy(rosterId: number): void {
+    const index = this.roster.findIndex((entry) => entry.rosterId === rosterId);
+
+    if (index === -1) {
+      return;
+    }
+
+    const buddy = this.roster[index];
+    const buddyName = this.getRosterDisplayName(buddy);
+
+    if (buddy.status !== 'ready') {
+      this.events.push({
+        type: 'roster',
+        message: `${buddyName} is busy and cannot move to storage yet.`
+      });
+      return;
+    }
+
+    const [storedBuddy] = this.roster.splice(index, 1);
+    this.storage.push(storedBuddy);
+    this.events.push({
+      type: 'roster',
+      rosterId: storedBuddy.rosterId,
+      message: `${this.getRosterDisplayName(storedBuddy)} moved to storage. Active passives updated.`
+    });
+  }
+
+  activateStoredBuddy(rosterId: number): void {
+    const index = this.storage.findIndex((entry) => entry.rosterId === rosterId);
+
+    if (index === -1) {
+      return;
+    }
+
+    if (this.roster.length >= MAX_ROSTER_SIZE) {
+      this.events.push({
+        type: 'roster',
+        rosterId,
+        message: `Active crew is full (${MAX_ROSTER_SIZE}/${MAX_ROSTER_SIZE}). Store a buddy first.`
+      });
+      return;
+    }
+
+    const [activatedBuddy] = this.storage.splice(index, 1);
+    activatedBuddy.status = 'ready';
+    activatedBuddy.taskLabel = undefined;
+    activatedBuddy.taskStationId = undefined;
+    activatedBuddy.taskOutcome = undefined;
+    activatedBuddy.taskTimer = 0;
+    activatedBuddy.taskDuration = 0;
+    this.roster.push(activatedBuddy);
+    this.events.push({
+      type: 'roster',
+      rosterId: activatedBuddy.rosterId,
+      message: `${this.getRosterDisplayName(activatedBuddy)} joined the active crew (${this.roster.length}/${MAX_ROSTER_SIZE}).`
+    });
+  }
+
   useSteroid(rosterId: number): void {
-    const buddy = this.roster.find((entry) => entry.rosterId === rosterId);
+    const buddy = this.findOwnedBuddy(rosterId);
 
     if (!buddy) {
       this.events.push({
@@ -748,23 +858,27 @@ export class GymBuddyWorld {
       return;
     }
 
+    const steroidBonus = this.rollPassiveBonus(this.getActivePassiveTotals().steroidBoostChance);
     this.player.steroids = Math.max(0, this.player.steroids - 1);
-    buddy.level += 1;
-    buddy.xp += 55;
-    buddy.strength += 2;
-    buddy.endurance += 2;
-    buddy.focus += 2;
+    this.increaseRosterLevel(buddy, 1 + steroidBonus);
     this.evaluateCrewLevelGoal();
     this.events.push({
       type: 'roster',
       rosterId: buddy.rosterId,
       steroidUsed: true,
-      message: `${name} got unreasonably swole!`
+      levelUp: true,
+      message: steroidBonus > 0
+        ? `${name} got unreasonably swole! Passive bonus popped.`
+        : `${name} got unreasonably swole!`
     });
   }
 
   challengeBoss(): void {
     if (!this.activeBoss) {
+      return;
+    }
+
+    if (this.activeBossBattle) {
       return;
     }
 
@@ -778,36 +892,13 @@ export class GymBuddyWorld {
     }
 
     const boss = this.activeBoss;
-    const crewPower = this.getCrewPower();
-    const bossPower = boss.strength + boss.endurance + boss.focus;
-    const chance = clamp(0.38 + (crewPower - bossPower) / 110, 0.16, 0.92);
-    const success = Math.random() < chance;
-    let bonusSteroids = 0;
-
-    if (success) {
-      this.player.stamina = clamp(this.player.stamina + 20, 0, MAX_STAMINA);
-      this.player.proteinShakers = clamp(this.player.proteinShakers + 2, 0, MAX_PROTEIN_SHAKERS);
-      bonusSteroids = this.grantSteroids(1);
-      for (const buddy of this.roster) {
-        this.addRosterXp(buddy, 18);
-        buddy.energy = clamp(buddy.energy - 6, 0, 100);
-      }
-    } else {
-      this.player.stamina = clamp(this.player.stamina - 18, 0, MAX_STAMINA);
-      for (const buddy of this.roster) {
-        buddy.energy = clamp(buddy.energy - 10, 0, 100);
-      }
-    }
-
+    this.activeBossBattle = this.createBossBattle(boss);
+    boss.ragdollTimer = BOSS_RAGDOLL_DURATION;
     this.events.push({
       type: 'boss',
       boss: this.copyBoss(boss),
-      message: success
-        ? `${boss.name} got outlifted. Crew gained XP.${bonusSteroids > 0 ? ` +${bonusSteroids} steroid.` : ''}`
-        : `${boss.name} won the set. Train your crew and try again.`
+      message: `${boss.name} accepted the crew challenge. Battle panel is live.`
     });
-    this.activeBoss = undefined;
-    this.bossSpawnTimer = 40 + Math.random() * 28;
   }
 
   private isGoalCompleted(goalId: ProgressGoalId): boolean {
@@ -850,13 +941,16 @@ export class GymBuddyWorld {
     }
 
     const reward = this.grantSteroids(GOAL_STEROID_REWARDS[goalId] ?? 0);
+    const xpReward = GOAL_CREW_XP_REWARDS[goalId] ?? 0;
+    const xpRecipients = this.awardActiveCrewXp(xpReward, 'goal');
     const suffix = reward > 0 ? ` +${reward} steroids` : '';
+    const xpSuffix = xpRecipients > 0 ? ` Crew +${xpReward} XP.` : '';
     this.events.push({
       type: 'capture',
       result: 'success',
       captureStyle: 'arm-wrestle',
       start: copyVec2(this.player.position),
-      message: `${GOAL_MESSAGES[goalId]}${suffix}`
+      message: `${GOAL_MESSAGES[goalId]}${suffix}${xpSuffix}`
     });
   }
 
@@ -874,7 +968,7 @@ export class GymBuddyWorld {
   }
 
   private evaluateCrewLevelGoal(grantReward = true): void {
-    const hasEliteCrew = this.roster.some((buddy) => buddy.level >= 10);
+    const hasEliteCrew = [...this.roster, ...this.storage].some((buddy) => buddy.level >= 10);
     this.updateGoalProgress('roster_level_10_any', hasEliteCrew ? 1 : 0, grantReward);
   }
 
@@ -923,6 +1017,7 @@ export class GymBuddyWorld {
         bodyTraits: { ...buddy.bodyTraits }
       })),
       roster: this.roster.map((entry) => ({ ...entry, bodyTraits: { ...entry.bodyTraits } })),
+      storage: this.storage.map((entry) => ({ ...entry, bodyTraits: { ...entry.bodyTraits } })),
       maxRosterSize: MAX_ROSTER_SIZE,
       freeWeights: this.freeWeights.map((freeWeight) => this.copyFreeWeight(freeWeight)),
       carriedFreeWeightId: this.carriedFreeWeightId,
@@ -936,8 +1031,10 @@ export class GymBuddyWorld {
         snackCooldown: this.vendingSnackCooldown
       },
       repDex,
+      currentEvent: getCurrentGymEvent(),
       goals: this.getGoalStateSnapshot(),
       activeBoss: this.activeBoss ? this.copyBoss(this.activeBoss) : undefined,
+      activeBossBattle: this.activeBossBattle ? this.copyBossBattle(this.activeBossBattle) : undefined,
       nearestBuddy: nearest
         ? {
             buddy: { ...nearest.buddy, position: copyVec2(nearest.buddy.position) },
@@ -973,6 +1070,16 @@ export class GymBuddyWorld {
         taskStationId: entry.taskStationId,
         taskOutcome: entry.taskOutcome
       })),
+      storage: this.storage.map((entry) => ({
+        ...entry,
+        status: 'ready',
+        bodyTraits: { ...entry.bodyTraits },
+        taskLabel: undefined,
+        taskStationId: undefined,
+        taskOutcome: undefined,
+        taskTimer: 0,
+        taskDuration: 0
+      })),
       repDex: BUDDY_DEFINITIONS.map((definition) => ({
         definitionId: definition.id,
         count: this.captured.get(definition.id) ?? 0,
@@ -980,6 +1087,7 @@ export class GymBuddyWorld {
       })),
       capturedTotal: this.player.capturedTotal,
       progressionTier: this.getProgressionTier(),
+      bossExoticBoost: this.bossExoticBoost,
       nextIds: {
         nextBuddyId,
         nextRosterId,
@@ -1003,17 +1111,20 @@ export class GymBuddyWorld {
 
     this.buddies.length = 0;
     this.roster.length = 0;
+    this.storage.length = 0;
     this.freeWeights.length = 0;
     this.captured.clear();
     this.capturedHighLevel.clear();
 
     this.activeBoss = undefined;
+    this.activeBossBattle = undefined;
     this.carriedFreeWeightId = undefined;
     this.catchCooldown = 0;
     this.captureCutsceneTimer = 0;
     this.shakerRechargeTimer = 0;
     this.vendingSnackCooldown = 0;
     this.bossSpawnTimer = 18;
+    this.bossExoticBoost = clamp(save.bossExoticBoost, 0, BOSS_EXOTIC_BOOST_MAX);
 
     for (const definition of BUDDY_DEFINITIONS) {
       const savedRep = save.repDex.find((entry) => entry.definitionId === definition.id);
@@ -1043,6 +1154,10 @@ export class GymBuddyWorld {
     };
 
     const rosterEntries: SavedProgressRosterEntry[] = save.roster.slice(0, MAX_ROSTER_SIZE);
+    const storageEntries: SavedProgressRosterEntry[] = [
+      ...save.roster.slice(MAX_ROSTER_SIZE),
+      ...save.storage
+    ];
     let nextRosterIdFromSave = Math.max(1, toNonNegativeInteger(save.nextIds.nextRosterId, 1));
     const rosterById = new Set<number>();
 
@@ -1104,6 +1219,51 @@ export class GymBuddyWorld {
       }
     }
 
+    for (const entry of storageEntries) {
+      if (!BUDDY_DEFINITIONS.some((candidate) => candidate.id === entry.definitionId)) {
+        continue;
+      }
+
+      let rosterId = toNonNegativeInteger(entry.rosterId, 0);
+
+      if (rosterId <= 0 || rosterById.has(rosterId)) {
+        rosterId = nextRosterIdFromSave;
+        nextRosterIdFromSave += 1;
+      }
+
+      if (rosterById.has(rosterId)) {
+        continue;
+      }
+
+      this.storage.push({
+        rosterId,
+        definitionId: entry.definitionId,
+        bodyTraits: {
+          chest: clamp(entry.bodyTraits.chest, 0.1, 2.6),
+          wings: clamp(entry.bodyTraits.wings, 0.1, 2.6),
+          glutes: clamp(entry.bodyTraits.glutes, 0.1, 2.6),
+          thighs: clamp(entry.bodyTraits.thighs, 0.1, 2.6),
+          calfs: clamp(entry.bodyTraits.calfs, 0.1, 2.6)
+        },
+        displayName: entry.displayName,
+        capturedAt: toNonNegativeInteger(entry.capturedAt ?? Date.now(), Date.now()),
+        level: Math.max(1, toNonNegativeInteger(entry.level, 1)),
+        xp: toNonNegativeInteger(entry.xp, 0),
+        strength: Math.max(1, toNonNegativeInteger(entry.strength, 1)),
+        endurance: Math.max(1, toNonNegativeInteger(entry.endurance, 1)),
+        focus: Math.max(1, toNonNegativeInteger(entry.focus, 1)),
+        energy: clamp(entry.energy, 0, 100),
+        status: 'ready',
+        taskTimer: 0,
+        taskDuration: 0
+      });
+
+      rosterById.add(rosterId);
+      if (rosterId >= nextRosterIdFromSave) {
+        nextRosterIdFromSave = rosterId + 1;
+      }
+    }
+
     nextBuddyId = Math.max(1, toNonNegativeInteger(save.nextIds.nextBuddyId, 1));
     nextBossId = Math.max(1, toNonNegativeInteger(save.nextIds.nextBossId, 1));
     nextFreeWeightId = Math.max(1, toNonNegativeInteger(save.nextIds.nextFreeWeightId, 1));
@@ -1111,7 +1271,7 @@ export class GymBuddyWorld {
     if (rosterById.size === 0) {
       nextRosterId = 1;
     }
-    const highestRosterId = this.roster.reduce((max, entry) => Math.max(max, entry.rosterId), 0);
+    const highestRosterId = [...this.roster, ...this.storage].reduce((max, entry) => Math.max(max, entry.rosterId), 0);
     nextRosterId = Math.max(nextRosterId, highestRosterId + 1);
 
     for (const pickup of FREE_WEIGHT_PICKUPS) {
@@ -1145,15 +1305,23 @@ export class GymBuddyWorld {
     return Math.floor(this.player.capturedTotal / 12);
   }
 
+  private findOwnedBuddy(rosterId: number): BuddyRosterEntry | undefined {
+    return (
+      this.roster.find((entry) => entry.rosterId === rosterId) ??
+      this.storage.find((entry) => entry.rosterId === rosterId)
+    );
+  }
+
   private getRosterDisplayName(rosterEntry: BuddyRosterEntry): string {
     return rosterEntry.displayName ?? getBuddyDefinition(rosterEntry.definitionId).name;
   }
 
   private updatePlayer(dt: number, actions: ActionState): void {
+    const passives = this.getActivePassiveTotals();
     const inputMagnitude = Math.min(1, Math.hypot(actions.moveX, actions.moveZ));
     const moving = inputMagnitude > 0.01;
     const canSprint = actions.sprintHeld && this.player.stamina > 5 && moving;
-    const speed = canSprint ? SPRINT_SPEED : WALK_SPEED;
+    const speed = (canSprint ? SPRINT_SPEED : WALK_SPEED) * (1 + passives.movementSpeedBonus);
     const targetVelocity = {
       x: moving ? actions.moveX * speed : 0,
       z: moving ? actions.moveZ * speed : 0
@@ -1186,12 +1354,16 @@ export class GymBuddyWorld {
 
     if (moving) {
       this.player.stamina = clamp(
-        this.player.stamina - (canSprint ? 24 : 7) * inputMagnitude * dt,
+        this.player.stamina - (canSprint ? 24 : 7) * inputMagnitude * dt * (1 - passives.staminaLossReduction),
         0,
         MAX_STAMINA
       );
     } else {
-      this.player.stamina = clamp(this.player.stamina + 18 * dt, 0, MAX_STAMINA);
+      this.player.stamina = clamp(
+        this.player.stamina + 18 * (1 + passives.sprintRecoveryBonus) * dt,
+        0,
+        MAX_STAMINA
+      );
     }
 
     const radius = Math.hypot(this.player.position.x, this.player.position.z);
@@ -1347,6 +1519,80 @@ export class GymBuddyWorld {
     this.vendingSnackCooldown = Math.max(0, this.vendingSnackCooldown - dt);
   }
 
+  private updateBossBattle(dt: number): void {
+    if (!this.activeBossBattle) {
+      return;
+    }
+
+    const battle = this.activeBossBattle;
+    battle.timer = Math.max(0, battle.timer - dt);
+    this.refreshBossBattlePhase(battle);
+
+    if (battle.timer > 0) {
+      return;
+    }
+
+    if (battle.result === 'success') {
+      const grantedSteroids = this.grantSteroids(battle.rewardSteroids);
+      this.player.stamina = clamp(this.player.stamina + 14, 0, MAX_STAMINA);
+      this.bossExoticBoost = clamp(
+        this.bossExoticBoost + battle.exoticBoostReward,
+        0,
+        BOSS_EXOTIC_BOOST_MAX
+      );
+
+      for (const buddy of this.roster) {
+        const levelsGained = this.addRosterXp(buddy, battle.rewardXp);
+        if (levelsGained > 0) {
+          this.events.push({
+            type: 'roster',
+            rosterId: buddy.rosterId,
+            levelUp: true,
+            message: `${this.getRosterDisplayName(buddy)} leveled up to ${buddy.level}!`
+          });
+        }
+        buddy.energy = clamp(buddy.energy - 8, 0, 100);
+      }
+
+      this.events.push({
+        type: 'boss',
+        boss: this.copyBoss(battle.boss),
+        message: `${battle.boss.name} got outlifted. +${grantedSteroids} Steroid, +${battle.rewardXp} crew XP, exotic spawns boosted.`
+      });
+      this.bossSpawnTimer = 42 + Math.random() * 24;
+    } else {
+      this.player.stamina = clamp(
+        this.player.stamina - this.getPassiveStaminaLoss(battle.staminaCost),
+        0,
+        MAX_STAMINA
+      );
+
+      const lessonXp = Math.max(8, Math.round(battle.rewardXp * 0.35));
+      for (const buddy of this.roster) {
+        const levelsGained = this.addRosterXp(buddy, lessonXp);
+        if (levelsGained > 0) {
+          this.events.push({
+            type: 'roster',
+            rosterId: buddy.rosterId,
+            levelUp: true,
+            message: `${this.getRosterDisplayName(buddy)} learned from the loss and hit Lv ${buddy.level}!`
+          });
+        }
+        buddy.energy = clamp(buddy.energy - 12, 0, 100);
+      }
+
+      this.events.push({
+        type: 'boss',
+        boss: this.copyBoss(battle.boss),
+        message: `${battle.boss.name} won the set. Crew learned anyway: +${lessonXp} XP, stamina took a hit.`
+      });
+      this.bossSpawnTimer = 62 + Math.random() * 30;
+    }
+
+    this.activeBoss = undefined;
+    this.activeBossBattle = undefined;
+  }
+
   private updateRoster(dt: number): void {
     for (const buddy of this.roster) {
       if (buddy.status === 'ready') {
@@ -1375,10 +1621,14 @@ export class GymBuddyWorld {
       const definition = getBuddyDefinition(buddy.definitionId);
 
       if (buddy.status === 'training' && buddy.taskOutcome === 'success') {
-        this.applyTrainingResult(buddy, definition.archetype);
+        const levelsGained = this.applyTrainingResult(buddy, definition.archetype);
         this.events.push({
           type: 'roster',
-          message: `${this.getRosterDisplayName(buddy)} finished ${buddy.taskLabel}. Stats improved.`
+          rosterId: buddy.rosterId,
+          levelUp: levelsGained > 0,
+          message: levelsGained > 0
+            ? `${this.getRosterDisplayName(buddy)} finished ${buddy.taskLabel} and leveled up to ${buddy.level}!`
+            : `${this.getRosterDisplayName(buddy)} finished ${buddy.taskLabel}. Stats improved and XP rose.`
         });
       } else if (buddy.status === 'needs-spot') {
         buddy.energy = clamp(buddy.energy - 10, 0, 100);
@@ -1393,6 +1643,10 @@ export class GymBuddyWorld {
   }
 
   private updateBoss(dt: number): void {
+    if (this.activeBossBattle) {
+      return;
+    }
+
     if (this.activeBoss) {
       this.activeBoss.timer -= dt;
       this.activeBoss.ragdollTimer = Math.max(0, this.activeBoss.ragdollTimer - dt);
@@ -1429,17 +1683,6 @@ export class GymBuddyWorld {
 
     this.catchCooldown = 0.6;
 
-    if (this.roster.length >= MAX_ROSTER_SIZE) {
-      this.events.push({
-        type: 'capture',
-        result: 'empty',
-        captureStyle: 'arm-wrestle',
-        start,
-        message: `Crew is full (${MAX_ROSTER_SIZE}/${MAX_ROSTER_SIZE}). Remove a buddy to make room.`
-      });
-      return;
-    }
-
     const nearest = this.getNearestBuddy();
 
     if (!nearest || nearest.distance > CAPTURE_RANGE) {
@@ -1463,6 +1706,7 @@ export class GymBuddyWorld {
     const definition = getBuddyDefinition(buddy.definitionId);
     const bodyTraits = { ...buddy.bodyTraits };
     const buddyDisplayName = buddy.displayName ?? definition.name;
+    const rarityBadge = `[${definition.rarity.toUpperCase()}]`;
     const chance = getArmWrestleCatchChance(buddy, definition);
     const success = Math.random() < chance;
     const usePersonalityCue = Math.random() < 0.4;
@@ -1472,18 +1716,41 @@ export class GymBuddyWorld {
     const missReaction = usePersonalityCue
       ? ` ${definition.reactionLines.cry}`
       : '';
+    const flavorReactionLine = success
+      ? (usePersonalityCue ? definition.reactionLines.victory : `${buddyDisplayName} hits the mat first.`)
+      : 'It powered out!';
     const creatureFacing = Math.atan2(this.player.position.x - buddy.position.x, this.player.position.z - buddy.position.z);
     const captureBeatSequence = [
       { at: 0.06, text: 'Arm wrestle!' },
       { at: 0.56, text: "It's close..." },
       { at: 1.14, text: success ? 'You pinned it!' : 'It powered out!' }
     ];
+    let captureDestination: 'active' | 'storage' = 'active';
+    let captureCrewXp = 0;
 
     if (success) {
       buddy.captured = true;
       buddy.respawnTimer = 1.45;
       this.player.capturedTotal += 1;
-      this.roster.push(this.createRosterEntry(definition.id, bodyTraits, buddyDisplayName, buddy.level));
+      const capturedEntry = this.createRosterEntry(definition.id, bodyTraits, buddyDisplayName, buddy.level);
+      const newBuddyXp = Math.round(CAPTURE_NEW_BUDDY_XP + buddy.level * 1.5);
+      captureCrewXp = Math.round(CAPTURE_CREW_XP + Math.min(36, buddy.level * 1.2));
+      const newBuddyLevelsGained = this.addRosterXp(capturedEntry, newBuddyXp);
+      if (this.roster.length < MAX_ROSTER_SIZE) {
+        this.roster.push(capturedEntry);
+      } else {
+        this.storage.push(capturedEntry);
+        captureDestination = 'storage';
+      }
+      this.awardActiveCrewXp(captureCrewXp, 'capture', capturedEntry.rosterId);
+      if (newBuddyLevelsGained > 0) {
+        this.events.push({
+          type: 'roster',
+          rosterId: capturedEntry.rosterId,
+          levelUp: true,
+          message: `${this.getRosterDisplayName(capturedEntry)} joined with bonus XP and hit Lv ${capturedEntry.level}!`
+        });
+      }
       this.player.stamina = clamp(this.player.stamina + definition.staminaReward, 0, MAX_STAMINA);
       this.captured.set(definition.id, (this.captured.get(definition.id) ?? 0) + 1);
       const previousHigh = this.capturedHighLevel.get(definition.id) ?? 0;
@@ -1499,7 +1766,7 @@ export class GymBuddyWorld {
       };
       buddy.wanderHeading = Math.atan2(away.x, away.z);
       buddy.dodgeTimer = 1.15;
-      this.player.stamina = clamp(this.player.stamina - 8, 0, MAX_STAMINA);
+      this.player.stamina = clamp(this.player.stamina - this.getPassiveStaminaLoss(8), 0, MAX_STAMINA);
       this.captureCutsceneTimer = ARM_WRESTLE_CAPTURE_DURATION;
     }
 
@@ -1534,9 +1801,16 @@ export class GymBuddyWorld {
       },
       captureBeatSequence,
       captureDuration: ARM_WRESTLE_CAPTURE_DURATION,
+      captureDestination: success ? captureDestination : undefined,
+      captureDisplayName: buddyDisplayName,
+      captureLevel: buddy.level,
+      captureRarity: definition.rarity,
+      flavorReactionLine,
       message: success
-        ? `${buddyDisplayName} lost the arm-wrestle hold and joined your crew (${this.roster.length}/${MAX_ROSTER_SIZE}).${victoryReaction}`
-        : `${buddyDisplayName} powered out and escaped.${missReaction}`
+        ? captureDestination === 'active'
+          ? `${rarityBadge} ${buddyDisplayName} lost the arm-wrestle hold and joined your active crew (${this.roster.length}/${MAX_ROSTER_SIZE}). Active crew +${captureCrewXp} XP.${victoryReaction}`
+          : `${rarityBadge} ${buddyDisplayName} lost the arm-wrestle hold and went to storage. Active crew is full (${MAX_ROSTER_SIZE}/${MAX_ROSTER_SIZE}). Active crew +${captureCrewXp} XP.${victoryReaction}`
+        : `${rarityBadge} ${buddyDisplayName} powered out and escaped.${missReaction}`
     });
   }
 
@@ -1631,8 +1905,9 @@ export class GymBuddyWorld {
       return 0;
     }
 
+    const eventBonus = Math.max(0, Math.floor(getCurrentGymEvent().effects.steroidRewardBonus ?? 0));
     const previous = this.player.steroids;
-    this.player.steroids = clamp(previous + requested, 0, MAX_STEROIDS);
+    this.player.steroids = clamp(previous + requested + eventBonus, 0, MAX_STEROIDS);
     return this.player.steroids - previous;
   }
 
@@ -1754,42 +2029,268 @@ export class GymBuddyWorld {
     buddy: BuddyRosterEntry,
     archetype: BuddyArchetype,
     rewardMultiplier = 1
-  ): void {
+  ): number {
+    const strengthBonus = this.rollPassiveBonus(this.getActivePassiveTotals().strengthTrainingChance);
+
     if (archetype === 'runner' || archetype === 'spinner') {
+      buddy.strength += strengthBonus;
       buddy.endurance += 2;
       buddy.focus += 1;
     } else if (archetype === 'lifter' || archetype === 'climber') {
-      buddy.strength += 2;
+      buddy.strength += 2 + strengthBonus;
       buddy.endurance += 1;
     } else {
+      buddy.strength += strengthBonus;
       buddy.focus += 2;
       buddy.endurance += 1;
     }
 
-    const baseXp = 30 * rewardMultiplier;
-    this.addRosterXp(buddy, Math.round(baseXp));
+    const eventEffects = getCurrentGymEvent().effects;
+    let eventXpMultiplier = 1;
+
+    if (archetype === 'lifter' || archetype === 'climber') {
+      eventXpMultiplier *= eventEffects.strengthWorkoutXpMultiplier ?? 1;
+    }
+
+    if (archetype === 'runner' || archetype === 'spinner') {
+      eventXpMultiplier *= eventEffects.enduranceWorkoutXpMultiplier ?? 1;
+    }
+
+    const baseXp = 30 * rewardMultiplier * eventXpMultiplier;
+    return this.addRosterXp(buddy, Math.round(baseXp));
   }
 
-  private addRosterXp(buddy: BuddyRosterEntry, amount: number): void {
-    buddy.xp += amount;
-    const required = buddy.level * 55;
+  private addRosterXp(buddy: BuddyRosterEntry, amount: number): number {
+    const xpGain = Math.max(0, Math.floor(amount));
+    if (xpGain <= 0 || buddy.level >= STEROID_LEVEL_CAP) {
+      return 0;
+    }
 
-    if (buddy.xp >= required) {
+    buddy.xp += xpGain;
+    let levelsGained = 0;
+
+    while (buddy.level < STEROID_LEVEL_CAP) {
+      const required = getBuddyXpForNextLevel(buddy.level);
+      if (buddy.xp < required) {
+        break;
+      }
+
       buddy.xp -= required;
-      buddy.level += 1;
-      buddy.strength += 1;
-      buddy.endurance += 1;
-      buddy.focus += 1;
-      buddy.energy = clamp(buddy.energy + 18, 0, 100);
+      this.increaseRosterLevel(buddy);
+      levelsGained += 1;
+    }
+
+    if (buddy.level >= STEROID_LEVEL_CAP) {
+      buddy.xp = 0;
+    }
+
+    if (levelsGained > 0) {
       this.evaluateCrewLevelGoal();
+    }
+
+    return levelsGained;
+  }
+
+  private increaseRosterLevel(buddy: BuddyRosterEntry, statBonus = 0): void {
+    buddy.level += 1;
+    buddy.strength += 1 + statBonus;
+    buddy.endurance += 1 + statBonus;
+    buddy.focus += 1 + statBonus;
+    buddy.energy = clamp(buddy.energy + 18 + statBonus * 4, 0, 100);
+  }
+
+  private awardActiveCrewXp(amount: number, sourceLabel: string, excludeRosterId?: number): number {
+    let recipients = 0;
+
+    for (const buddy of this.roster) {
+      if (buddy.rosterId === excludeRosterId) {
+        continue;
+      }
+
+      recipients += 1;
+      const levelsGained = this.addRosterXp(buddy, amount);
+      if (levelsGained > 0) {
+        this.events.push({
+          type: 'roster',
+          rosterId: buddy.rosterId,
+          levelUp: true,
+          message: `${this.getRosterDisplayName(buddy)} gained ${amount} ${sourceLabel} XP and hit Lv ${buddy.level}!`
+        });
+      }
+    }
+
+    return recipients;
+  }
+
+  private createBossBattle(boss: BossState): BossBattleState {
+    const crew = this.getBossBattleCrewBreakdown();
+    const eventEffects = getCurrentGymEvent().effects;
+    const bossRewardMultiplier = eventEffects.bossRewardMultiplier ?? 1;
+    const bossPower = boss.strength + boss.endurance + boss.focus + 18;
+    const winChance = clamp(0.42 + (crew.total - bossPower) / 120, 0.18, 0.94);
+    const success = Math.random() < winChance;
+    const baseRewardSteroids = Math.random() < 0.35 || crew.hasExotic ? 2 : 1;
+    const rounds: BossBattleRound[] = [
+      {
+        label: 'Level check',
+        crewScore: crew.levelPower,
+        bossScore: bossPower * 0.3,
+        winner: crew.levelPower >= bossPower * 0.3 ? 'crew' : 'boss'
+      },
+      {
+        label: 'Stat clash',
+        crewScore: crew.statPower,
+        bossScore: bossPower * 0.46,
+        winner: crew.statPower >= bossPower * 0.46 ? 'crew' : 'boss'
+      },
+      {
+        label: 'Rarity + passives',
+        crewScore: crew.rarityPower + crew.passivePower,
+        bossScore: bossPower * 0.18,
+        winner: crew.rarityPower + crew.passivePower >= bossPower * 0.18 ? 'crew' : 'boss'
+      }
+    ];
+
+    const battle: BossBattleState = {
+      boss: this.copyBoss(boss),
+      phase: 'intro',
+      result: success ? 'success' : 'fail',
+      crewPower: crew.total,
+      bossPower,
+      winChance,
+      rewardXp: Math.round((28 + bossPower * 0.25) * bossRewardMultiplier),
+      rewardSteroids: baseRewardSteroids + Math.max(0, Math.floor(eventEffects.bossSteroidRewardBonus ?? 0)),
+      exoticBoostReward: BOSS_EXOTIC_BOOST_REWARD * bossRewardMultiplier,
+      staminaCost: 18,
+      rounds,
+      activeRound: 0,
+      timer: BOSS_BATTLE_DURATION,
+      duration: BOSS_BATTLE_DURATION,
+      message: success
+        ? 'The crew lines up a ridiculous combo finisher.'
+        : 'The boss reads the crew tempo and loads a counter set.'
+    };
+
+    this.refreshBossBattlePhase(battle);
+    return battle;
+  }
+
+  private refreshBossBattlePhase(battle: BossBattleState): void {
+    const elapsed = battle.duration - battle.timer;
+    const roundDuration = battle.duration / Math.max(1, battle.rounds.length);
+    battle.activeRound = clamp(Math.floor(elapsed / roundDuration), 0, battle.rounds.length - 1);
+
+    if (elapsed < 0.45) {
+      battle.phase = 'intro';
+    } else if (battle.timer <= 0.5) {
+      battle.phase = 'result';
+    } else {
+      battle.phase = 'clash';
     }
   }
 
+  private getBossBattleCrewBreakdown(): {
+    levelPower: number;
+    statPower: number;
+    rarityPower: number;
+    passivePower: number;
+    total: number;
+    hasExotic: boolean;
+  } {
+    let levelPower = 0;
+    let statPower = 0;
+    let rarityPower = 0;
+    let passiveNudge = 0;
+    let hasExotic = false;
+
+    for (const buddy of this.roster) {
+      const definition = getBuddyDefinition(buddy.definitionId);
+      const energyScale = 0.72 + buddy.energy / 360;
+      levelPower += buddy.level * 2.7;
+      statPower += (buddy.strength + buddy.endurance + buddy.focus) * energyScale;
+      rarityPower += this.getRarityBattleBonus(definition);
+      passiveNudge += definition.rarity === 'exotic' || definition.isExotic ? 3 : 1.35;
+      hasExotic ||= definition.rarity === 'exotic' || definition.isExotic === true;
+    }
+
+    const subtotal = levelPower + statPower + rarityPower;
+    const bossPassivePower = subtotal * this.getActivePassiveTotals().bossPowerBonus;
+    const passivePower = passiveNudge + bossPassivePower;
+
+    return {
+      levelPower,
+      statPower,
+      rarityPower,
+      passivePower,
+      total: subtotal + passivePower + this.player.stamina / 10,
+      hasExotic
+    };
+  }
+
+  private getRarityBattleBonus(definition: BuddyDefinition): number {
+    if (definition.rarity === 'exotic' || definition.isExotic) {
+      return 8;
+    }
+
+    if (definition.rarity === 'rare') {
+      return 4.5;
+    }
+
+    if (definition.rarity === 'uncommon') {
+      return 2.5;
+    }
+
+    return 1;
+  }
+
   private getCrewPower(): number {
-    return this.roster.reduce((total, buddy) => {
-      const energyScale = 0.65 + buddy.energy / 285;
-      return total + (buddy.strength + buddy.endurance + buddy.focus + buddy.level * 2) * energyScale;
-    }, this.player.stamina / 8);
+    return this.getBossBattleCrewBreakdown().total;
+  }
+
+  private getPassiveStaminaLoss(amount: number): number {
+    return amount * (1 - this.getActivePassiveTotals().staminaLossReduction);
+  }
+
+  private rollPassiveBonus(chance: number): number {
+    return Math.random() < clamp(chance, 0, 0.45) ? 1 : 0;
+  }
+
+  private getActivePassiveTotals(): ActivePassiveTotals {
+    const totals: ActivePassiveTotals = {
+      movementSpeedBonus: 0,
+      strengthTrainingChance: 0,
+      steroidBoostChance: 0,
+      staminaLossReduction: 0,
+      sprintRecoveryBonus: 0,
+      bossPowerBonus: 0
+    };
+
+    for (const buddy of this.roster) {
+      const passive = getBuddyDefinition(buddy.definitionId).passive;
+
+      if (passive.effect === 'movement-speed') {
+        totals.movementSpeedBonus += passive.value;
+      } else if (passive.effect === 'strength-training') {
+        totals.strengthTrainingChance += passive.value;
+      } else if (passive.effect === 'steroid-boost') {
+        totals.steroidBoostChance += passive.value;
+      } else if (passive.effect === 'stamina-saver') {
+        totals.staminaLossReduction += passive.value;
+      } else if (passive.effect === 'sprint-recovery') {
+        totals.sprintRecoveryBonus += passive.value;
+      } else if (passive.effect === 'boss-power') {
+        totals.bossPowerBonus += passive.value;
+      }
+    }
+
+    return {
+      movementSpeedBonus: clamp(totals.movementSpeedBonus, 0, 0.12),
+      strengthTrainingChance: clamp(totals.strengthTrainingChance, 0, 0.35),
+      steroidBoostChance: clamp(totals.steroidBoostChance, 0, 0.35),
+      staminaLossReduction: clamp(totals.staminaLossReduction, 0, 0.18),
+      sprintRecoveryBonus: clamp(totals.sprintRecoveryBonus, 0, 0.24),
+      bossPowerBonus: clamp(totals.bossPowerBonus, 0, 0.25)
+    };
   }
 
   private spawnBoss(): void {
@@ -1823,6 +2324,14 @@ export class GymBuddyWorld {
     };
   }
 
+  private copyBossBattle(battle: BossBattleState): BossBattleState {
+    return {
+      ...battle,
+      boss: this.copyBoss(battle.boss),
+      rounds: battle.rounds.map((round) => ({ ...round }))
+    };
+  }
+
   private getNearestBuddy(): { buddy: BuddyState; distance: number } | undefined {
     let nearest: { buddy: BuddyState; distance: number } | undefined;
 
@@ -1844,7 +2353,8 @@ export class GymBuddyWorld {
   private createBuddy(): BuddyState {
     let position = randomPoint();
     const spawnProgress = this.getWildSpawnProgress();
-    const definitionId = weightedBuddyDefinitionId(spawnProgress);
+    const eventExoticBoost = getCurrentGymEvent().effects.exoticSpawnBonus ?? 0;
+    const definitionId = weightedBuddyDefinitionId(spawnProgress, this.bossExoticBoost + eventExoticBoost);
     const definition = getBuddyDefinition(definitionId);
 
     for (let attempts = 0; attempts < 8; attempts += 1) {

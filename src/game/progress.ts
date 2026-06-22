@@ -47,9 +47,11 @@ export type SavedProgress = {
     capturedTotal: number;
   };
   roster: SavedProgressRosterEntry[];
+  storage: SavedProgressRosterEntry[];
   repDex: SavedRepDexEntry[];
   capturedTotal: number;
   progressionTier: number;
+  bossExoticBoost: number;
   nextIds: {
     nextBuddyId: number;
     nextRosterId: number;
@@ -284,9 +286,11 @@ export function sanitizeSavedProgress(raw: unknown): SavedProgress | undefined {
     },
     goals: parseGoals(raw.goals),
     roster: parseRoster(raw.roster),
+    storage: parseRoster(raw.storage),
     repDex: parseRepDex(raw.repDex),
     capturedTotal: clampNumber(raw.capturedTotal, 0, 9999, 0),
     progressionTier: clampNumber(raw.progressionTier, 0, 999, 0),
+    bossExoticBoost: clampNumber(raw.bossExoticBoost, 0, 0.05, 0),
     nextIds: parseNextIds(raw.nextIds)
   };
 
