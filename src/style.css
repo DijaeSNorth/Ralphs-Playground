@@ -84,7 +84,57 @@ button {
 
 .boot-screen--error {
   color: #ffffff;
-  background: var(--coral);
+  background:
+    linear-gradient(135deg, rgba(255, 112, 92, 0.92), rgba(18, 38, 63, 0.92)),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.08) 0 3px, transparent 3px 6px);
+}
+
+.boot-error-card {
+  width: min(520px, calc(100vw - 32px));
+  border: 4px solid #ffffff;
+  box-shadow: 6px 6px 0 rgba(18, 38, 63, 0.5);
+  background: rgba(18, 38, 63, 0.86);
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+  text-align: left;
+}
+
+.boot-error-title {
+  color: var(--gold);
+  font-size: 1.18rem;
+  font-weight: 900;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.38);
+}
+
+.boot-error-card p {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.boot-error-card pre {
+  max-height: 110px;
+  overflow: auto;
+  margin: 0;
+  border: 2px solid rgba(255, 255, 255, 0.42);
+  background: rgba(0, 0, 0, 0.24);
+  padding: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #ffffff;
+}
+
+.boot-error-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.boot-error-actions button {
+  min-height: 40px;
+  color: var(--ink);
+  background: var(--gold);
+  font-weight: 900;
 }
 
 @keyframes boot-spin {
@@ -152,6 +202,7 @@ button {
 .objective-chip,
 .target-chip,
 .event-chip,
+.zone-chip,
 .stat-row,
 .stamina-wrap,
 .input-status,
@@ -161,6 +212,7 @@ button {
 .repdex-panel,
 .crew-panel,
 .goals-panel,
+.quests-panel,
 .boss-panel,
 .boss-battle-panel,
 .settings-panel,
@@ -176,7 +228,8 @@ button {
 
 .objective-chip,
 .target-chip,
-.event-chip {
+.event-chip,
+.zone-chip {
   padding: 10px 12px;
   font-size: 0.86rem;
   font-weight: 760;
@@ -192,7 +245,17 @@ button {
   border-color: #7a4b18;
 }
 
+.zone-chip {
+  display: grid;
+  gap: 2px;
+  width: min(300px, calc(100vw - 36px));
+  color: var(--ink);
+  background: rgba(218, 255, 231, 0.92);
+  border-color: #25745f;
+}
+
 .event-chip span,
+.zone-chip span,
 .creator-event span {
   color: #7a4b18;
   font-size: 0.62rem;
@@ -202,6 +265,7 @@ button {
 }
 
 .event-chip strong,
+.zone-chip strong,
 .creator-event strong {
   color: #7b0e4f;
   font-size: 0.86rem;
@@ -210,11 +274,20 @@ button {
 }
 
 .event-chip small,
+.zone-chip small,
 .creator-event small {
   color: #214261;
   font-size: 0.68rem;
   font-weight: 820;
   line-height: 1.16;
+}
+
+.zone-chip span {
+  color: #25745f;
+}
+
+.zone-chip strong {
+  color: #174d44;
 }
 
 .target-preview {
@@ -425,7 +498,8 @@ button {
   pointer-events: auto;
 }
 
-.goals-panel {
+.goals-panel,
+.quests-panel {
   width: min(220px, calc(100vw - 36px));
   padding: 8px;
   display: grid;
@@ -435,7 +509,8 @@ button {
   pointer-events: auto;
 }
 
-.goals-list {
+.goals-list,
+.quests-list {
   display: grid;
   gap: 4px;
   max-height: 190px;
@@ -448,7 +523,8 @@ button {
   -webkit-overflow-scrolling: touch;
 }
 
-.goal-row {
+.goal-row,
+.quest-row {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 6px;
@@ -463,27 +539,45 @@ button {
   font-weight: 760;
 }
 
-.goal-row-title {
+.goal-row-title,
+.quest-row-title {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.goal-row-status {
+.goal-row-status,
+.quest-row-status {
   color: var(--muted);
   font-size: 0.62rem;
   font-weight: 820;
 }
 
-.goal-row--done {
+.goal-row--done,
+.quest-row--done {
   border-color: rgba(67, 230, 168, 0.48);
   background: rgba(67, 230, 168, 0.2);
 }
 
 .goal-row--done .goal-row-title,
-.goal-row--done .goal-row-status {
+.goal-row--done .goal-row-status,
+.quest-row--done .quest-row-title,
+.quest-row--done .quest-row-status {
   color: #134f35;
+}
+
+.quest-row-description,
+.quest-row-reward {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.58rem;
+  line-height: 1.25;
+}
+
+.quest-row-reward {
+  color: #174d44;
+  font-weight: 900;
 }
 
 .panel-title {
@@ -1465,7 +1559,8 @@ button {
 }
 
 .settings-head button,
-.settings-reset-save {
+.settings-reset-save,
+.settings-copy-report {
   min-height: 30px;
   color: var(--muted);
   background: rgba(255, 255, 255, 0.86);
@@ -1519,6 +1614,21 @@ button {
   background: var(--coral);
 }
 
+.settings-copy-report {
+  color: #ffffff;
+  background: #2a6fdb;
+}
+
+.settings-version-label {
+  border: 2px solid var(--line);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--muted);
+  padding: 6px 7px;
+  font-size: 0.64rem;
+  font-weight: 900;
+  text-align: center;
+}
+
 .feedback-notes {
   border: 3px solid var(--ink);
   background: rgba(255, 255, 255, 0.76);
@@ -1545,6 +1655,75 @@ button {
 
 .feedback-notes li {
   padding-left: 2px;
+}
+
+.debug-panel {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  width: min(440px, calc(100vw - 28px));
+  transform: translateX(-50%);
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 3px solid var(--ink);
+  color: var(--ink);
+  background: rgba(255, 250, 214, 0.94);
+  box-shadow: 5px 5px 0 rgba(34, 28, 26, 0.35);
+  pointer-events: auto;
+  z-index: 12;
+}
+
+.debug-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.debug-panel__head span {
+  color: var(--muted);
+  font-size: 0.58rem;
+}
+
+.debug-panel__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.debug-panel button {
+  min-height: 30px;
+  padding: 6px 7px;
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  background: var(--cream);
+  box-shadow: 2px 2px 0 rgba(34, 28, 26, 0.22);
+  font: inherit;
+  font-size: 0.6rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.debug-panel button:hover,
+.debug-panel button:focus-visible {
+  background: var(--yellow);
+}
+
+.debug-panel__summary {
+  max-height: 150px;
+  overflow: auto;
+  margin: 0;
+  padding: 8px;
+  border: 2px solid var(--ink);
+  color: #f8ffe8;
+  background: #172436;
+  font-size: 0.62rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
 }
 
 .game-root--reduced-motion .creator-preview {
@@ -2042,6 +2221,7 @@ button {
 .game-root--creating .input-mode-toggle,
 .game-root--creating .crew-panel,
 .game-root--creating .goals-panel,
+.game-root--creating .quests-panel,
 .game-root--creating .boss-panel,
 .game-root--creating .boss-battle-panel,
 .game-root--workout .boss-battle-panel,
@@ -2505,12 +2685,14 @@ button {
     padding: 9px;
   }
 
-  .goals-panel {
+  .goals-panel,
+  .quests-panel {
     width: min(198px, calc(100vw - 24px));
     max-height: min(170px, calc(100vh - 360px));
   }
 
-  .goals-list {
+  .goals-list,
+  .quests-list {
     max-height: calc(min(170px, calc(100vh - 360px)) - 24px);
   }
 
@@ -2697,6 +2879,23 @@ button {
 }
 
 @media (max-width: 520px) {
+  .debug-panel {
+    top: 8px;
+    width: min(310px, calc(100vw - 18px));
+    max-height: min(70vh, 520px);
+    overflow-y: auto;
+    padding: 8px;
+  }
+
+  .debug-panel__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .debug-panel button {
+    min-height: 34px;
+    font-size: 0.58rem;
+  }
+
   .objective-chip {
     max-width: 176px;
   }
@@ -2733,16 +2932,19 @@ button {
     padding: 8px;
   }
 
-  .goals-panel {
+  .goals-panel,
+  .quests-panel {
     width: min(180px, calc(100vw - 24px));
     max-height: min(144px, calc(100vh - 380px));
   }
 
-  .goal-row {
+  .goal-row,
+  .quest-row {
     font-size: 0.6rem;
   }
 
-  .goals-list {
+  .goals-list,
+  .quests-list {
     max-height: calc(min(144px, calc(100vh - 380px)) - 24px);
   }
 

@@ -1,0 +1,16 @@
+Playtest v1 release prep reference
+
+Version:
+- package.json and package-lock.json set to 0.1.0-playtest.1.
+- In-game settings displays Version 0.1.0-playtest.1.
+- Playtest report uses game version 0.1.0-playtest.1.
+
+Docs updated:
+- docs/playtest-checklist.md includes the GitHub Pages URL, tester report instructions, and current known issues.
+- docs/deployment-checklist.md includes release branch, version, GitHub Pages URL, and build verification notes.
+
+Release branch:
+- release/playtest-v1
+
+GitHub Pages URL:
+- https://dijaesnorth.github.io/Ralphs-Playground/

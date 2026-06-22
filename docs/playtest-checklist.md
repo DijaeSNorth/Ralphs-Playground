@@ -1,8 +1,10 @@
 # Playtest Checklist
 
+Version: `0.1.0-playtest.1`
+
 ## 1. Game URL
 
-- Public playtest URL: TODO - paste the GitHub Pages URL before sending this to testers.
+- Public playtest URL: https://dijaesnorth.github.io/Ralphs-Playground/
 - Local preview for maintainers: run `npm run build`, then `npm run preview`.
 
 ## 2. What testers should try first
@@ -12,6 +14,7 @@
 - Read the target panel for name, level, rarity, and catch chance.
 - Try one arm-wrestling capture and watch the result screen.
 - Open Crew, Storage, RepDex, Goals, and Settings.
+- Open Settings and confirm the version label reads `0.1.0-playtest.1`.
 - If Steroids are available, use one on a captured creature.
 - Keep playing long enough to see higher-level spawns, a boss, or an exotic creature.
 
@@ -22,6 +25,7 @@
 - Capture/interact: `Space`, click, or tap the on-screen button when near a creature.
 - Arm-wrestle struggle: tap, click, or press `Space` during the meter for visual push only.
 - Menus: click or tap HUD buttons for Crew, Storage, RepDex, Goals, and Settings.
+- Tester report: Settings -> Copy Playtest Report.
 
 ## 4. How to capture creatures
 
@@ -54,15 +58,18 @@
 - Did mobile/touch controls cover important UI or feel hard to tap?
 - Did performance drop, stutter, overheat, or drain battery quickly?
 - Did save/load preserve crew, storage, levels, goals, settings, and RepDex progress?
+- Did Copy Playtest Report create a useful plain-text report without exposing personal info?
+- Did corrupt-save recovery show a friendly reset/reload screen instead of breaking permanently?
 - Any stale wording about protein shakers as capture items should be reported.
 
 ## 8. Known issues
 
-- Public Game URL is not filled in until the GitHub Pages deployment URL is confirmed.
 - Feedback collection is manual; the game does not upload tester notes.
-- Audio uses lightweight generated Web Audio tones, not final music or sound assets.
+- Audio uses lightweight generated Web Audio tones, not final music or external sound assets.
 - Local rotating events are based on the tester's device date and do not require a backend.
 - Protein shakers may still exist as non-capture gym economy flavor if present, but they should not be described as the capture method.
+- Playtest reports include browser user agent and screen size by design, but omit raw save data and custom creature nicknames.
+- Save corruption backups stay in localStorage under a bad-save backup key for debugging; testers can still reset the active save.
 
 ## 9. Browser/device info testers should report
 
@@ -73,3 +80,4 @@
 - Input method: keyboard, mouse, touch, controller, or mixed.
 - Approximate performance: smooth, occasional stutter, frequent stutter, or unplayable.
 - Console errors, screenshots, or exact steps for any bug.
+- Paste the Copy Playtest Report output when reporting a bug.

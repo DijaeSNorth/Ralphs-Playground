@@ -1,8 +1,41 @@
 import { BUDDY_DEFINITIONS, getBuddyDefinition, getRandomBuddyName } from '../content/buddies';
 import { BOSS_DEFINITIONS, getBossDefinition } from '../content/bosses';
+import { ACTIVE_QUEST_LIMIT, QUEST_DEFINITIONS } from '../content/quests';
+import {
+  ACTIVE_CREW_LIMIT,
+  BASE_ROSTER_STATS_BY_ARCHETYPE,
+  BOSS_BALANCE,
+  BUDDY_AI_BALANCE,
+  BUDDY_BODY_TRAIT_RANGES,
+  BUDDY_TRAIT_BIAS,
+  CAPTURE_BALANCE,
+  CREATURE_BEHAVIOR_BALANCE,
+  DEBUG_BALANCE,
+  FREE_WEIGHT_BALANCE,
+  GOAL_CREW_XP_REWARDS,
+  GOAL_MESSAGES,
+  GOAL_STEROID_REWARDS,
+  LEVEL_UP_BALANCE,
+  PASSIVE_TOTAL_LIMITS,
+  PLAYER_MOVEMENT_BALANCE,
+  PROTEIN_SHAKER_BALANCE,
+  ROSTER_TRAINING_BALANCE,
+  STAMINA_BALANCE,
+  STEROID_BALANCE,
+  WILD_SPAWN_BALANCE,
+  WORLD_BALANCE,
+  XP_REWARDS,
+  getArmWrestleCatchChance,
+  getBuddyXpForNextLevel,
+  getGoalTargets,
+  getWeightedSpawnTableForProgress,
+  getWildExoticSpawnChance,
+  type WeightedBuddyOption
+} from '../content/balance';
 import { FREE_WEIGHT_PICKUPS, WORKOUT_STATIONS } from '../content/equipment';
 import { getCurrentGymEvent } from '../content/gymEvents';
 import { VENDING_MACHINES } from '../content/vending';
+import { getGymZoneAt, getRandomGymSpawnZone, randomPointInZone } from '../content/zones';
 import type {
   ActionState,
   BossBattleRound,
@@ -11,9 +44,13 @@ import type {
   BuddyArchetype,
   ProgressGoalId,
   ProgressGoalState,
+  QuestId,
+  QuestStates,
   BuddyBodyTraits,
   BuddyDefinition,
+  GymZoneDefinition,
   BuddyRosterEntry,
+  PlayerState,
   ProgressGoals,
   BuddyState,
   FreeWeightState,
@@ -29,89 +66,44 @@ import {
   SAVE_DATA_VERSION
 } from '../progress';
 
-const ARENA_RADIUS = 18;
-const CAPTURE_RANGE = 2.85;
-const MAX_STAMINA = 100;
-const ARM_WRESTLE_CAPTURE_DURATION = 1.8;
-const MAX_PROTEIN_SHAKERS = 8;
-const STARTING_PROTEIN_SHAKERS = 6;
-const MAX_STEROIDS = 12;
-const STARTING_STEROIDS = 0;
-const STEROID_LEVEL_CAP = 60;
-const ACTIVE_BUDDIES = 6;
-const MAX_ROSTER_SIZE = 4;
-const WALK_SPEED = 5.2;
-const SPRINT_SPEED = 7.8;
-const PLAYER_ACCELERATION = 34;
-const PLAYER_DECELERATION = 42;
-const PLAYER_TURN_SPEED = 10.5;
-const PLAYER_TURN_SPEED_TOUCH = 6;
-const BUDDY_WANDER_SPEED = 0.95;
-const BUDDY_DODGE_SPEED = 4.4;
-const TRAINING_DURATION = 12;
-const TRAINING_SPOT_WINDOW = 7;
-const BOSS_ACTIVE_DURATION = 26;
-const BOSS_BATTLE_DURATION = 2.45;
-const BOSS_EXOTIC_BOOST_REWARD = 0.006;
-const BOSS_EXOTIC_BOOST_MAX = 0.035;
-const ROSTER_SPOT_RANGE = 1.95;
-const FREE_WEIGHT_PICKUP_RANGE = 2.15;
-const FREE_WEIGHT_THROW_SPEED = 11.8;
-const FREE_WEIGHT_THROW_DURATION = 1.12;
-const FREE_WEIGHT_HIT_RADIUS = 0.72;
-const BOSS_FREE_WEIGHT_HIT_RADIUS = 1.05;
-const FREE_WEIGHT_PICKUP_COOLDOWN = 0.65;
-const BUDDY_RAGDOLL_DURATION = 1.65;
-const BOSS_RAGDOLL_DURATION = 1.35;
-const GOAL_TARGETS = {
-  capture_3: 3,
-  capture_6: 6,
-  capture_10: 10,
-  capture_first_exotic: 1,
-  roster_level_10_any: 1,
-  repdex_half: Math.ceil(BUDDY_DEFINITIONS.length / 2)
-} as const;
-const GOAL_STEROID_REWARDS = {
-  capture_3: 1,
-  capture_6: 0,
-  capture_10: 2,
-  capture_first_exotic: 3,
-  roster_level_10_any: 0,
-  repdex_half: 5
-} as const;
-const GOAL_CREW_XP_REWARDS = {
-  capture_3: 50,
-  capture_6: 60,
-  capture_10: 80,
-  capture_first_exotic: 120,
-  roster_level_10_any: 90,
-  repdex_half: 140
-} as const;
-const GOAL_MESSAGES = {
-  capture_3: 'Goal complete: 3 captures reward unlocked.',
-  capture_6: 'Goal complete: mid-tier gym beasts are now common.',
-  capture_10: 'Goal complete: 10 captures reward unlocked.',
-  capture_first_exotic: 'Goal complete: rare exotic caught reward unlocked.',
-  roster_level_10_any: 'Goal complete: your crew can level up hard and loud.',
-  repdex_half: 'Goal complete: your RepDex is half full.'
-} as const;
-const BUDDY_BODY_TRAIT_RANGES: Record<keyof BuddyBodyTraits, { min: number; max: number }> = {
-  chest: { min: 0.68, max: 1.36 },
-  wings: { min: 0.6, max: 1.5 },
-  glutes: { min: 0.68, max: 1.36 },
-  thighs: { min: 0.8, max: 1.34 },
-  calfs: { min: 0.8, max: 1.34 }
-};
+export { getArmWrestleCatchChance, getBuddyXpForNextLevel } from '../content/balance';
 
-const BUDDY_TRAIT_BIAS: Record<BuddyArchetype, Partial<Record<keyof BuddyBodyTraits, number>>> = {
-  yogi: { wings: 0.12, calfs: -0.04, thighs: -0.06 },
-  runner: { calfs: 0.12, thighs: 0.05, chest: -0.06 },
-  lifter: { chest: 0.28, glutes: 0.16, thighs: 0.16, calfs: 0.1 },
-  spinner: { chest: 0.04, glutes: -0.06 },
-  climber: { thighs: 0.14, calfs: 0.12, glutes: 0.08 }
-};
-const CAPTURE_CREW_XP = 24;
-const CAPTURE_NEW_BUDDY_XP = 36;
+const ARENA_RADIUS = WORLD_BALANCE.arenaRadius;
+const CAPTURE_RANGE = CAPTURE_BALANCE.range;
+const MAX_STAMINA = STAMINA_BALANCE.max;
+const ARM_WRESTLE_CAPTURE_DURATION = CAPTURE_BALANCE.armWrestleDurationSeconds;
+const MAX_PROTEIN_SHAKERS = PROTEIN_SHAKER_BALANCE.max;
+const STARTING_PROTEIN_SHAKERS = PROTEIN_SHAKER_BALANCE.starting;
+const MAX_STEROIDS = STEROID_BALANCE.max;
+const STARTING_STEROIDS = STEROID_BALANCE.starting;
+const STEROID_LEVEL_CAP = STEROID_BALANCE.levelCap;
+const ACTIVE_BUDDIES = WILD_SPAWN_BALANCE.activeBuddyCount;
+const MAX_ROSTER_SIZE = ACTIVE_CREW_LIMIT;
+const WALK_SPEED = PLAYER_MOVEMENT_BALANCE.walkSpeed;
+const SPRINT_SPEED = PLAYER_MOVEMENT_BALANCE.sprintSpeed;
+const PLAYER_ACCELERATION = PLAYER_MOVEMENT_BALANCE.acceleration;
+const PLAYER_DECELERATION = PLAYER_MOVEMENT_BALANCE.deceleration;
+const PLAYER_TURN_SPEED = PLAYER_MOVEMENT_BALANCE.turnSpeed;
+const PLAYER_TURN_SPEED_TOUCH = PLAYER_MOVEMENT_BALANCE.touchTurnSpeed;
+const BUDDY_WANDER_SPEED = BUDDY_AI_BALANCE.wanderSpeed;
+const BUDDY_DODGE_SPEED = BUDDY_AI_BALANCE.dodgeSpeed;
+const TRAINING_DURATION = ROSTER_TRAINING_BALANCE.durationSeconds;
+const TRAINING_SPOT_WINDOW = ROSTER_TRAINING_BALANCE.spotWindowSeconds;
+const BOSS_ACTIVE_DURATION = BOSS_BALANCE.activeDurationSeconds;
+const BOSS_BATTLE_DURATION = BOSS_BALANCE.battleDurationSeconds;
+const BOSS_EXOTIC_BOOST_MAX = BOSS_BALANCE.exoticBoostMax;
+const ROSTER_SPOT_RANGE = ROSTER_TRAINING_BALANCE.spotRange;
+const FREE_WEIGHT_PICKUP_RANGE = FREE_WEIGHT_BALANCE.pickupRange;
+const FREE_WEIGHT_THROW_SPEED = FREE_WEIGHT_BALANCE.throwSpeed;
+const FREE_WEIGHT_THROW_DURATION = FREE_WEIGHT_BALANCE.throwDurationSeconds;
+const FREE_WEIGHT_HIT_RADIUS = FREE_WEIGHT_BALANCE.hitRadius;
+const BOSS_FREE_WEIGHT_HIT_RADIUS = FREE_WEIGHT_BALANCE.bossHitRadius;
+const FREE_WEIGHT_PICKUP_COOLDOWN = FREE_WEIGHT_BALANCE.pickupCooldownSeconds;
+const BUDDY_RAGDOLL_DURATION = FREE_WEIGHT_BALANCE.buddyRagdollSeconds;
+const BOSS_RAGDOLL_DURATION = FREE_WEIGHT_BALANCE.bossRagdollSeconds;
+const GOAL_TARGETS = getGoalTargets(BUDDY_DEFINITIONS.length);
+const CAPTURE_CREW_XP = XP_REWARDS.captureActiveCrew;
+const CAPTURE_NEW_BUDDY_XP = XP_REWARDS.captureNewBuddy;
 
 let nextBuddyId = 1;
 let nextRosterId = 1;
@@ -159,11 +151,6 @@ function copyVec2(value: Vec2): Vec2 {
   return { x: value.x, z: value.z };
 }
 
-export function getBuddyXpForNextLevel(level: number): number {
-  const safeLevel = Math.max(1, Math.floor(level));
-  return Math.round(70 + safeLevel * 30 + Math.pow(safeLevel, 1.35) * 8);
-}
-
 function toNonNegativeInteger(value: number, fallback: number): number {
   if (!Number.isFinite(value)) {
     return fallback;
@@ -182,6 +169,22 @@ function randomPoint(radius = ARENA_RADIUS - 2): Vec2 {
   };
 }
 
+function isPointInsideArena(position: Vec2, margin = 1.2): boolean {
+  return Math.hypot(position.x, position.z) <= ARENA_RADIUS - margin;
+}
+
+function randomPointForZone(zone: GymZoneDefinition): Vec2 {
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const point = randomPointInZone(zone);
+
+    if (isPointInsideArena(point)) {
+      return point;
+    }
+  }
+
+  return randomPoint();
+}
+
 function createDefaultGoalState(): ProgressGoals {
   return {
     capture_3: { completed: false, progress: 0 },
@@ -193,37 +196,18 @@ function createDefaultGoalState(): ProgressGoals {
   };
 }
 
+function createDefaultQuestState(): QuestStates {
+  return Object.fromEntries(
+    QUEST_DEFINITIONS.map((quest) => [quest.id, { completed: false, progress: 0 }])
+  ) as QuestStates;
+}
+
 function randomHeading(): number {
   return Math.random() * Math.PI * 2;
 }
 
 function randomTrait(range: { min: number; max: number }, bias = 0): number {
   return clamp(Math.random() * (range.max - range.min) + range.min + bias, range.min, range.max);
-}
-
-export function getArmWrestleCatchChance(
-  buddy: BuddyState,
-  definition: BuddyDefinition
-): number {
-  if (definition.rarity === 'exotic' || definition.isExotic) {
-    return 0.4;
-  }
-
-  const level = Math.max(1, Math.floor(buddy.level));
-
-  if (level <= 15) {
-    return 0.9;
-  }
-
-  if (level <= 25) {
-    return 0.85;
-  }
-
-  if (level <= 35) {
-    return 0.8;
-  }
-
-  return 0.7;
 }
 
 function generateBuddyBodyTraits(archetype: BuddyArchetype): BuddyBodyTraits {
@@ -242,11 +226,6 @@ function randomBossDefinitionId(): string {
   return BOSS_DEFINITIONS[Math.floor(Math.random() * BOSS_DEFINITIONS.length)].id;
 }
 
-type WeightedBuddyOption = {
-  id: string;
-  weight: number;
-};
-
 type ActivePassiveTotals = {
   movementSpeedBonus: number;
   strengthTrainingChance: number;
@@ -256,7 +235,11 @@ type ActivePassiveTotals = {
   bossPowerBonus: number;
 };
 
-function pickWeightedBuddyId(options: WeightedBuddyOption[]): string {
+type SimulatedPlayerState = PlayerState & {
+  velocity: Vec2;
+};
+
+function pickWeightedBuddyId(options: readonly WeightedBuddyOption[]): string {
   const total = options.reduce((sum, option) => sum + option.weight, 0);
 
   if (total <= 0) {
@@ -276,94 +259,36 @@ function pickWeightedBuddyId(options: WeightedBuddyOption[]): string {
   return options[options.length - 1]?.id ?? 'buff-bunny';
 }
 
-function weightedBuddyDefinitionId(spawnProgress: number, exoticBoost = 0): string {
+function weightedBuddyDefinitionId(
+  spawnProgress: number,
+  exoticBoost = 0,
+  zone?: GymZoneDefinition
+): string {
   const spawnStage = clamp(spawnProgress, 0, 1);
-  const exoticChance = clamp(0.001 + spawnStage * 0.01 + exoticBoost, 0.001, 0.046);
+  const zoneExoticBoost = zone?.exoticSpawnBonus ?? 0;
+  const exoticChance = getWildExoticSpawnChance(spawnStage, exoticBoost + zoneExoticBoost);
   const isExotic = Math.random() < exoticChance;
 
   if (isExotic) {
-    const exoticOptions: WeightedBuddyOption[] = [
-      { id: 'minotaur-maximus', weight: 32 },
-      { id: 'dragon-deadlift', weight: 30 },
-      { id: 'griffin-gains', weight: 24 },
-      { id: 'cyclops-curl', weight: 20 },
-      { id: 'chrome-rhino', weight: 10 },
-      { id: 'hydra-hypertrophy', weight: 8 },
-      { id: 'pegasus-pump', weight: 7 },
-      { id: 'werewolf-warrior', weight: 8 },
-      { id: 'kraken-curl', weight: 6 },
-      { id: 'sphinx-strength', weight: 6 },
-      { id: 'phoenix-flex', weight: 5 }
-    ];
-
-    return pickWeightedBuddyId(exoticOptions);
+    return pickWeightedBuddyId(WILD_SPAWN_BALANCE.exoticWeights);
   }
 
-  const normalEarly: WeightedBuddyOption[] = [
-    { id: 'buff-bunny', weight: 26 },
-    { id: 'curl-corgi', weight: 16 },
-    { id: 'deadlift-deer', weight: 10 },
-    { id: 'flex-fox', weight: 20 },
-    { id: 'jacked-jaguar', weight: 8 },
-    { id: 'bench-bear', weight: 14 },
-    { id: 'press-penguin', weight: 10 },
-    { id: 'rowing-raccoon', weight: 10 },
-    { id: 'pump-panther', weight: 12 },
-    { id: 'squat-squirrel', weight: 10 },
-    { id: 'tricep-tiger', weight: 8 },
-    { id: 'iron-rhino', weight: 3 },
-    { id: 'bulk-buffalo', weight: 7 },
-    { id: 'swole-gorilla', weight: 6 }
-  ];
+  const progressWeights = getWeightedSpawnTableForProgress(spawnStage);
+  const zoneWeights = zone?.spawnWeights ?? [];
 
-  const normalMid: WeightedBuddyOption[] = [
-    { id: 'buff-bunny', weight: 17 },
-    { id: 'curl-corgi', weight: 14 },
-    { id: 'deadlift-deer', weight: 13 },
-    { id: 'flex-fox', weight: 17 },
-    { id: 'jacked-jaguar', weight: 11 },
-    { id: 'bench-bear', weight: 17 },
-    { id: 'press-penguin', weight: 8 },
-    { id: 'rowing-raccoon', weight: 9 },
-    { id: 'pump-panther', weight: 16 },
-    { id: 'squat-squirrel', weight: 10 },
-    { id: 'tricep-tiger', weight: 10 },
-    { id: 'iron-rhino', weight: 9 },
-    { id: 'bulk-buffalo', weight: 12 },
-    { id: 'swole-gorilla', weight: 13 }
-  ];
-
-  const normalLate: WeightedBuddyOption[] = [
-    { id: 'buff-bunny', weight: 10 },
-    { id: 'curl-corgi', weight: 8 },
-    { id: 'deadlift-deer', weight: 13 },
-    { id: 'flex-fox', weight: 10 },
-    { id: 'jacked-jaguar', weight: 12 },
-    { id: 'bench-bear', weight: 12 },
-    { id: 'press-penguin', weight: 7 },
-    { id: 'rowing-raccoon', weight: 7 },
-    { id: 'pump-panther', weight: 10 },
-    { id: 'squat-squirrel', weight: 7 },
-    { id: 'tricep-tiger', weight: 12 },
-    { id: 'iron-rhino', weight: 18 },
-    { id: 'bulk-buffalo', weight: 16 },
-    { id: 'swole-gorilla', weight: 10 }
-  ];
-
-  if (spawnStage < 0.33) {
-    return pickWeightedBuddyId(normalEarly);
-  }
-
-  if (spawnStage < 0.67) {
-    return pickWeightedBuddyId(normalMid);
-  }
-
-  return pickWeightedBuddyId(normalLate);
+  return pickWeightedBuddyId(
+    zoneWeights.length > 0 ? [...progressWeights, ...zoneWeights] : progressWeights
+  );
 }
 
 function pickWildLevelInRange(minLevel: number, maxLevel: number, spawnProgress: number): number {
   const span = Math.max(0, maxLevel - minLevel);
-  const skew = clamp(1 - spawnProgress * 0.45, 0.48, 1);
+  const skew = clamp(
+    WILD_SPAWN_BALANCE.levelSkew.base -
+      spawnProgress * WILD_SPAWN_BALANCE.levelSkew.progressPenalty,
+    WILD_SPAWN_BALANCE.levelSkew.min,
+    WILD_SPAWN_BALANCE.levelSkew.base
+  );
   const weighted = Math.pow(Math.random(), skew);
 
   return minLevel + Math.floor(weighted * (span + 1));
@@ -378,7 +303,7 @@ function getWorkoutStationById(stationId?: string): WorkoutStation | undefined {
 }
 
 export class GymBuddyWorld {
-  private player = {
+  private player: SimulatedPlayerState = {
     position: { x: 0, z: 5 },
     velocity: { x: 0, z: 0 },
     heading: Math.PI,
@@ -396,15 +321,16 @@ export class GymBuddyWorld {
   private readonly capturedHighLevel = new Map<string, number>();
   private readonly events: WorldEvent[] = [];
   private goalState: ProgressGoals = createDefaultGoalState();
+  private questState: QuestStates = createDefaultQuestState();
   private activeBoss?: BossState;
   private activeBossBattle?: BossBattleState;
   private carriedFreeWeightId?: number;
-  private catchCooldown = 0;
-  private captureCutsceneTimer = 0;
-  private shakerRechargeTimer = 0;
-  private vendingSnackCooldown = 0;
-  private bossSpawnTimer = 18;
-  private bossExoticBoost = 0;
+  private catchCooldown: number = 0;
+  private captureCutsceneTimer: number = 0;
+  private shakerRechargeTimer: number = 0;
+  private vendingSnackCooldown: number = 0;
+  private bossSpawnTimer: number = BOSS_BALANCE.initialSpawnDelaySeconds;
+  private bossExoticBoost: number = 0;
 
   constructor() {
     this.reset();
@@ -427,6 +353,7 @@ export class GymBuddyWorld {
     this.captured.clear();
     this.capturedHighLevel.clear();
     this.goalState = createDefaultGoalState();
+    this.questState = createDefaultQuestState();
     this.events.length = 0;
     this.activeBoss = undefined;
     this.activeBossBattle = undefined;
@@ -435,7 +362,7 @@ export class GymBuddyWorld {
     this.captureCutsceneTimer = 0;
     this.shakerRechargeTimer = 0;
     this.vendingSnackCooldown = 0;
-    this.bossSpawnTimer = 18;
+    this.bossSpawnTimer = BOSS_BALANCE.initialSpawnDelaySeconds;
     this.bossExoticBoost = 0;
 
     for (let index = 0; index < ACTIVE_BUDDIES; index += 1) {
@@ -542,7 +469,9 @@ export class GymBuddyWorld {
   }
 
   completeWorkout(station: WorkoutStation): void {
-    const steroidGain = this.grantSteroids(Math.random() < 0.42 ? 1 : 0);
+    const steroidGain = this.grantSteroids(
+      Math.random() < STEROID_BALANCE.workoutRewardChance ? 1 : 0
+    );
     this.player.stamina = clamp(this.player.stamina + station.staminaReward, 0, MAX_STAMINA);
     this.player.proteinShakers = clamp(
       this.player.proteinShakers + station.shakerReward,
@@ -578,7 +507,7 @@ export class GymBuddyWorld {
     const previousStamina = this.player.stamina;
     this.player.proteinShakers -= machine.energyDrinkCost;
     this.player.stamina = clamp(this.player.stamina + machine.energyDrinkStamina, 0, MAX_STAMINA);
-    const steroidGain = this.grantSteroids(1);
+    const steroidGain = this.grantSteroids(STEROID_BALANCE.vendingEnergyDrinkReward);
     const steroidText = steroidGain > 0 ? ` +${steroidGain} steroid` : '';
     this.events.push({
       type: 'vending',
@@ -603,7 +532,7 @@ export class GymBuddyWorld {
 
     for (const buddy of this.roster) {
       const previousEnergy = buddy.energy;
-      buddy.energy = clamp(buddy.energy + machine.snackCrewEnergy, 0, 100);
+      buddy.energy = clamp(buddy.energy + machine.snackCrewEnergy, 0, ROSTER_TRAINING_BALANCE.maxEnergy);
       crewEnergyRestored += buddy.energy - previousEnergy;
     }
 
@@ -642,7 +571,7 @@ export class GymBuddyWorld {
       return;
     }
 
-    if (buddy.energy < 15) {
+    if (buddy.energy < ROSTER_TRAINING_BALANCE.energyCost) {
       this.events.push({
         type: 'roster',
         message: `${buddyName} needs a breather first.`
@@ -650,12 +579,16 @@ export class GymBuddyWorld {
       return;
     }
 
-    buddy.energy = clamp(buddy.energy - 15, 0, 100);
+    buddy.energy = clamp(
+      buddy.energy - ROSTER_TRAINING_BALANCE.energyCost,
+      0,
+      ROSTER_TRAINING_BALANCE.maxEnergy
+    );
     buddy.status = 'training';
     const station = this.getRandomWorkoutStation();
     buddy.taskLabel = station.name;
     buddy.taskStationId = station.id;
-    buddy.taskOutcome = Math.random() < 0.5 ? 'success' : 'needs-spot';
+    buddy.taskOutcome = Math.random() < ROSTER_TRAINING_BALANCE.successChance ? 'success' : 'needs-spot';
     buddy.taskTimer = TRAINING_DURATION;
     buddy.taskDuration = TRAINING_DURATION;
     this.events.push({
@@ -711,7 +644,11 @@ export class GymBuddyWorld {
 
     const definition = getBuddyDefinition(buddy.definitionId);
     buddy.energy = clamp(buddy.energy - 8, 0, 100);
-    this.player.stamina = clamp(this.player.stamina - 5, 0, MAX_STAMINA);
+    this.player.stamina = clamp(
+      this.player.stamina - STAMINA_BALANCE.spotAssistCost,
+      0,
+      MAX_STAMINA
+    );
     const levelsGained = this.applyTrainingResult(buddy, definition.archetype, 0.5);
     this.finishRosterTask(buddy);
     this.events.push({
@@ -862,6 +799,7 @@ export class GymBuddyWorld {
     this.player.steroids = Math.max(0, this.player.steroids - 1);
     this.increaseRosterLevel(buddy, 1 + steroidBonus);
     this.evaluateCrewLevelGoal();
+    this.updateQuestProgress('use_steroid_1', 1);
     this.events.push({
       type: 'roster',
       rosterId: buddy.rosterId,
@@ -901,6 +839,41 @@ export class GymBuddyWorld {
     });
   }
 
+  debugAddSteroids(amount = DEBUG_BALANCE.steroidGrantAmount): void {
+    const granted = this.grantSteroids(amount);
+    this.events.push({
+      type: 'roster',
+      message:
+        granted > 0
+          ? `Debug: +${granted} Steroids added.`
+          : 'Debug: Steroid inventory is already capped.'
+    });
+  }
+
+  debugSpawnNormalCreature(): void {
+    this.spawnDebugCreature(false);
+  }
+
+  debugSpawnExoticCreature(): void {
+    this.spawnDebugCreature(true);
+  }
+
+  debugGiveActiveCrewXp(amount = DEBUG_BALANCE.activeCrewXpGrant): void {
+    const recipients = this.awardActiveCrewXp(amount, 'debug');
+    this.events.push({
+      type: 'roster',
+      message:
+        recipients > 0
+          ? `Debug: active crew gained ${amount} XP.`
+          : 'Debug: catch or activate a creature before granting crew XP.'
+    });
+  }
+
+  debugForceBossSpawn(): void {
+    this.activeBossBattle = undefined;
+    this.spawnBoss();
+  }
+
   private isGoalCompleted(goalId: ProgressGoalId): boolean {
     return this.goalState[goalId]?.completed ?? false;
   }
@@ -914,6 +887,23 @@ export class GymBuddyWorld {
       roster_level_10_any: { ...this.goalState.roster_level_10_any },
       repdex_half: { ...this.goalState.repdex_half }
     };
+  }
+
+  private getQuestStateSnapshot(): QuestStates {
+    return QUEST_DEFINITIONS.reduce((out, quest) => {
+      const state = this.questState[quest.id] ?? { completed: false, progress: 0 };
+      out[quest.id] = { ...state };
+      return out;
+    }, {} as QuestStates);
+  }
+
+  private getActiveQuestSnapshot(): WorldSnapshot['activeQuests'] {
+    return QUEST_DEFINITIONS.filter((quest) => !this.questState[quest.id]?.completed)
+      .slice(0, ACTIVE_QUEST_LIMIT)
+      .map((definition) => ({
+        definition,
+        state: { ...(this.questState[definition.id] ?? { completed: false, progress: 0 }) }
+      }));
   }
 
   private updateGoalProgress(
@@ -962,6 +952,89 @@ export class GymBuddyWorld {
     this.evaluateRepDexGoal();
   }
 
+  private updateQuestProgress(
+    questId: QuestId,
+    progress: number,
+    grantReward = true
+  ): void {
+    const definition = QUEST_DEFINITIONS.find((quest) => quest.id === questId);
+    if (!definition) {
+      return;
+    }
+
+    const state = this.questState[questId] ?? { completed: false, progress: 0 };
+    if (state.completed) {
+      return;
+    }
+
+    const nextProgress = Math.max(
+      state.progress,
+      Math.min(definition.target, Math.floor(progress))
+    );
+    const completed = nextProgress >= definition.target;
+    this.questState[questId] = {
+      completed,
+      progress: nextProgress
+    };
+
+    if (!completed || !grantReward) {
+      return;
+    }
+
+    const rewardParts: string[] = [];
+    if (definition.reward.steroids && definition.reward.steroids > 0) {
+      const granted = this.grantSteroids(definition.reward.steroids);
+      if (granted > 0) {
+        rewardParts.push(`+${granted} Steroids`);
+      }
+    }
+
+    if (definition.reward.xp && definition.reward.xp > 0) {
+      const recipients = this.awardActiveCrewXp(definition.reward.xp, 'quest');
+      if (recipients > 0) {
+        rewardParts.push(`+${definition.reward.xp} crew XP`);
+      }
+    }
+
+    if (definition.reward.exoticSpawnBonus && definition.reward.exoticSpawnBonus > 0) {
+      this.bossExoticBoost = clamp(
+        this.bossExoticBoost + definition.reward.exoticSpawnBonus,
+        0,
+        BOSS_EXOTIC_BOOST_MAX
+      );
+      rewardParts.push('exotic spawns boosted');
+    }
+
+    this.events.push({
+      type: 'roster',
+      message: `Quest complete: ${definition.title}.${rewardParts.length > 0 ? ` ${rewardParts.join(', ')}.` : ''}`
+    });
+  }
+
+  private countCapturedByRarity(rarity: BuddyDefinition['rarity']): number {
+    return BUDDY_DEFINITIONS.reduce((total, definition) => {
+      if (definition.rarity !== rarity) {
+        return total;
+      }
+
+      return total + (this.captured.get(definition.id) ?? 0);
+    }, 0);
+  }
+
+  private evaluateCaptureQuests(definition: BuddyDefinition, level: number): void {
+    if (definition.rarity === 'common') {
+      this.updateQuestProgress('capture_common_2', this.countCapturedByRarity('common'));
+    }
+
+    if (level >= 16) {
+      this.updateQuestProgress('capture_level_16', 1);
+    }
+
+    if (definition.rarity === 'exotic' || definition.isExotic) {
+      this.updateQuestProgress('find_exotic_1', 1);
+    }
+  }
+
   private evaluateRepDexGoal(): void {
     const caughtCount = this.captured.size;
     this.updateGoalProgress('repdex_half', caughtCount);
@@ -970,6 +1043,7 @@ export class GymBuddyWorld {
   private evaluateCrewLevelGoal(grantReward = true): void {
     const hasEliteCrew = [...this.roster, ...this.storage].some((buddy) => buddy.level >= 10);
     this.updateGoalProgress('roster_level_10_any', hasEliteCrew ? 1 : 0, grantReward);
+    this.updateQuestProgress('level_10', hasEliteCrew ? 1 : 0, grantReward);
   }
 
   private syncGoalStateFromLoadedProgress(): void {
@@ -991,6 +1065,32 @@ export class GymBuddyWorld {
       exoticCaptured ? 1 : 0,
       false
     );
+  }
+
+  private syncQuestStateFromLoadedProgress(): void {
+    this.updateQuestProgress('capture_common_2', this.countCapturedByRarity('common'), false);
+
+    const ownedBuddies = [...this.roster, ...this.storage];
+    this.updateQuestProgress(
+      'capture_level_16',
+      ownedBuddies.some((buddy) => buddy.level >= 16) ? 1 : 0,
+      false
+    );
+    this.updateQuestProgress(
+      'level_10',
+      ownedBuddies.some((buddy) => buddy.level >= 10) ? 1 : 0,
+      false
+    );
+
+    let exoticCaptured = false;
+    for (const [definitionId, count] of this.captured) {
+      const definition = getBuddyDefinition(definitionId);
+      if (count > 0 && (definition.rarity === 'exotic' || definition.isExotic)) {
+        exoticCaptured = true;
+        break;
+      }
+    }
+    this.updateQuestProgress('find_exotic_1', exoticCaptured ? 1 : 0, false);
   }
 
   getSnapshot(): WorldSnapshot {
@@ -1032,7 +1132,9 @@ export class GymBuddyWorld {
       },
       repDex,
       currentEvent: getCurrentGymEvent(),
+      currentZone: getGymZoneAt(this.player.position),
       goals: this.getGoalStateSnapshot(),
+      activeQuests: this.getActiveQuestSnapshot(),
       activeBoss: this.activeBoss ? this.copyBoss(this.activeBoss) : undefined,
       activeBossBattle: this.activeBossBattle ? this.copyBossBattle(this.activeBossBattle) : undefined,
       nearestBuddy: nearest
@@ -1063,6 +1165,7 @@ export class GymBuddyWorld {
         capturedTotal: this.player.capturedTotal
       },
       goals: this.getGoalStateSnapshot(),
+      quests: this.getQuestStateSnapshot(),
       roster: this.roster.map((entry) => ({
         ...entry,
         bodyTraits: { ...entry.bodyTraits },
@@ -1123,7 +1226,7 @@ export class GymBuddyWorld {
     this.captureCutsceneTimer = 0;
     this.shakerRechargeTimer = 0;
     this.vendingSnackCooldown = 0;
-    this.bossSpawnTimer = 18;
+    this.bossSpawnTimer = BOSS_BALANCE.initialSpawnDelaySeconds;
     this.bossExoticBoost = clamp(save.bossExoticBoost, 0, BOSS_EXOTIC_BOOST_MAX);
 
     for (const definition of BUDDY_DEFINITIONS) {
@@ -1282,6 +1385,10 @@ export class GymBuddyWorld {
       ...createDefaultGoalState(),
       ...save.goals
     };
+    this.questState = {
+      ...createDefaultQuestState(),
+      ...save.quests
+    };
 
     for (let index = 0; index < ACTIVE_BUDDIES; index += 1) {
       const buddy = this.createBuddy();
@@ -1299,6 +1406,7 @@ export class GymBuddyWorld {
     const savedProgressTotal = clamp(save.capturedTotal, 0, 9999);
     this.player.capturedTotal = Math.max(this.player.capturedTotal, savedProgressTotal);
     this.syncGoalStateFromLoadedProgress();
+    this.syncQuestStateFromLoadedProgress();
   }
 
   private getProgressionTier(): number {
@@ -1320,7 +1428,7 @@ export class GymBuddyWorld {
     const passives = this.getActivePassiveTotals();
     const inputMagnitude = Math.min(1, Math.hypot(actions.moveX, actions.moveZ));
     const moving = inputMagnitude > 0.01;
-    const canSprint = actions.sprintHeld && this.player.stamina > 5 && moving;
+    const canSprint = actions.sprintHeld && this.player.stamina > STAMINA_BALANCE.sprintMinimum && moving;
     const speed = (canSprint ? SPRINT_SPEED : WALK_SPEED) * (1 + passives.movementSpeedBonus);
     const targetVelocity = {
       x: moving ? actions.moveX * speed : 0,
@@ -1354,13 +1462,17 @@ export class GymBuddyWorld {
 
     if (moving) {
       this.player.stamina = clamp(
-        this.player.stamina - (canSprint ? 24 : 7) * inputMagnitude * dt * (1 - passives.staminaLossReduction),
+        this.player.stamina -
+          (canSprint ? STAMINA_BALANCE.sprintDrainPerSecond : STAMINA_BALANCE.walkDrainPerSecond) *
+            inputMagnitude *
+            dt *
+            (1 - passives.staminaLossReduction),
         0,
         MAX_STAMINA
       );
     } else {
       this.player.stamina = clamp(
-        this.player.stamina + 18 * (1 + passives.sprintRecoveryBonus) * dt,
+        this.player.stamina + STAMINA_BALANCE.recoveryPerSecond * (1 + passives.sprintRecoveryBonus) * dt,
         0,
         MAX_STAMINA
       );
@@ -1465,8 +1577,12 @@ export class GymBuddyWorld {
         continue;
       }
 
+      const definition = getBuddyDefinition(buddy.definitionId);
+      const isExotic = definition.rarity === 'exotic' || definition.isExotic === true;
       buddy.wanderTimer -= dt;
       buddy.dodgeTimer = Math.max(0, buddy.dodgeTimer - dt);
+      buddy.behaviorTimer = Math.max(0, buddy.behaviorTimer - dt);
+      buddy.behaviorCooldown = Math.max(0, buddy.behaviorCooldown - dt);
 
       if (buddy.wanderTimer <= 0) {
         buddy.wanderHeading += (Math.random() - 0.5) * 1.7;
@@ -1479,13 +1595,66 @@ export class GymBuddyWorld {
       };
       const playerDistance = Math.max(0.001, Math.hypot(fromPlayer.x, fromPlayer.z));
 
+      if (isExotic && playerDistance < 6) {
+        this.updateQuestProgress('find_exotic_1', 1);
+      }
+
+      if (
+        playerDistance < CREATURE_BEHAVIOR_BALANCE.reactRange &&
+        buddy.behavior !== 'react' &&
+        buddy.behaviorCooldown <= 0
+      ) {
+        buddy.behavior = 'react';
+        buddy.behaviorTimer = CREATURE_BEHAVIOR_BALANCE.reactDurationSeconds;
+        buddy.behaviorCooldown = CREATURE_BEHAVIOR_BALANCE.reactCooldownSeconds;
+      } else if (buddy.behaviorTimer <= 0) {
+        if (buddy.behavior !== 'wander') {
+          buddy.behavior = 'wander';
+        }
+
+        const behaviorChance = isExotic
+          ? CREATURE_BEHAVIOR_BALANCE.exoticActionChancePerSecond
+          : CREATURE_BEHAVIOR_BALANCE.normalActionChancePerSecond;
+
+        if (buddy.behaviorCooldown <= 0 && Math.random() < behaviorChance * dt) {
+          buddy.behavior = Math.random() < 0.55 ? 'flex' : 'stretch';
+          buddy.behaviorTimer = isExotic
+            ? buddy.behavior === 'flex'
+              ? CREATURE_BEHAVIOR_BALANCE.exoticFlexDurationSeconds
+              : CREATURE_BEHAVIOR_BALANCE.exoticStretchDurationSeconds
+            : buddy.behavior === 'flex'
+              ? CREATURE_BEHAVIOR_BALANCE.normalFlexDurationSeconds
+              : CREATURE_BEHAVIOR_BALANCE.normalStretchDurationSeconds;
+          buddy.behaviorCooldown =
+            CREATURE_BEHAVIOR_BALANCE.behaviorCooldownMinSeconds +
+            Math.random() * CREATURE_BEHAVIOR_BALANCE.behaviorCooldownRandomSeconds;
+        }
+      }
+
       if (playerDistance < 2.1 && buddy.dodgeTimer <= 0) {
         buddy.wanderHeading = Math.atan2(fromPlayer.x, fromPlayer.z);
         buddy.dodgeTimer = 0.55;
       }
 
       const direction = headingVector(buddy.wanderHeading);
-      const speed = buddy.dodgeTimer > 0 ? BUDDY_DODGE_SPEED : BUDDY_WANDER_SPEED;
+      let speed = buddy.dodgeTimer > 0 ? BUDDY_DODGE_SPEED : BUDDY_WANDER_SPEED;
+
+      if (isExotic) {
+        speed *= CREATURE_BEHAVIOR_BALANCE.exoticConfidenceMoveMultiplier;
+      }
+
+      if (buddy.behavior === 'flex') {
+        speed *= isExotic
+          ? CREATURE_BEHAVIOR_BALANCE.exoticBehaviorMoveMultiplier
+          : CREATURE_BEHAVIOR_BALANCE.normalFlexMoveMultiplier;
+      } else if (buddy.behavior === 'stretch') {
+        speed *= isExotic
+          ? CREATURE_BEHAVIOR_BALANCE.exoticBehaviorMoveMultiplier
+          : CREATURE_BEHAVIOR_BALANCE.normalStretchMoveMultiplier;
+      } else if (buddy.behavior === 'react') {
+        speed *= CREATURE_BEHAVIOR_BALANCE.reactMoveMultiplier;
+      }
+
       buddy.position.x += direction.x * speed * dt;
       buddy.position.z += direction.z * speed * dt;
       buddy.heading = buddy.wanderHeading;
@@ -1534,7 +1703,7 @@ export class GymBuddyWorld {
 
     if (battle.result === 'success') {
       const grantedSteroids = this.grantSteroids(battle.rewardSteroids);
-      this.player.stamina = clamp(this.player.stamina + 14, 0, MAX_STAMINA);
+      this.player.stamina = clamp(this.player.stamina + STAMINA_BALANCE.bossWinReward, 0, MAX_STAMINA);
       this.bossExoticBoost = clamp(
         this.bossExoticBoost + battle.exoticBoostReward,
         0,
@@ -1559,7 +1728,10 @@ export class GymBuddyWorld {
         boss: this.copyBoss(battle.boss),
         message: `${battle.boss.name} got outlifted. +${grantedSteroids} Steroid, +${battle.rewardXp} crew XP, exotic spawns boosted.`
       });
-      this.bossSpawnTimer = 42 + Math.random() * 24;
+      this.updateQuestProgress('win_boss_1', 1);
+      this.bossSpawnTimer =
+        BOSS_BALANCE.respawnAfterWinBaseSeconds +
+        Math.random() * BOSS_BALANCE.respawnAfterWinRandomSeconds;
     } else {
       this.player.stamina = clamp(
         this.player.stamina - this.getPassiveStaminaLoss(battle.staminaCost),
@@ -1586,7 +1758,9 @@ export class GymBuddyWorld {
         boss: this.copyBoss(battle.boss),
         message: `${battle.boss.name} won the set. Crew learned anyway: +${lessonXp} XP, stamina took a hit.`
       });
-      this.bossSpawnTimer = 62 + Math.random() * 30;
+      this.bossSpawnTimer =
+        BOSS_BALANCE.respawnAfterLossBaseSeconds +
+        Math.random() * BOSS_BALANCE.respawnAfterLossRandomSeconds;
     }
 
     this.activeBoss = undefined;
@@ -1658,7 +1832,9 @@ export class GymBuddyWorld {
           message: `${this.activeBoss.name} left the gym.`
         });
         this.activeBoss = undefined;
-        this.bossSpawnTimer = 38 + Math.random() * 26;
+        this.bossSpawnTimer =
+          BOSS_BALANCE.respawnAfterTimeoutBaseSeconds +
+          Math.random() * BOSS_BALANCE.respawnAfterTimeoutRandomSeconds;
       }
 
       return;
@@ -1730,7 +1906,7 @@ export class GymBuddyWorld {
 
     if (success) {
       buddy.captured = true;
-      buddy.respawnTimer = 1.45;
+      buddy.respawnTimer = CAPTURE_BALANCE.missRespawnSeconds;
       this.player.capturedTotal += 1;
       const capturedEntry = this.createRosterEntry(definition.id, bodyTraits, buddyDisplayName, buddy.level);
       const newBuddyXp = Math.round(CAPTURE_NEW_BUDDY_XP + buddy.level * 1.5);
@@ -1758,6 +1934,7 @@ export class GymBuddyWorld {
         this.capturedHighLevel.set(definition.id, buddy.level);
       }
       this.evaluateCaptureGoals(definition);
+      this.evaluateCaptureQuests(definition, buddy.level);
       this.captureCutsceneTimer = ARM_WRESTLE_CAPTURE_DURATION;
     } else {
       const away = {
@@ -1766,7 +1943,11 @@ export class GymBuddyWorld {
       };
       buddy.wanderHeading = Math.atan2(away.x, away.z);
       buddy.dodgeTimer = 1.15;
-      this.player.stamina = clamp(this.player.stamina - this.getPassiveStaminaLoss(8), 0, MAX_STAMINA);
+      this.player.stamina = clamp(
+        this.player.stamina - this.getPassiveStaminaLoss(STAMINA_BALANCE.failedCaptureCost),
+        0,
+        MAX_STAMINA
+      );
       this.captureCutsceneTimer = ARM_WRESTLE_CAPTURE_DURATION;
     }
 
@@ -1931,7 +2112,7 @@ export class GymBuddyWorld {
       strength: base.strength,
       endurance: base.endurance,
       focus: base.focus,
-      energy: 100,
+      energy: ROSTER_TRAINING_BALANCE.maxEnergy,
       status: 'ready',
       taskTimer: 0,
       taskDuration: 0
@@ -2006,23 +2187,7 @@ export class GymBuddyWorld {
   }
 
   private getBaseStats(archetype: BuddyArchetype): Pick<BuddyRosterEntry, 'strength' | 'endurance' | 'focus'> {
-    if (archetype === 'runner') {
-      return { strength: 4, endurance: 8, focus: 4 };
-    }
-
-    if (archetype === 'lifter') {
-      return { strength: 9, endurance: 5, focus: 4 };
-    }
-
-    if (archetype === 'spinner') {
-      return { strength: 5, endurance: 7, focus: 5 };
-    }
-
-    if (archetype === 'climber') {
-      return { strength: 7, endurance: 5, focus: 7 };
-    }
-
-    return { strength: 3, endurance: 5, focus: 8 };
+    return BASE_ROSTER_STATS_BY_ARCHETYPE[archetype];
   }
 
   private applyTrainingResult(
@@ -2056,7 +2221,7 @@ export class GymBuddyWorld {
       eventXpMultiplier *= eventEffects.enduranceWorkoutXpMultiplier ?? 1;
     }
 
-    const baseXp = 30 * rewardMultiplier * eventXpMultiplier;
+    const baseXp = XP_REWARDS.workoutBase * rewardMultiplier * eventXpMultiplier;
     return this.addRosterXp(buddy, Math.round(baseXp));
   }
 
@@ -2093,10 +2258,16 @@ export class GymBuddyWorld {
 
   private increaseRosterLevel(buddy: BuddyRosterEntry, statBonus = 0): void {
     buddy.level += 1;
-    buddy.strength += 1 + statBonus;
-    buddy.endurance += 1 + statBonus;
-    buddy.focus += 1 + statBonus;
-    buddy.energy = clamp(buddy.energy + 18 + statBonus * 4, 0, 100);
+    buddy.strength += LEVEL_UP_BALANCE.statIncrease + statBonus;
+    buddy.endurance += LEVEL_UP_BALANCE.statIncrease + statBonus;
+    buddy.focus += LEVEL_UP_BALANCE.statIncrease + statBonus;
+    buddy.energy = clamp(
+      buddy.energy +
+        LEVEL_UP_BALANCE.energyReward +
+        statBonus * LEVEL_UP_BALANCE.bonusEnergyPerExtraStat,
+      0,
+      ROSTER_TRAINING_BALANCE.maxEnergy
+    );
   }
 
   private awardActiveCrewXp(amount: number, sourceLabel: string, excludeRosterId?: number): number {
@@ -2126,28 +2297,38 @@ export class GymBuddyWorld {
     const crew = this.getBossBattleCrewBreakdown();
     const eventEffects = getCurrentGymEvent().effects;
     const bossRewardMultiplier = eventEffects.bossRewardMultiplier ?? 1;
-    const bossPower = boss.strength + boss.endurance + boss.focus + 18;
-    const winChance = clamp(0.42 + (crew.total - bossPower) / 120, 0.18, 0.94);
+    const bossPower = boss.strength + boss.endurance + boss.focus + BOSS_BALANCE.powerBonus;
+    const winChance = clamp(
+      BOSS_BALANCE.winChanceBase + (crew.total - bossPower) / BOSS_BALANCE.winChancePowerDivisor,
+      BOSS_BALANCE.winChanceMin,
+      BOSS_BALANCE.winChanceMax
+    );
     const success = Math.random() < winChance;
-    const baseRewardSteroids = Math.random() < 0.35 || crew.hasExotic ? 2 : 1;
+    const baseRewardSteroids =
+      Math.random() < BOSS_BALANCE.rewardSteroidUpgradeChance || crew.hasExotic
+        ? BOSS_BALANCE.rewardSteroidsLuckyOrExotic
+        : BOSS_BALANCE.rewardSteroidsBase;
     const rounds: BossBattleRound[] = [
       {
         label: 'Level check',
         crewScore: crew.levelPower,
-        bossScore: bossPower * 0.3,
-        winner: crew.levelPower >= bossPower * 0.3 ? 'crew' : 'boss'
+        bossScore: bossPower * BOSS_BALANCE.roundWeights.level,
+        winner: crew.levelPower >= bossPower * BOSS_BALANCE.roundWeights.level ? 'crew' : 'boss'
       },
       {
         label: 'Stat clash',
         crewScore: crew.statPower,
-        bossScore: bossPower * 0.46,
-        winner: crew.statPower >= bossPower * 0.46 ? 'crew' : 'boss'
+        bossScore: bossPower * BOSS_BALANCE.roundWeights.stats,
+        winner: crew.statPower >= bossPower * BOSS_BALANCE.roundWeights.stats ? 'crew' : 'boss'
       },
       {
         label: 'Rarity + passives',
         crewScore: crew.rarityPower + crew.passivePower,
-        bossScore: bossPower * 0.18,
-        winner: crew.rarityPower + crew.passivePower >= bossPower * 0.18 ? 'crew' : 'boss'
+        bossScore: bossPower * BOSS_BALANCE.roundWeights.rarityPassive,
+        winner:
+          crew.rarityPower + crew.passivePower >= bossPower * BOSS_BALANCE.roundWeights.rarityPassive
+            ? 'crew'
+            : 'boss'
       }
     ];
 
@@ -2158,10 +2339,13 @@ export class GymBuddyWorld {
       crewPower: crew.total,
       bossPower,
       winChance,
-      rewardXp: Math.round((28 + bossPower * 0.25) * bossRewardMultiplier),
+      rewardXp: Math.round(
+        (BOSS_BALANCE.rewardXpBase + bossPower * BOSS_BALANCE.rewardXpPowerScale) *
+          bossRewardMultiplier
+      ),
       rewardSteroids: baseRewardSteroids + Math.max(0, Math.floor(eventEffects.bossSteroidRewardBonus ?? 0)),
-      exoticBoostReward: BOSS_EXOTIC_BOOST_REWARD * bossRewardMultiplier,
-      staminaCost: 18,
+      exoticBoostReward: BOSS_BALANCE.exoticBoostReward * bossRewardMultiplier,
+      staminaCost: STAMINA_BALANCE.bossFailureCost,
       rounds,
       activeRound: 0,
       timer: BOSS_BATTLE_DURATION,
@@ -2205,11 +2389,15 @@ export class GymBuddyWorld {
 
     for (const buddy of this.roster) {
       const definition = getBuddyDefinition(buddy.definitionId);
-      const energyScale = 0.72 + buddy.energy / 360;
-      levelPower += buddy.level * 2.7;
+      const energyScale =
+        BOSS_BALANCE.crewPower.energyBase + buddy.energy / BOSS_BALANCE.crewPower.energyDivisor;
+      levelPower += buddy.level * BOSS_BALANCE.crewPower.levelMultiplier;
       statPower += (buddy.strength + buddy.endurance + buddy.focus) * energyScale;
       rarityPower += this.getRarityBattleBonus(definition);
-      passiveNudge += definition.rarity === 'exotic' || definition.isExotic ? 3 : 1.35;
+      passiveNudge +=
+        definition.rarity === 'exotic' || definition.isExotic
+          ? BOSS_BALANCE.crewPower.exoticPassiveNudge
+          : BOSS_BALANCE.crewPower.normalPassiveNudge;
       hasExotic ||= definition.rarity === 'exotic' || definition.isExotic === true;
     }
 
@@ -2222,25 +2410,25 @@ export class GymBuddyWorld {
       statPower,
       rarityPower,
       passivePower,
-      total: subtotal + passivePower + this.player.stamina / 10,
+      total: subtotal + passivePower + this.player.stamina / BOSS_BALANCE.crewPower.staminaDivisor,
       hasExotic
     };
   }
 
   private getRarityBattleBonus(definition: BuddyDefinition): number {
     if (definition.rarity === 'exotic' || definition.isExotic) {
-      return 8;
+      return BOSS_BALANCE.rarityBattleBonus.exotic;
     }
 
     if (definition.rarity === 'rare') {
-      return 4.5;
+      return BOSS_BALANCE.rarityBattleBonus.rare;
     }
 
     if (definition.rarity === 'uncommon') {
-      return 2.5;
+      return BOSS_BALANCE.rarityBattleBonus.uncommon;
     }
 
-    return 1;
+    return BOSS_BALANCE.rarityBattleBonus.common;
   }
 
   private getCrewPower(): number {
@@ -2252,7 +2440,7 @@ export class GymBuddyWorld {
   }
 
   private rollPassiveBonus(chance: number): number {
-    return Math.random() < clamp(chance, 0, 0.45) ? 1 : 0;
+    return Math.random() < clamp(chance, 0, PASSIVE_TOTAL_LIMITS.rollMaxChance) ? 1 : 0;
   }
 
   private getActivePassiveTotals(): ActivePassiveTotals {
@@ -2284,12 +2472,16 @@ export class GymBuddyWorld {
     }
 
     return {
-      movementSpeedBonus: clamp(totals.movementSpeedBonus, 0, 0.12),
-      strengthTrainingChance: clamp(totals.strengthTrainingChance, 0, 0.35),
-      steroidBoostChance: clamp(totals.steroidBoostChance, 0, 0.35),
-      staminaLossReduction: clamp(totals.staminaLossReduction, 0, 0.18),
-      sprintRecoveryBonus: clamp(totals.sprintRecoveryBonus, 0, 0.24),
-      bossPowerBonus: clamp(totals.bossPowerBonus, 0, 0.25)
+      movementSpeedBonus: clamp(totals.movementSpeedBonus, 0, PASSIVE_TOTAL_LIMITS.movementSpeedBonus),
+      strengthTrainingChance: clamp(
+        totals.strengthTrainingChance,
+        0,
+        PASSIVE_TOTAL_LIMITS.strengthTrainingChance
+      ),
+      steroidBoostChance: clamp(totals.steroidBoostChance, 0, PASSIVE_TOTAL_LIMITS.steroidBoostChance),
+      staminaLossReduction: clamp(totals.staminaLossReduction, 0, PASSIVE_TOTAL_LIMITS.staminaLossReduction),
+      sprintRecoveryBonus: clamp(totals.sprintRecoveryBonus, 0, PASSIVE_TOTAL_LIMITS.sprintRecoveryBonus),
+      bossPowerBonus: clamp(totals.bossPowerBonus, 0, PASSIVE_TOTAL_LIMITS.bossPowerBonus)
     };
   }
 
@@ -2350,11 +2542,15 @@ export class GymBuddyWorld {
     return nearest;
   }
 
-  private createBuddy(): BuddyState {
-    let position = randomPoint();
+  private createBuddy(definitionIdOverride?: string): BuddyState {
+    const spawnZone = getRandomGymSpawnZone();
+    let position = randomPointForZone(spawnZone);
     const spawnProgress = this.getWildSpawnProgress();
     const eventExoticBoost = getCurrentGymEvent().effects.exoticSpawnBonus ?? 0;
-    const definitionId = weightedBuddyDefinitionId(spawnProgress, this.bossExoticBoost + eventExoticBoost);
+    const positionZone = getGymZoneAt(position);
+    const definitionId =
+      definitionIdOverride ??
+      weightedBuddyDefinitionId(spawnProgress, this.bossExoticBoost + eventExoticBoost, positionZone);
     const definition = getBuddyDefinition(definitionId);
 
     for (let attempts = 0; attempts < 8; attempts += 1) {
@@ -2362,7 +2558,7 @@ export class GymBuddyWorld {
         break;
       }
 
-      position = randomPoint();
+      position = randomPointForZone(spawnZone);
     }
 
     return {
@@ -2379,20 +2575,59 @@ export class GymBuddyWorld {
       respawnTimer: 0,
       dodgeTimer: 0,
       holdTimer: 0,
-      ragdollTimer: 0
+      ragdollTimer: 0,
+      behavior: 'wander',
+      behaviorTimer: 0,
+      behaviorCooldown: Math.random() * CREATURE_BEHAVIOR_BALANCE.behaviorCooldownRandomSeconds
     };
   }
 
+  private spawnDebugCreature(exotic: boolean): void {
+    const candidates = BUDDY_DEFINITIONS.filter((definition) =>
+      exotic
+        ? definition.rarity === 'exotic' || definition.isExotic
+        : definition.rarity !== 'exotic' && !definition.isExotic
+    );
+    const definition = candidates[Math.floor(Math.random() * candidates.length)];
+
+    if (!definition) {
+      this.events.push({
+        type: 'roster',
+        message: exotic
+          ? 'Debug: no exotic creature definitions found.'
+          : 'Debug: no normal creature definitions found.'
+      });
+      return;
+    }
+
+    const buddy = this.createBuddy(definition.id);
+    this.buddies.push(buddy);
+    this.events.push({
+      type: 'spawn',
+      buddy: { ...buddy, position: copyVec2(buddy.position), bodyTraits: { ...buddy.bodyTraits } },
+      message: `Debug: ${definition.name} spawned.`
+    });
+  }
+
   private getWildSpawnProgress(): number {
-    const capturedProgress = clamp(this.player.capturedTotal / 45, 0, 1);
+    const capturedProgress = clamp(
+      this.player.capturedTotal / WILD_SPAWN_BALANCE.progress.capturedTotalForMax,
+      0,
+      1
+    );
     const crewAverage = this.getCrewAverageLevel();
-    const crewProgress = clamp(crewAverage / 40, 0, 1);
+    const crewProgress = clamp(
+      crewAverage / WILD_SPAWN_BALANCE.progress.crewAverageLevelForMax,
+      0,
+      1
+    );
     const goalAdjustedProgress = this.isGoalCompleted('capture_6')
-      ? 1
-      : 0.6;
+      ? WILD_SPAWN_BALANCE.progress.unlockedGoalScale
+      : WILD_SPAWN_BALANCE.progress.lockedGoalScale;
 
     return clamp(
-      capturedProgress * 0.68 * goalAdjustedProgress + crewProgress * 0.32 * goalAdjustedProgress,
+      capturedProgress * WILD_SPAWN_BALANCE.progress.capturedWeight * goalAdjustedProgress +
+        crewProgress * WILD_SPAWN_BALANCE.progress.crewWeight * goalAdjustedProgress,
       0,
       1
     );
@@ -2412,10 +2647,18 @@ export class GymBuddyWorld {
     const earlyUnlocked = this.isGoalCompleted('capture_6');
     const midUnlocked = this.isGoalCompleted('capture_10');
     const progression = clamp(spawnProgress, 0, 1);
-    const normalLowWeight = 14 - progression * 12;
-    const level16to25Weight = earlyUnlocked ? 0.7 + progression * 4.9 : 0.15;
-    const level26to35Weight = midUnlocked ? 0.15 + progression * 2.65 : 0;
-    const level36PlusWeight = midUnlocked ? 0.03 + progression * 1.15 : 0;
+    const weights = WILD_SPAWN_BALANCE.levelTierWeights;
+    const ranges = WILD_SPAWN_BALANCE.levelRanges;
+    const normalLowWeight = weights.lowBase - progression * weights.lowProgressPenalty;
+    const level16to25Weight = earlyUnlocked
+      ? weights.midBase + progression * weights.midProgressScale
+      : weights.midLocked;
+    const level26to35Weight = midUnlocked
+      ? weights.highBase + progression * weights.highProgressScale
+      : 0;
+    const level36PlusWeight = midUnlocked
+      ? weights.lateBase + progression * weights.lateProgressScale
+      : 0;
     const total = normalLowWeight + level16to25Weight + level26to35Weight + level36PlusWeight;
     const roll = Math.random() * total;
     const normalizedLow = normalLowWeight;
@@ -2423,17 +2666,17 @@ export class GymBuddyWorld {
     const normalizedHigh = normalizedMid + level26to35Weight;
 
     if (roll < normalizedLow) {
-      return pickWildLevelInRange(1, 15, progression);
+      return pickWildLevelInRange(ranges.low.min, ranges.low.max, progression);
     }
 
     if (roll < normalizedMid) {
-      return pickWildLevelInRange(16, 25, progression);
+      return pickWildLevelInRange(ranges.mid.min, ranges.mid.max, progression);
     }
 
     if (roll < normalizedHigh) {
-      return pickWildLevelInRange(26, 35, progression);
+      return pickWildLevelInRange(ranges.high.min, ranges.high.max, progression);
     }
 
-    return pickWildLevelInRange(36, 50, progression);
+    return pickWildLevelInRange(ranges.late.min, ranges.late.max, progression);
   }
 }

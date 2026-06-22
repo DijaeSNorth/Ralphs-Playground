@@ -1,0 +1,11 @@
+Stage: Capture pacing tuning
+
+Files changed:
+- src/game/content/balance.ts: tuned spawn availability, exotic spawn odds, wild level progression weights, arm-wrestle duration, and failed-capture respawn delay.
+
+Important details:
+- Approved catch chance rules were not changed: Lv 1-15 90%, Lv 16-25 85%, Lv 26-35 80%, Lv 36+ 70%, exotic 40%.
+- Active wild creatures increased from 6 to 7 for faster early encounters.
+- Exotic spawn chance remains rare, but the base/progression cap is slightly higher so playtesters can realistically encounter exotics.
+- Arm-wrestle duration was shortened from 1.8s to 1.6s.
+- Failed capture respawn delay was shortened from 1.45s to 0.9s to reduce frustration.

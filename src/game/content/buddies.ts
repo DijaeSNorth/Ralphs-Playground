@@ -1,4 +1,5 @@
-import type { BuddyDefinition, BuddyPassive } from '../types';
+import { BUDDY_PASSIVE_DEFINITIONS } from './balance';
+import type { BuddyDefinition } from '../types';
 
 const WOMEN_FRIENDLY_BUDDY_NAMES = [
   'Muscle Mommy',
@@ -14,184 +15,6 @@ const WOMEN_FRIENDLY_BUDDY_NAMES = [
 ];
 
 type BuddyDefinitionDraft = Omit<BuddyDefinition, 'passive'>;
-
-const BUDDY_PASSIVES: Record<string, BuddyPassive> = {
-  'buff-bunny': {
-    id: 'quick-hop',
-    name: 'Quick Hop',
-    effect: 'movement-speed',
-    value: 0.035,
-    description: '+3.5% movement speed while in crew.'
-  },
-  'bench-bear': {
-    id: 'chest-day-aura',
-    name: 'Chest Day Aura',
-    effect: 'strength-training',
-    value: 0.12,
-    description: 'Small chance for bonus strength from crew workouts.'
-  },
-  'flex-fox': {
-    id: 'sneaky-stack',
-    name: 'Sneaky Stack',
-    effect: 'steroid-boost',
-    value: 0.1,
-    description: 'Steroids have a small chance to add extra stats.'
-  },
-  'iron-rhino': {
-    id: 'iron-hide-cardio',
-    name: 'Iron Hide Cardio',
-    effect: 'stamina-saver',
-    value: 0.07,
-    description: 'Reduces stamina loss by 7% while in crew.'
-  },
-  'curl-corgi': {
-    id: 'short-stride-sprint',
-    name: 'Short-Stride Sprint',
-    effect: 'sprint-recovery',
-    value: 0.08,
-    description: '+8% stamina recovery after sprinting.'
-  },
-  'deadlift-deer': {
-    id: 'antler-leverage',
-    name: 'Antler Leverage',
-    effect: 'strength-training',
-    value: 0.09,
-    description: 'Small chance for bonus strength from crew workouts.'
-  },
-  'jacked-jaguar': {
-    id: 'silent-footwork',
-    name: 'Silent Footwork',
-    effect: 'movement-speed',
-    value: 0.04,
-    description: '+4% movement speed while in crew.'
-  },
-  'pump-panther': {
-    id: 'night-tempo',
-    name: 'Night Tempo',
-    effect: 'sprint-recovery',
-    value: 0.1,
-    description: '+10% stamina recovery after sprinting.'
-  },
-  'press-penguin': {
-    id: 'cooldown-waddle',
-    name: 'Cooldown Waddle',
-    effect: 'stamina-saver',
-    value: 0.05,
-    description: 'Reduces stamina loss by 5% while in crew.'
-  },
-  'rowing-raccoon': {
-    id: 'trash-boat-tempo',
-    name: 'Trash-Boat Tempo',
-    effect: 'sprint-recovery',
-    value: 0.07,
-    description: '+7% stamina recovery after sprinting.'
-  },
-  'squat-squirrel': {
-    id: 'micro-plate-hustle',
-    name: 'Micro-Plate Hustle',
-    effect: 'steroid-boost',
-    value: 0.08,
-    description: 'Steroids have a small chance to add extra stats.'
-  },
-  'tricep-tiger': {
-    id: 'striped-set-power',
-    name: 'Striped Set Power',
-    effect: 'boss-power',
-    value: 0.08,
-    description: '+8% crew power in boss challenges.'
-  },
-  'bulk-buffalo': {
-    id: 'herd-momentum',
-    name: 'Herd Momentum',
-    effect: 'stamina-saver',
-    value: 0.08,
-    description: 'Reduces stamina loss by 8% while in crew.'
-  },
-  'minotaur-maximus': {
-    id: 'labyrinth-roar',
-    name: 'Labyrinth Roar',
-    effect: 'boss-power',
-    value: 0.15,
-    description: '+15% crew power in boss challenges.'
-  },
-  'griffin-gains': {
-    id: 'sky-spotter',
-    name: 'Sky Spotter',
-    effect: 'movement-speed',
-    value: 0.08,
-    description: '+8% movement speed while in crew.'
-  },
-  'dragon-deadlift': {
-    id: 'hoarder-lockout',
-    name: 'Hoarder Lockout',
-    effect: 'strength-training',
-    value: 0.18,
-    description: 'Strong chance for bonus strength from crew workouts.'
-  },
-  'cyclops-curl': {
-    id: 'single-eye-focus',
-    name: 'Single-Eye Focus',
-    effect: 'steroid-boost',
-    value: 0.16,
-    description: 'Steroids have a better chance to add extra stats.'
-  },
-  'swole-gorilla': {
-    id: 'ape-challenge-roar',
-    name: 'Ape Challenge Roar',
-    effect: 'boss-power',
-    value: 0.1,
-    description: '+10% crew power in boss challenges.'
-  },
-  'chrome-rhino': {
-    id: 'alloy-lungs',
-    name: 'Alloy Lungs',
-    effect: 'stamina-saver',
-    value: 0.13,
-    description: 'Reduces stamina loss by 13% while in crew.'
-  },
-  'hydra-hypertrophy': {
-    id: 'many-neck-hype',
-    name: 'Many-Neck Hype',
-    effect: 'strength-training',
-    value: 0.16,
-    description: 'Strong chance for bonus strength from crew workouts.'
-  },
-  'pegasus-pump': {
-    id: 'cloud-recovery',
-    name: 'Cloud Recovery',
-    effect: 'sprint-recovery',
-    value: 0.16,
-    description: '+16% stamina recovery after sprinting.'
-  },
-  'werewolf-warrior': {
-    id: 'moon-howl-power',
-    name: 'Moon Howl Power',
-    effect: 'boss-power',
-    value: 0.14,
-    description: '+14% crew power in boss challenges.'
-  },
-  'kraken-curl': {
-    id: 'tentacle-grip',
-    name: 'Tentacle Grip',
-    effect: 'steroid-boost',
-    value: 0.15,
-    description: 'Steroids have a better chance to add extra stats.'
-  },
-  'sphinx-strength': {
-    id: 'riddle-guard',
-    name: 'Riddle Guard',
-    effect: 'stamina-saver',
-    value: 0.12,
-    description: 'Reduces stamina loss by 12% while in crew.'
-  },
-  'phoenix-flex': {
-    id: 'rebirth-stride',
-    name: 'Rebirth Stride',
-    effect: 'sprint-recovery',
-    value: 0.15,
-    description: '+15% stamina recovery after sprinting.'
-  }
-};
 
 const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
   {
@@ -216,7 +39,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       silhouette: 'mustelid',
       pattern: 'spots'
     },
-    baseCatchRate: 0.9,
     staminaReward: 14
   },
   {
@@ -241,7 +63,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       silhouette: 'ungulate',
       pattern: 'banded'
     },
-    baseCatchRate: 0.86,
     staminaReward: 16
   },
   {
@@ -266,7 +87,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       silhouette: 'canine',
       pattern: 'stripes'
     },
-    baseCatchRate: 0.85,
     staminaReward: 10
   },
   {
@@ -291,7 +111,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       silhouette: 'ungulate',
       pattern: 'banded'
     },
-    baseCatchRate: 0.8,
     staminaReward: 16
   },
   {
@@ -322,7 +141,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       silhouette: 'canine',
       pattern: 'spots'
     },
-    baseCatchRate: 0.89,
     staminaReward: 12
   },
   {
@@ -353,7 +171,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       silhouette: 'ungulate',
       pattern: 'banded'
     },
-    baseCatchRate: 0.85,
     staminaReward: 20
   },
   {
@@ -378,7 +195,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       silhouette: 'feline',
       pattern: 'spots'
     },
-    baseCatchRate: 0.8,
     staminaReward: 18
   },
   {
@@ -403,7 +219,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       silhouette: 'feline',
       pattern: 'spots'
     },
-    baseCatchRate: 0.83,
     staminaReward: 18
   },
   {
@@ -428,7 +243,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       silhouette: 'avian',
       pattern: 'solid'
     },
-    baseCatchRate: 0.84,
     staminaReward: 14
   },
   {
@@ -453,7 +267,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       silhouette: 'mustelid',
       pattern: 'banded'
     },
-    baseCatchRate: 0.88,
     staminaReward: 13
   },
   {
@@ -478,7 +291,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       silhouette: 'mustelid',
       pattern: 'stripes'
     },
-    baseCatchRate: 0.86,
     staminaReward: 15
   },
   {
@@ -503,7 +315,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       silhouette: 'feline',
       pattern: 'stripes'
     },
-    baseCatchRate: 0.78,
     staminaReward: 19
   },
   {
@@ -528,7 +339,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       silhouette: 'ungulate',
       pattern: 'banded'
     },
-    baseCatchRate: 0.8,
     staminaReward: 22
   },
   {
@@ -564,7 +374,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       title: 'Labyrinth Grinder',
       note: 'A bull-horned titan with massive shoulders, playful horns, and arena-ready confidence.'
     },
-    baseCatchRate: 0.4,
     staminaReward: 28
   },
   {
@@ -594,7 +403,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       title: 'Vault Keeper',
       note: 'An eagle-bodied gym beast with winged momentum and a dramatic, comedic trophy posture.'
     },
-    baseCatchRate: 0.4,
     staminaReward: 26
   },
   {
@@ -630,7 +438,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       title: 'Iron Wyrm',
       note: 'A heavy-tailed, crest-backed draconic lifter with a dramatic glow and stacked pecs.'
     },
-    baseCatchRate: 0.4,
     staminaReward: 30
   },
   {
@@ -660,7 +467,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       title: 'Cycloid Liftmaster',
       note: 'A one-eyed muscle comic of mythic origin with a giant anchor brow and absurd raw power.'
     },
-    baseCatchRate: 0.4,
     staminaReward: 25
   },
   {
@@ -685,7 +491,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       silhouette: 'canine',
       pattern: 'solid'
     },
-    baseCatchRate: 0.82,
     staminaReward: 24
   },
   {
@@ -715,7 +520,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       title: 'Titan Alloy',
       note: 'An original biomechanical rhino concept with reinforced horns and ironhide musculature.'
     },
-    baseCatchRate: 0.4,
     staminaReward: 24
   },
   {
@@ -751,7 +555,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       title: 'Seven-Neck Beast',
       note: 'A many-necked scale-beast with a dramatic, overcaffeinated pump and a lot of personality.'
     },
-    baseCatchRate: 0.4,
     staminaReward: 29
   },
   {
@@ -781,7 +584,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       title: 'Skyline Finisher',
       note: 'A winged cloud-hued charger who turns every rep into a dramatic dive-bomb.'
     },
-    baseCatchRate: 0.4,
     staminaReward: 27
   },
   {
@@ -811,7 +613,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       title: 'Full Moon Gym Hero',
       note: 'A wolf-bodied grappler with furry ears, beastly shoulders, and a stubborn gym rhythm.'
     },
-    baseCatchRate: 0.4,
     staminaReward: 30
   },
   {
@@ -841,7 +642,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       title: 'Submarine Splitter',
       note: 'A tidal tentacle specialist built to anchor the floor and still swing a grin through water and dust.'
     },
-    baseCatchRate: 0.4,
     staminaReward: 28
   },
   {
@@ -871,7 +671,6 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       title: 'Sand Temple Sentry',
       note: 'A regal feline titan with a lion chest and ceremonial crest, forever guarding the gym gate.'
     },
-    baseCatchRate: 0.4,
     staminaReward: 31
   },
   {
@@ -901,13 +700,12 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
       title: 'Rebirth Reps',
       note: 'A flame-wreathed avian who arrives with hot air, theatrical tail feathers, and endless energy.'
     },
-    baseCatchRate: 0.4,
     staminaReward: 29
   }
 ];
 
 function attachPassive(draft: BuddyDefinitionDraft): BuddyDefinition {
-  const passive = BUDDY_PASSIVES[draft.id];
+  const passive = BUDDY_PASSIVE_DEFINITIONS[draft.id];
 
   if (!passive) {
     throw new Error(`Missing buddy passive: ${draft.id}`);

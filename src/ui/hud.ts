@@ -1,7 +1,17 @@
 ﻿import { getBuddyDefinition } from '../game/content/buddies';
 import type { InputMode } from '../game/input/actions';
 import { normalizeManifestHairId, normalizeManifestSex } from '../game/content/characterAssetManifest';
-import { getArmWrestleCatchChance, getBuddyXpForNextLevel } from '../game/simulation/world';
+import {
+  ACTIVE_CREW_LIMIT,
+  GOAL_LABELS,
+  ROSTER_TRAINING_BALANCE,
+  STAMINA_BALANCE,
+  VENDING_BALANCE,
+  WORKOUT_BALANCE,
+  getArmWrestleCatchChance,
+  getBuddyXpForNextLevel,
+  getGoalTargets
+} from '../game/content/balance';
 import { BUDDY_DEFINITIONS } from '../game/content/buddies';
 import { getCurrentGymEvent } from '../game/content/gymEvents';
 import { DEFAULT_GAME_SETTINGS, type CameraDistanceSetting, type GameSettings } from '../game/settings';
@@ -15,6 +25,7 @@ import {
   SKIN_TONE_OPTIONS
 } from '../game/content/playerAppearance';
 import { WORKOUT_STATIONS } from '../game/content/equipment';
+import { getRecentRuntimeErrors, recordRuntimeError } from '../game/runtimeErrors';
 import type {
   ActionState,
   BodySizeKey,
@@ -42,10 +53,12 @@ type ActiveWorkout = {
   message: string;
 };
 
-const WORKOUT_GOAL = 5;
-const ROSTER_SPOT_RANGE = 1.95;
+const WORKOUT_GOAL = WORKOUT_BALANCE.goalScore;
+const ROSTER_SPOT_RANGE = ROSTER_TRAINING_BALANCE.spotRange;
 const PREVIEW_ROTATE_STEP = Math.PI / 12;
 const SPOT_HOLD_DURATION = 0.55;
+const GAME_VERSION = '0.1.0-playtest.1';
+const SAVE_VERSION_LABEL = '1';
 const CONTROL_HINTS: Record<InputMode, string> = {
   'keyboard-mouse':
     'WASD Move / Shift Sprint / Left Click Arm Wrestle / Right Click Use',
@@ -55,22 +68,7 @@ const SWITCH_MODE_BUTTON_LABELS: Record<InputMode, string> = {
   'keyboard-mouse': 'Switch to Touch Controls',
   touch: 'Switch to Keyboard + Mouse'
 };
-const GOAL_TARGETS = {
-  capture_3: 3,
-  capture_6: 6,
-  capture_10: 10,
-  capture_first_exotic: 1,
-  roster_level_10_any: 1,
-  repdex_half: Math.ceil(BUDDY_DEFINITIONS.length / 2)
-} as const;
-const GOAL_LABELS = {
-  capture_3: 'Capture 3 creatures',
-  capture_6: 'Capture 6 creatures',
-  capture_10: 'Capture 10 creatures',
-  capture_first_exotic: 'Find your first exotic',
-  roster_level_10_any: 'Level a crew member to 10',
-  repdex_half: 'Fill half the RepDex'
-} as const;
+const GOAL_TARGETS = getGoalTargets(BUDDY_DEFINITIONS.length);
 const RARITY_SORT_ORDER: Record<string, number> = {
   normal: 0,
   common: 0,
@@ -94,6 +92,7 @@ export class GameHud {
   private readonly objective: HTMLDivElement;
   private readonly target: HTMLDivElement;
   private readonly eventChip: HTMLDivElement;
+  private readonly zoneChip: HTMLDivElement;
   private readonly targetPreview: HTMLDivElement;
   private readonly targetPreviewName: HTMLDivElement;
   private readonly targetPreviewRarity: HTMLDivElement;
@@ -102,6 +101,10 @@ export class GameHud {
   private readonly goalsPanel: HTMLElement;
   private readonly goalsPanelToggle: HTMLButtonElement;
   private readonly goalsPanelBody: HTMLDivElement;
+  private readonly questsList: HTMLDivElement;
+  private readonly questsPanel: HTMLElement;
+  private readonly questsPanelToggle: HTMLButtonElement;
+  private readonly questsPanelBody: HTMLDivElement;
   private readonly crewSortSelect: HTMLSelectElement;
   private readonly dexList: HTMLDivElement;
   private readonly repdexPanel: HTMLElement;
@@ -176,6 +179,7 @@ export class GameHud {
   private readonly settingsReducedInput: HTMLInputElement;
   private readonly settingsCatchOddsInput: HTMLInputElement;
   private readonly settingsResetSaveButton: HTMLButtonElement;
+  private readonly playtestReportButton: HTMLButtonElement;
   private readonly tutorialPopup: HTMLDivElement;
   private readonly tutorialText: HTMLDivElement;
   private readonly tutorialSkip: HTMLButtonElement;
@@ -250,11 +254,14 @@ export class GameHud {
   private renderedTarget = '';
   private renderedEventName = '';
   private renderedEventBonus = '';
+  private renderedZoneName = '';
+  private renderedZoneDescription = '';
   private renderedTargetReady = false;
   private renderedTargetPreviewName = '';
   private renderedTargetPreviewRarity = '';
   private renderedTargetPreviewChance = '';
   private renderedGoalsMarkup = '';
+  private renderedQuestsMarkup = '';
   private renderedToastVisible = false;
   private availableSteroids = 0;
   private renderedTutorialText = '';
@@ -262,6 +269,7 @@ export class GameHud {
   private renderedFreeWeightPromptName = '';
   private renderedFreeWeightPromptButton = '';
   private renderedVendingPromptName = '';
+  private latestSnapshot?: WorldSnapshot;
   private renderedBossName = '';
   private renderedBossStats = '';
   private renderedBossTimer = '';
@@ -317,6 +325,11 @@ export class GameHud {
             <strong>${initialEvent.name}</strong>
             <small>${initialEvent.bonusLabel}</small>
           </div>
+          <div class="zone-chip" data-zone-chip>
+            <span>Zone</span>
+            <strong>Finding Zone</strong>
+            <small>Move around the gym.</small>
+          </div>
           <div class="target-chip" data-target>No target</div>
           <section class="target-preview target-preview--hidden" data-target-preview>
             <div class="target-preview-name" data-target-preview-name></div>
@@ -330,6 +343,15 @@ export class GameHud {
             </div>
             <div class="panel-body" id="goals-body">
               <div class="goals-list" data-goals-list></div>
+            </div>
+          </section>
+          <section class="quests-panel hud-panel--collapsible" data-panel="quests" aria-label="Active quests">
+            <div class="panel-title">
+              <span>Quests</span>
+              <button type="button" class="panel-toggle" data-panel-toggle="quests" aria-expanded="true" aria-controls="quests-body">▾</button>
+            </div>
+            <div class="panel-body" id="quests-body">
+              <div class="quests-list" data-quests-list></div>
             </div>
           </section>
         </section>
@@ -349,7 +371,7 @@ export class GameHud {
           </div>
           <div class="stat-row">
             <span>Crew</span>
-            <strong data-crew-count>0/4</strong>
+            <strong data-crew-count>0/${ACTIVE_CREW_LIMIT}</strong>
           </div>
           <div class="stamina-wrap" aria-label="Stamina">
             <span>Stamina</span>
@@ -542,7 +564,7 @@ export class GameHud {
           <div class="vending-options">
             <button type="button" class="vending-option" data-vending-energy>
               <strong>Energy Drink</strong>
-              <span data-vending-energy-meta>1 shaker -> +38 stamina</span>
+              <span data-vending-energy-meta>${VENDING_BALANCE.energyDrinkCost} shaker -> +${VENDING_BALANCE.energyDrinkStamina} stamina</span>
             </button>
             <button type="button" class="vending-option" data-vending-snack>
               <strong>Protein Snack</strong>
@@ -696,6 +718,7 @@ export class GameHud {
     const objective = root.querySelector<HTMLDivElement>('[data-objective]');
     const target = root.querySelector<HTMLDivElement>('[data-target]');
     const eventChip = root.querySelector<HTMLDivElement>('[data-event-chip]');
+    const zoneChip = root.querySelector<HTMLDivElement>('[data-zone-chip]');
     const targetPreview = root.querySelector<HTMLDivElement>('[data-target-preview]');
     const targetPreviewName = root.querySelector<HTMLDivElement>('[data-target-preview-name]');
     const targetPreviewRarity = root.querySelector<HTMLDivElement>('[data-target-preview-rarity]');
@@ -704,6 +727,10 @@ export class GameHud {
     const goalsPanel = root.querySelector<HTMLElement>('.goals-panel[data-panel="goals"]');
     const goalsPanelToggle = root.querySelector<HTMLButtonElement>('[data-panel-toggle="goals"]');
     const goalsPanelBody = root.querySelector<HTMLDivElement>('[id="goals-body"]');
+    const questsList = root.querySelector<HTMLDivElement>('[data-quests-list]');
+    const questsPanel = root.querySelector<HTMLElement>('.quests-panel[data-panel="quests"]');
+    const questsPanelToggle = root.querySelector<HTMLButtonElement>('[data-panel-toggle="quests"]');
+    const questsPanelBody = root.querySelector<HTMLDivElement>('[id="quests-body"]');
     const crewSortSelect = root.querySelector<HTMLSelectElement>('[data-crew-sort]');
     const dexList = root.querySelector<HTMLDivElement>('[data-dex-list]');
     const repdexPanel = root.querySelector<HTMLElement>('.repdex-panel[data-panel="repdex"]');
@@ -826,6 +853,7 @@ export class GameHud {
       !objective ||
       !target ||
       !eventChip ||
+      !zoneChip ||
       !targetPreview ||
       !targetPreviewName ||
       !targetPreviewRarity ||
@@ -834,6 +862,10 @@ export class GameHud {
       !goalsPanel ||
       !goalsPanelToggle ||
       !goalsPanelBody ||
+      !questsList ||
+      !questsPanel ||
+      !questsPanelToggle ||
+      !questsPanelBody ||
       !crewSortSelect ||
       !repDexDetail ||
       !repDexDetailClose ||
@@ -950,6 +982,17 @@ export class GameHud {
       throw new Error('HUD failed to initialize');
     }
 
+    const versionLabel = document.createElement('div');
+    versionLabel.className = 'settings-version-label';
+    versionLabel.textContent = `Version ${GAME_VERSION}`;
+    settingsResetSaveButton.insertAdjacentElement('beforebegin', versionLabel);
+
+    const playtestReportButton = document.createElement('button');
+    playtestReportButton.type = 'button';
+    playtestReportButton.className = 'settings-copy-report';
+    playtestReportButton.textContent = 'Copy Playtest Report';
+    settingsResetSaveButton.insertAdjacentElement('beforebegin', playtestReportButton);
+
     this.canvasMount = canvasMount;
     this.characterCreator = characterCreator;
     this.creatorPreviewMount = creatorPreviewMount;
@@ -961,6 +1004,7 @@ export class GameHud {
     this.objective = objective;
     this.target = target;
     this.eventChip = eventChip;
+    this.zoneChip = zoneChip;
     this.targetPreview = targetPreview;
     this.targetPreviewName = targetPreviewName;
     this.targetPreviewRarity = targetPreviewRarity;
@@ -969,6 +1013,10 @@ export class GameHud {
     this.goalsPanel = goalsPanel;
     this.goalsPanelToggle = goalsPanelToggle;
     this.goalsPanelBody = goalsPanelBody;
+    this.questsList = questsList;
+    this.questsPanel = questsPanel;
+    this.questsPanelToggle = questsPanelToggle;
+    this.questsPanelBody = questsPanelBody;
     this.crewSortSelect = crewSortSelect;
     this.dexList = dexList;
     this.repdexPanel = repdexPanel;
@@ -1038,6 +1086,7 @@ export class GameHud {
     this.settingsReducedInput = settingsReducedInput;
     this.settingsCatchOddsInput = settingsCatchOddsInput;
     this.settingsResetSaveButton = settingsResetSaveButton;
+    this.playtestReportButton = playtestReportButton;
     this.resetSaveButton = resetSaveButton;
     this.creatorEvent = creatorEvent;
     this.creatorEventName = creatorEventName;
@@ -1104,12 +1153,14 @@ export class GameHud {
     this.bindSettingsUi();
     this.bindTutorialUi();
     this.bindMobilePanelToggle();
+    this.bindPlaytestReportUi();
     this.applyInputMode();
     this.applySettings();
     this.syncCreatorControls();
   }
 
   update(snapshot: WorldSnapshot, actions: ActionState, deltaSeconds: number): void {
+    this.latestSnapshot = snapshot;
     this.updateActiveWorkout(deltaSeconds);
     this.workoutPromptCooldown = Math.max(0, this.workoutPromptCooldown - deltaSeconds);
     this.vendingPromptCooldown = Math.max(0, this.vendingPromptCooldown - deltaSeconds);
@@ -1150,6 +1201,7 @@ export class GameHud {
     this.setHidden(this.repDexDetail, this.root.classList.contains('game-root--creating'));
     this.setHidden(this.crewDetail, this.root.classList.contains('game-root--creating'));
     this.updateCurrentEvent(snapshot.currentEvent);
+    this.updateCurrentZone(snapshot.currentZone);
 
     const carriedFreeWeight = snapshot.freeWeights.find((freeWeight) => freeWeight.status === 'carried');
     let targetText = 'No target';
@@ -1220,6 +1272,7 @@ export class GameHud {
     }
 
     this.updateGoals(snapshot.goals);
+    this.updateQuests(snapshot.activeQuests);
 
     const dexMarkup = snapshot.repDex
       .map(
@@ -1539,6 +1592,42 @@ export class GameHud {
     }
   }
 
+  private updateQuests(activeQuests: WorldSnapshot['activeQuests']): void {
+    const markup = activeQuests.length > 0
+      ? activeQuests
+        .map(({ definition, state }) => {
+          const progress = Math.min(definition.target, state.progress);
+          const reward = [
+            definition.reward.steroids ? `+${definition.reward.steroids} Steroids` : '',
+            definition.reward.xp ? `+${definition.reward.xp} XP` : '',
+            definition.reward.exoticSpawnBonus ? 'Spawn boost' : ''
+          ]
+            .filter(Boolean)
+            .join(' / ');
+
+          return `
+            <div class="quest-row">
+              <div class="quest-row-title">${this.escapeHtml(definition.title)}</div>
+              <div class="quest-row-status">${progress}/${definition.target}</div>
+              <div class="quest-row-description">${this.escapeHtml(definition.description)}</div>
+              <div class="quest-row-reward">${this.escapeHtml(reward || 'Retro glory')}</div>
+            </div>
+          `;
+        })
+        .join('')
+      : `
+        <div class="quest-row quest-row--done">
+          <div class="quest-row-title">All playtest quests complete</div>
+          <div class="quest-row-description">Go flex on bosses and hunt exotics.</div>
+        </div>
+      `;
+
+    if (markup !== this.renderedQuestsMarkup) {
+      this.questsList.innerHTML = markup;
+      this.renderedQuestsMarkup = markup;
+    }
+  }
+
   private getBuddyDisplayName(
     definition: Pick<BuddyDefinition, 'name' | 'rarity' | 'isExotic'>,
     displayName?: string
@@ -1576,7 +1665,10 @@ export class GameHud {
         dodgeTimer: 0,
         holdTimer: 0,
         ragdollTimer: 0,
-        level: min
+        level: min,
+        behavior: 'wander',
+        behaviorTimer: 0,
+        behaviorCooldown: 0
       };
 
       const chance = Math.round(getArmWrestleCatchChance(fakeBuddy, definition) * 100);
@@ -1664,6 +1756,19 @@ export class GameHud {
       this.creatorEvent.title = event.description;
       this.renderedEventName = event.name;
       this.renderedEventBonus = event.bonusLabel;
+    }
+  }
+
+  private updateCurrentZone(zone: WorldSnapshot['currentZone']): void {
+    if (zone.name !== this.renderedZoneName || zone.description !== this.renderedZoneDescription) {
+      this.zoneChip.innerHTML = `
+        <span>Zone</span>
+        <strong>${this.escapeHtml(zone.name)}</strong>
+        <small>${this.escapeHtml(zone.description)}</small>
+      `;
+      this.zoneChip.title = `${zone.name}: ${zone.description}`;
+      this.renderedZoneName = zone.name;
+      this.renderedZoneDescription = zone.description;
     }
   }
 
@@ -2054,6 +2159,150 @@ export class GameHud {
     });
   }
 
+  private bindPlaytestReportUi(): void {
+    this.bindMobilePress(this.playtestReportButton, () => {
+      void this.copyPlaytestReport();
+    });
+
+    window.addEventListener('error', (event) => {
+      recordRuntimeError(event.message || event.error);
+    });
+
+    window.addEventListener('unhandledrejection', (event) => {
+      recordRuntimeError(event.reason);
+    });
+  }
+
+  private async copyPlaytestReport(): Promise<void> {
+    const report = this.buildPlaytestReport();
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(report);
+      } else {
+        this.copyTextWithFallback(report);
+      }
+
+      this.showUtilityToast('Playtest report copied.');
+    } catch (error) {
+      recordRuntimeError(error);
+      this.showUtilityToast('Could not copy report.');
+    }
+  }
+
+  private copyTextWithFallback(text: string): void {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.setAttribute('readonly', 'true');
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    textArea.style.top = '0';
+    document.body.appendChild(textArea);
+    textArea.select();
+    const copied = document.execCommand('copy');
+    textArea.remove();
+
+    if (!copied) {
+      throw new Error('Clipboard copy failed');
+    }
+  }
+
+  private buildPlaytestReport(): string {
+    const snapshot = this.latestSnapshot;
+    const repDexTotal = snapshot?.repDex.length ?? 0;
+    const repDexCaught = snapshot?.repDex.filter((entry) => entry.count > 0).length ?? 0;
+    const repDexPercent = repDexTotal > 0 ? Math.round((repDexCaught / repDexTotal) * 100) : 0;
+    const activeCrew = snapshot
+      ? snapshot.roster
+        .map((buddy, index) => {
+          const definition = snapshot.repDex.find((entry) => entry.definition.id === buddy.definitionId)?.definition;
+          const name = definition?.name ?? buddy.definitionId;
+          const rarity = definition?.rarity ?? 'unknown';
+          return `${index + 1}. ${name} Lv ${buddy.level} (${rarity}) STR ${buddy.strength} END ${buddy.endurance} FOC ${buddy.focus} XP ${buddy.xp}`;
+        })
+        .join('\n')
+      : '';
+    const activeQuestLines = snapshot?.activeQuests.length
+      ? snapshot.activeQuests
+        .map(({ definition, state }) => `- ${definition.title}: ${Math.min(state.progress, definition.target)}/${definition.target}`)
+        .join('\n')
+      : '- None';
+    const recentKnownErrors = getRecentRuntimeErrors();
+    const recentErrors = recentKnownErrors.length > 0
+      ? recentKnownErrors.map((error, index) => `${index + 1}. ${error}`).join('\n')
+      : 'None tracked this session';
+
+    return [
+      'Ralph Swole Safari Playtest Report',
+      `Generated: ${new Date().toISOString()}`,
+      `Game version: ${GAME_VERSION}`,
+      `Save schema: ${SAVE_VERSION_LABEL}`,
+      '',
+      'Browser',
+      `User agent: ${navigator.userAgent}`,
+      `Viewport: ${window.innerWidth}x${window.innerHeight}`,
+      `Screen: ${window.screen.width}x${window.screen.height}`,
+      `Device pixel ratio: ${window.devicePixelRatio}`,
+      '',
+      'Save summary',
+      snapshot
+        ? [
+            `Captured total: ${snapshot.player.capturedTotal}`,
+            `Steroids: ${snapshot.player.steroids}`,
+            `Stamina: ${Math.round(snapshot.player.stamina)}`,
+            `Active crew: ${snapshot.roster.length}/${ACTIVE_CREW_LIMIT}`,
+            `Storage: ${snapshot.storage.length}`,
+            `Active boss: ${snapshot.activeBoss ? snapshot.activeBoss.name : 'none'}`,
+            `Boss battle: ${snapshot.activeBossBattle ? snapshot.activeBossBattle.result : 'none'}`
+          ].join('\n')
+        : 'No world snapshot captured yet',
+      '',
+      'Active crew summary',
+      activeCrew || 'None',
+      '',
+      'RepDex progress',
+      `${repDexCaught}/${repDexTotal} caught (${repDexPercent}%)`,
+      '',
+      'Active quests',
+      activeQuestLines,
+      '',
+      'Settings summary',
+      [
+        `Music volume: ${this.settings.musicVolume}`,
+        `SFX volume: ${this.settings.sfxVolume}`,
+        `Muted: ${this.settings.muted}`,
+        `Pixel filter: ${this.settings.pixelFilter}`,
+        `Camera distance: ${this.settings.cameraDistance}`,
+        `Reduced motion: ${this.settings.reducedMotion}`,
+        `Show catch odds: ${this.settings.showCatchOdds}`
+      ].join('\n'),
+      '',
+      'Current zone/event',
+      snapshot
+        ? [
+            `Zone: ${snapshot.currentZone.name}`,
+            `Zone note: ${snapshot.currentZone.description}`,
+            `Event: ${snapshot.currentEvent.name}`,
+            `Event bonus: ${snapshot.currentEvent.bonusLabel}`
+          ].join('\n')
+        : 'No world snapshot captured yet',
+      '',
+      'Recent known errors',
+      recentErrors,
+      '',
+      'Privacy note: this report omits raw localStorage data and custom creature nicknames.'
+    ].join('\n');
+  }
+
+  private showUtilityToast(message: string): void {
+    this.toast.textContent = message;
+    this.toast.hidden = false;
+    this.toast.classList.add('toast--visible');
+    window.setTimeout(() => {
+      this.toast.classList.remove('toast--visible');
+    }, 1800);
+  }
+
   private bindSettingsUi(): void {
     this.bindMobilePress(this.settingsButton, () => {
       this.setSettingsPanelOpen(this.settingsPanel.hidden);
@@ -2127,6 +2376,11 @@ export class GameHud {
         panel: this.goalsPanel,
         toggle: this.goalsPanelToggle,
         body: this.goalsPanelBody
+      },
+      {
+        panel: this.questsPanel,
+        toggle: this.questsPanelToggle,
+        body: this.questsPanelBody
       }
     ];
 
@@ -3046,7 +3300,7 @@ export class GameHud {
     const machine = this.activeVending;
     const snackCooldown = snapshot.vending.snackCooldown;
     const lacksShaker = snapshot.player.proteinShakers < machine.energyDrinkCost;
-    const staminaFull = snapshot.player.stamina >= 99.5;
+    const staminaFull = snapshot.player.stamina >= STAMINA_BALANCE.fullThreshold;
 
     const energyDisabled = lacksShaker || staminaFull;
     const snackDisabled = snackCooldown > 0;

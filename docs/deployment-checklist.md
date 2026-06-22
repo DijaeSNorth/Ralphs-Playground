@@ -1,5 +1,9 @@
 # Deployment Checklist
 
+Release: Playtest v1  
+Version: `0.1.0-playtest.1`  
+GitHub Pages URL: https://dijaesnorth.github.io/Ralphs-Playground/
+
 ## Build command
 
 ```bash
@@ -18,10 +22,12 @@ npm run preview -- --host 127.0.0.1 --port 4173
 - `public/.nojekyll` is present so GitHub Pages serves Vite assets and nested public files without Jekyll processing.
 - Character asset paths are resolved through `resolvePublicAssetPath()` against `import.meta.env.BASE_URL`.
 - Static character preview HTML now uses relative paths for its SVG previews.
+- Release branch for Playtest v1: `release/playtest-v1`.
+- In-game Settings shows `Version 0.1.0-playtest.1`.
 
 ## Verification run
 
-- `npm run build` passed.
+- `npm run build` passed for `0.1.0-playtest.1` on 2026-06-22.
 - Local Vite preview served `dist/index.html` at `http://127.0.0.1:4173/`.
 - Built HTML assets returned HTTP 200 in preview:
   - `./favicon.svg`
@@ -36,5 +42,7 @@ npm run preview -- --host 127.0.0.1 --port 4173
 
 ## Known issues
 
-- Music and SFX sliders are saved settings placeholders until audio is implemented.
+- Music volume remains a placeholder for future music tracks; SFX volume controls generated Web Audio effects.
 - Local headless Chrome/Edge console validation was attempted, but the installed Chromium browsers crashed or hung in this environment before page execution. HTTP asset validation passed; a final browser console check should be done in a normal browser session after GitHub Pages publishes.
+- Feedback collection is manual; testers should use Settings -> Copy Playtest Report and send the plain-text output with notes.
+- Local daily gym events depend on the tester's device date.

@@ -1,0 +1,14 @@
+Stage: Gym zones and spawn identity
+
+Files changed:
+- src/game/types.ts: added GymZone types and currentZone to WorldSnapshot.
+- src/game/content/zones.ts: new zone definitions for Cardio Corner, Heavy Lift Hall, Flex Mirror Lane, Mythic Platform, and Recovery Lounge.
+- src/game/simulation/world.ts: wild spawns now pick zone positions and apply zone-specific creature weights; Mythic Platform adds an exotic spawn bonus.
+- src/ui/hud.ts: added a subtle current zone HUD chip.
+- src/style.css: styled the zone chip to match the retro HUD.
+- docs/zone-behavior.md: documented zone behavior and tuning locations.
+
+Important details:
+- Zones affect spawn location and species identity, not catch odds.
+- Exotic creatures are more likely near Mythic Platform through an exotic spawn bonus, but they still respect the global exotic spawn cap.
+- No heavy map geometry or new dependencies were added.

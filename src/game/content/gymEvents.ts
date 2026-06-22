@@ -1,3 +1,4 @@
+import { LOCAL_GYM_EVENT_BALANCE } from './balance';
 import type { LocalGymEvent, LocalGymEventId } from '../types';
 
 export const LOCAL_GYM_EVENTS: Record<LocalGymEventId, LocalGymEvent> = {
@@ -8,7 +9,7 @@ export const LOCAL_GYM_EVENTS: Record<LocalGymEventId, LocalGymEvent> = {
     description: 'The benches are cursed in a useful way.',
     bonusLabel: 'Strength workout XP +10%',
     effects: {
-      strengthWorkoutXpMultiplier: 1.1
+      strengthWorkoutXpMultiplier: LOCAL_GYM_EVENT_BALANCE.strengthWorkoutXpMultiplier
     }
   },
   'cardio-chaos': {
@@ -18,7 +19,7 @@ export const LOCAL_GYM_EVENTS: Record<LocalGymEventId, LocalGymEvent> = {
     description: 'Everyone pretends they planned to train endurance.',
     bonusLabel: 'Endurance workout XP +10%',
     effects: {
-      enduranceWorkoutXpMultiplier: 1.1
+      enduranceWorkoutXpMultiplier: LOCAL_GYM_EVENT_BALANCE.enduranceWorkoutXpMultiplier
     }
   },
   'mythic-monday': {
@@ -28,7 +29,7 @@ export const LOCAL_GYM_EVENTS: Record<LocalGymEventId, LocalGymEvent> = {
     description: 'The weird beasts clock in early.',
     bonusLabel: 'Exotic spawn chance slightly increased',
     effects: {
-      exoticSpawnBonus: 0.008
+      exoticSpawnBonus: LOCAL_GYM_EVENT_BALANCE.mythicMondayExoticSpawnBonus
     }
   },
   'flex-friday': {
@@ -38,7 +39,7 @@ export const LOCAL_GYM_EVENTS: Record<LocalGymEventId, LocalGymEvent> = {
     description: 'Reward machines respect the pump.',
     bonusLabel: 'Steroid rewards +1',
     effects: {
-      steroidRewardBonus: 1
+      steroidRewardBonus: LOCAL_GYM_EVENT_BALANCE.flexFridaySteroidRewardBonus
     }
   },
   'beast-weekend': {
@@ -48,8 +49,8 @@ export const LOCAL_GYM_EVENTS: Record<LocalGymEventId, LocalGymEvent> = {
     description: 'Bosses show up with dramatic entrance music.',
     bonusLabel: 'Boss rewards +15%',
     effects: {
-      bossRewardMultiplier: 1.15,
-      bossSteroidRewardBonus: 1
+      bossRewardMultiplier: LOCAL_GYM_EVENT_BALANCE.beastWeekendBossRewardMultiplier,
+      bossSteroidRewardBonus: LOCAL_GYM_EVENT_BALANCE.beastWeekendBossSteroidRewardBonus
     }
   }
 };

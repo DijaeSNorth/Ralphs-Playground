@@ -1,3 +1,4 @@
+import { VENDING_BALANCE } from './balance';
 import type { Vec2, VendingMachine } from '../types';
 
 export const VENDING_MACHINES: VendingMachine[] = [
@@ -6,11 +7,11 @@ export const VENDING_MACHINES: VendingMachine[] = [
     name: 'Fuel Vending',
     position: { x: 16.1, z: -2.8 },
     radius: 3.1,
-    energyDrinkCost: 1,
-    energyDrinkStamina: 38,
-    snackStamina: 10,
-    snackCrewEnergy: 14,
-    snackCooldown: 14
+    energyDrinkCost: VENDING_BALANCE.energyDrinkCost,
+    energyDrinkStamina: VENDING_BALANCE.energyDrinkStamina,
+    snackStamina: VENDING_BALANCE.snackStamina,
+    snackCrewEnergy: VENDING_BALANCE.snackCrewEnergy,
+    snackCooldown: VENDING_BALANCE.snackCooldown
   }
 ];
 

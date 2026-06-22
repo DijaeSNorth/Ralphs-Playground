@@ -1,8 +1,11 @@
 ﻿import { BUDDY_DEFINITIONS } from './content/buddies';
-import type { BuddyBodyTraits, ProgressGoals } from './types';
+import { QUEST_DEFINITIONS } from './content/quests';
+import { recordRuntimeError } from './runtimeErrors';
+import type { BuddyBodyTraits, ProgressGoals, QuestStates } from './types';
 
 export const SAVE_DATA_VERSION = 1;
 export const SAVE_STORAGE_KEY = 'gym-buddy-swole-safari-save';
+export const SAVE_BACKUP_STORAGE_PREFIX = `${SAVE_STORAGE_KEY}-bad-backup`;
 
 export type SavedRosterStatus = 'ready' | 'training' | 'needs-spot';
 export type SavedTaskOutcome = 'success' | 'needs-spot';
@@ -38,6 +41,7 @@ export type SavedProgress = {
   timestamp: number;
   tutorialCompleted: boolean;
   goals: ProgressGoals;
+  quests: QuestStates;
   player: {
     position: { x: number; z: number };
     heading: number;
@@ -71,6 +75,15 @@ const DEFAULT_GOALS: ProgressGoals = {
   roster_level_10_any: { completed: false, progress: 0 },
   repdex_half: { completed: false, progress: 0 }
 };
+
+function createDefaultQuests(): QuestStates {
+  return Object.fromEntries(
+    QUEST_DEFINITIONS.map((quest) => [quest.id, { completed: false, progress: 0 }])
+  ) as QuestStates;
+}
+
+const DEFAULT_QUESTS = createDefaultQuests();
+
 const DEFAULT_BODY_TRAITS: BuddyBodyTraits = {
   chest: 1,
   wings: 1,
@@ -185,6 +198,34 @@ function parseGoals(raw: unknown): ProgressGoals {
   };
 }
 
+function parseQuests(raw: unknown): QuestStates {
+  const source = isObject(raw) ? raw : {};
+  const parsed: Partial<QuestStates> = {};
+
+  for (const quest of QUEST_DEFINITIONS) {
+    const entry = source[quest.id];
+    if (!isObject(entry)) {
+      continue;
+    }
+
+    parsed[quest.id] = {
+      completed: entry.completed === true,
+      progress: Math.max(0, toInteger(entry.progress, 0))
+    };
+  }
+
+  return QUEST_DEFINITIONS.reduce((out, quest) => {
+    const parsedState = parsed[quest.id];
+    out[quest.id] = parsedState
+      ? {
+          completed: parsedState.completed === true,
+          progress: Math.max(0, toInteger(parsedState.progress, 0))
+        }
+      : { ...DEFAULT_QUESTS[quest.id] };
+    return out;
+  }, {} as QuestStates);
+}
+
 function parseRoster(raw: unknown): SavedProgressRosterEntry[] {
   if (!Array.isArray(raw)) {
     return [];
@@ -285,6 +326,7 @@ export function sanitizeSavedProgress(raw: unknown): SavedProgress | undefined {
       capturedTotal: clampNumber(player?.capturedTotal, 0, 9999, 0)
     },
     goals: parseGoals(raw.goals),
+    quests: parseQuests(raw.quests),
     roster: parseRoster(raw.roster),
     storage: parseRoster(raw.storage),
     repDex: parseRepDex(raw.repDex),
@@ -317,12 +359,13 @@ export function loadProgressFromStorage(): SavedProgress | undefined {
     const sanitized = sanitizeSavedProgress(parsed);
 
     if (!sanitized) {
-      clearProgressStorage();
+      backupBadProgressStorage(raw, 'invalid-schema');
     }
 
     return sanitized;
-  } catch {
-    clearProgressStorage();
+  } catch (error) {
+    recordRuntimeError(error);
+    backupBadProgressStorage(raw, 'parse-failed');
     return undefined;
   }
 }
@@ -346,4 +389,25 @@ export function clearProgressStorage(): void {
   }
 
   window.localStorage.removeItem(SAVE_STORAGE_KEY);
+}
+
+function backupBadProgressStorage(raw: string, reason: string): void {
+  if (typeof window === 'undefined' || !window.localStorage) {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(
+      `${SAVE_BACKUP_STORAGE_PREFIX}-${Date.now()}`,
+      JSON.stringify({
+        reason,
+        backedUpAt: new Date().toISOString(),
+        raw
+      })
+    );
+  } catch (error) {
+    recordRuntimeError(error);
+  } finally {
+    clearProgressStorage();
+  }
 }

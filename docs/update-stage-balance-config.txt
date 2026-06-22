@@ -1,0 +1,16 @@
+Stage: Centralized balance configuration
+
+Files changed:
+- src/game/content/balance.ts: new central tuning module for catch odds, spawn levels and weights, exotic rates, XP, goal rewards, stamina economy, passives, crew limits, vending values, boss rewards, and local event bonuses.
+- src/game/simulation/world.ts: now imports gameplay tuning from balance.ts while preserving existing behavior.
+- src/game/content/buddies.ts: passive definitions moved to balance.ts; stale baseCatchRate values removed.
+- src/game/content/gymEvents.ts: local event bonus numbers now reference balance.ts.
+- src/game/content/vending.ts: vending reward numbers now reference balance.ts.
+- src/ui/hud.ts: HUD odds, XP, goals, crew limit, vending text, and stamina threshold now reference balance.ts.
+- src/game/types.ts: removed unused BuddyDefinition.baseCatchRate.
+
+Important details:
+- Approved arm-wrestle catch odds remain unchanged: 90%, 85%, 80%, 70%, and exotic 40%.
+- Active crew limit remains 4.
+- Storage remains unlimited for playtest v1.
+- Renderer animation timing and mesh dimensions were intentionally left out of balance.ts because they are presentation values, not gameplay tuning.

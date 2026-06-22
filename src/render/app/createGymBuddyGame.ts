@@ -16,13 +16,23 @@ import { getNearestWorkoutStation, WORKOUT_STATIONS } from '../../game/content/e
 import { getNearestVendingMachine, VENDING_MACHINES } from '../../game/content/vending';
 import { InputController, type InputMode } from '../../game/input/actions';
 import { GymBuddyWorld } from '../../game/simulation/world';
-import type { ActionState, PlayerAppearance, Vec2, WorldEvent, WorldSnapshot } from '../../game/types';
+import type {
+  ActionState,
+  BuddyDefinition,
+  BuddyState,
+  PlayerAppearance,
+  Vec2,
+  WorldEvent,
+  WorldSnapshot
+} from '../../game/types';
 import { GameHud } from '../../ui/hud';
 import {
   clearProgressStorage,
   loadProgressFromStorage,
+  SAVE_STORAGE_KEY,
   saveProgressToStorage
 } from '../../game/progress';
+import { recordRuntimeError } from '../../game/runtimeErrors';
 import {
   loadGameSettingsFromStorage,
   saveGameSettingsToStorage,
@@ -483,9 +493,10 @@ class GymBuddyRenderer {
 
     for (const buddy of snapshot.buddies) {
       let mesh = this.buddyMeshes.get(buddy.id);
+      const definition = getBuddyDefinition(buddy.definitionId);
 
       if (!mesh) {
-        mesh = createBuddyMesh(getBuddyDefinition(buddy.definitionId), buddy.bodyTraits);
+        mesh = createBuddyMesh(definition, buddy.bodyTraits);
         this.buddyMeshes.set(buddy.id, mesh);
         this.scene.add(mesh);
       }
@@ -498,18 +509,74 @@ class GymBuddyRenderer {
       const ragdolled = buddy.ragdollTimer > 0;
       mesh.visible = !buddy.captured && playerDistance <= renderDistance;
       mesh.position.set(buddy.position.x, 0, buddy.position.z);
-      mesh.rotation.set(0, buddy.heading, 0);
-
-      const idleScale = 0.9 + Math.sin(performance.now() * 0.004 + buddy.id) * 0.018;
-      if (ragdolled) {
-        mesh.position.y = 0.18;
-        mesh.rotation.x = -1.12;
-        mesh.rotation.z = Math.sin(performance.now() * 0.018 + buddy.id) * 0.18;
-        mesh.scale.setScalar(0.82);
-      } else {
-        mesh.scale.setScalar(idleScale);
-      }
+      this.animateBuddyMesh(mesh, buddy, definition, playerDistance, ragdolled);
     }
+  }
+
+  private animateBuddyMesh(
+    mesh: Group,
+    buddy: BuddyState,
+    definition: BuddyDefinition,
+    playerDistance: number,
+    ragdolled: boolean
+  ): void {
+    const now = performance.now() * 0.001;
+    const isExotic = definition.rarity === 'exotic' || definition.isExotic === true;
+    const motionScale = this.settings.reducedMotion ? 0.25 : 1;
+
+    if (ragdolled) {
+      mesh.position.y = 0.18;
+      mesh.rotation.set(
+        -1.12,
+        buddy.heading,
+        Math.sin(now * 18 + buddy.id) * 0.18 * motionScale
+      );
+      mesh.scale.setScalar(0.82);
+      return;
+    }
+
+    const baseScale = isExotic ? 1 : 0.9;
+    const idleWave = Math.sin(now * (isExotic ? 2.4 : 4) + buddy.id);
+    const exoticPulse = isExotic ? Math.sin(now * 3.2 + buddy.id * 0.7) * 0.035 * motionScale : 0;
+    let scaleX = baseScale + idleWave * 0.014 * motionScale + exoticPulse;
+    let scaleY = baseScale + Math.abs(idleWave) * 0.018 * motionScale + exoticPulse * 0.7;
+    let scaleZ = baseScale + idleWave * 0.01 * motionScale + exoticPulse;
+    let positionY = 0.02 + Math.max(0, idleWave) * 0.015 * motionScale;
+    let rotationX = 0;
+    let rotationY = buddy.heading;
+    let rotationZ = isExotic ? Math.sin(now * 0.9 + buddy.id) * 0.045 * motionScale : 0;
+
+    if (isExotic) {
+      positionY += (0.02 + Math.abs(exoticPulse) * 0.9) * motionScale;
+      rotationY += Math.sin(now * 0.65 + buddy.id) * 0.035 * motionScale;
+    }
+
+    if (buddy.behavior === 'flex') {
+      const flex = Math.sin(now * 10 + buddy.id);
+      scaleX += (isExotic ? 0.1 : 0.075) * motionScale;
+      scaleY += (isExotic ? 0.055 : 0.04) * motionScale;
+      scaleZ -= 0.025 * motionScale;
+      positionY += Math.abs(flex) * 0.04 * motionScale;
+      rotationZ += flex * 0.12 * motionScale;
+    } else if (buddy.behavior === 'stretch') {
+      const stretch = Math.sin(now * 6 + buddy.id);
+      scaleX -= 0.035 * motionScale;
+      scaleY += (isExotic ? 0.14 : 0.105) * motionScale;
+      scaleZ += 0.025 * motionScale;
+      rotationX += 0.1 * stretch * motionScale;
+      positionY += 0.025 * motionScale;
+    } else if (buddy.behavior === 'react') {
+      const alert = Math.abs(Math.sin(now * 15 + buddy.id));
+      const facePlayerBoost = playerDistance < 3.2 ? 0.1 : 0;
+      scaleX += alert * 0.045 * motionScale;
+      scaleY += alert * 0.08 * motionScale;
+      positionY += alert * 0.06 * motionScale;
+      rotationZ += Math.sin(now * 18 + buddy.id) * (0.13 + facePlayerBoost) * motionScale;
+    }
+
+    mesh.position.y = positionY;
+    mesh.rotation.set(rotationX, rotationY, rotationZ);
+    mesh.scale.set(scaleX, scaleY, scaleZ);
   }
 
   private syncRosterBuddies(snapshot: WorldSnapshot): void {
@@ -531,9 +598,10 @@ class GymBuddyRenderer {
 
       activeIds.add(rosterEntry.rosterId);
       let mesh = this.rosterBuddyMeshes.get(rosterEntry.rosterId);
+      const definition = getBuddyDefinition(rosterEntry.definitionId);
 
       if (!mesh) {
-        mesh = createBuddyMesh(getBuddyDefinition(rosterEntry.definitionId), rosterEntry.bodyTraits);
+        mesh = createBuddyMesh(definition, rosterEntry.bodyTraits);
         this.rosterBuddyMeshes.set(rosterEntry.rosterId, mesh);
         this.scene.add(mesh);
       }
@@ -542,9 +610,18 @@ class GymBuddyRenderer {
         station.position.x - snapshot.player.position.x,
         station.position.z - snapshot.player.position.z
       );
-      const wobble = Math.sin(performance.now() * 0.002 + rosterEntry.rosterId) * 0.06;
+      const now = performance.now() * 0.001;
+      const motionScale = this.settings.reducedMotion ? 0.25 : 1;
+      const isExotic = definition.rarity === 'exotic' || definition.isExotic === true;
+      const wobble = Math.sin(now * 2 + rosterEntry.rosterId) * 0.06 * motionScale;
+      const personalityPulse = Math.sin(now * 5 + rosterEntry.level + rosterEntry.rosterId) * 0.018 * motionScale;
+      const baseScale = rosterEntry.status === 'needs-spot' ? 0.78 : 0.84 + (isExotic ? 0.06 : 0);
       mesh.visible = playerDistance <= renderDistance;
-      mesh.scale.setScalar(rosterEntry.status === 'needs-spot' ? 0.78 : 0.84);
+      mesh.scale.set(
+        baseScale + personalityPulse,
+        baseScale + Math.abs(personalityPulse) * 1.6,
+        baseScale + personalityPulse * 0.6
+      );
       mesh.position.set(
         station.position.x,
         rosterEntry.status === 'needs-spot' ? 0.03 : 0.02 + Math.max(0, wobble),
@@ -552,8 +629,10 @@ class GymBuddyRenderer {
       );
       mesh.rotation.set(
         rosterEntry.status === 'needs-spot' ? -0.24 : 0,
-        station.rotation ?? 0,
-        rosterEntry.status === 'needs-spot' ? Math.sin(performance.now() * 0.018 + rosterEntry.rosterId) * 0.35 : 0
+        (station.rotation ?? 0) + (isExotic ? Math.sin(now * 0.8 + rosterEntry.rosterId) * 0.04 * motionScale : 0),
+        rosterEntry.status === 'needs-spot'
+          ? Math.sin(now * 18 + rosterEntry.rosterId) * 0.35 * motionScale
+          : Math.sin(now * 4 + rosterEntry.rosterId) * 0.045 * motionScale
       );
     }
 
@@ -1173,6 +1252,118 @@ function createCameraRelativeActions(actions: ActionState, basis: MovementBasis)
   };
 }
 
+const DEBUG_STORAGE_KEY = 'gym-buddy-swole-safari-debug';
+
+function isDebugModeEnabled(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const urlDebug = new URLSearchParams(window.location.search).get('debug') === '1';
+
+  try {
+    if (urlDebug) {
+      window.localStorage.setItem(DEBUG_STORAGE_KEY, '1');
+      return true;
+    }
+
+    const storedDebug =
+      window.localStorage.getItem(DEBUG_STORAGE_KEY) ?? window.localStorage.getItem('debug');
+    return storedDebug === '1' || storedDebug === 'true';
+  } catch {
+    return urlDebug;
+  }
+}
+
+type DebugPanelApi = {
+  refreshSummary: () => void;
+  isSummaryVisible: () => boolean;
+};
+
+function createDebugPanel(
+  root: HTMLElement,
+  actions: {
+    addSteroids: () => void;
+    spawnNormal: () => void;
+    spawnExotic: () => void;
+    giveCrewXp: () => void;
+    forceBoss: () => void;
+    clearSave: () => void;
+    toggleReducedMotion: () => void;
+    getSummary: () => string;
+  }
+): DebugPanelApi {
+  root.classList.add('game-root--debug');
+  const panel = document.createElement('section');
+  panel.className = 'debug-panel';
+  panel.setAttribute('aria-label', 'Developer debug tools');
+  panel.innerHTML = `
+    <div class="debug-panel__head">
+      <strong>Debug Tools</strong>
+      <span>?debug=1</span>
+    </div>
+    <div class="debug-panel__grid">
+      <button type="button" data-debug-action="add-steroids">Add 5 steroids</button>
+      <button type="button" data-debug-action="spawn-normal">Spawn normal creature</button>
+      <button type="button" data-debug-action="spawn-exotic">Spawn exotic creature</button>
+      <button type="button" data-debug-action="crew-xp">Give active crew XP</button>
+      <button type="button" data-debug-action="boss">Force boss spawn</button>
+      <button type="button" data-debug-action="clear-save">Clear save</button>
+      <button type="button" data-debug-action="reduced-motion">Toggle reduced motion</button>
+      <button type="button" data-debug-action="summary">Show current save data summary</button>
+    </div>
+    <pre class="debug-panel__summary" data-debug-summary hidden></pre>
+  `;
+  root.append(panel);
+
+  const summary = panel.querySelector<HTMLPreElement>('[data-debug-summary]');
+  const refreshSummary = (): void => {
+    if (summary) {
+      summary.textContent = actions.getSummary();
+    }
+  };
+
+  panel.addEventListener('click', (event) => {
+    const button = event.target instanceof Element
+      ? event.target.closest<HTMLButtonElement>('[data-debug-action]')
+      : null;
+
+    if (!button) {
+      return;
+    }
+
+    const action = button.dataset.debugAction;
+
+    if (action === 'add-steroids') {
+      actions.addSteroids();
+    } else if (action === 'spawn-normal') {
+      actions.spawnNormal();
+    } else if (action === 'spawn-exotic') {
+      actions.spawnExotic();
+    } else if (action === 'crew-xp') {
+      actions.giveCrewXp();
+    } else if (action === 'boss') {
+      actions.forceBoss();
+    } else if (action === 'clear-save') {
+      actions.clearSave();
+    } else if (action === 'reduced-motion') {
+      actions.toggleReducedMotion();
+    } else if (action === 'summary' && summary) {
+      summary.hidden = !summary.hidden;
+      refreshSummary();
+    }
+
+    if (summary && !summary.hidden) {
+      refreshSummary();
+    }
+  });
+
+  return {
+    refreshSummary,
+    isSummaryVisible: () => Boolean(summary && !summary.hidden)
+  };
+}
+
 export function createGymBuddyGame(root: HTMLElement): void {
   const hud = new GameHud(root);
   const initialSettings = loadGameSettingsFromStorage();
@@ -1206,6 +1397,79 @@ export function createGymBuddyGame(root: HTMLElement): void {
       tutorialCompleted
     });
   };
+
+  const getDebugSaveSummary = (): string => {
+    const snapshot = world.getSnapshot();
+    const saveData = world.getSaveData();
+    const caughtSpecies = snapshot.repDex.filter((entry) => entry.count > 0).length;
+    let storedSaveBytes = 0;
+
+    try {
+      storedSaveBytes = window.localStorage.getItem(SAVE_STORAGE_KEY)?.length ?? 0;
+    } catch {
+      storedSaveBytes = 0;
+    }
+
+    return [
+      `Captured total: ${snapshot.player.capturedTotal}`,
+      `Steroids: ${snapshot.player.steroids}`,
+      `Active crew: ${snapshot.roster.length}/${snapshot.maxRosterSize}`,
+      `Storage: ${snapshot.storage.length}`,
+      `RepDex: ${caughtSpecies}/${snapshot.repDex.length}`,
+      `Wild active: ${snapshot.activeBuddyCount}`,
+      `Boss: ${snapshot.activeBoss ? snapshot.activeBoss.name : 'none'}`,
+      `Tutorial complete: ${tutorialCompleted ? 'yes' : 'no'}`,
+      `Progression tier: ${saveData.progressionTier}`,
+      `Stored save bytes: ${storedSaveBytes}`
+    ].join('\n');
+  };
+
+  const debugPanel = isDebugModeEnabled()
+    ? createDebugPanel(root, {
+        addSteroids: () => {
+          audio.play('menu-select');
+          world.debugAddSteroids();
+          saveProgress();
+        },
+        spawnNormal: () => {
+          audio.play('menu-select');
+          world.debugSpawnNormalCreature();
+        },
+        spawnExotic: () => {
+          audio.play('menu-select');
+          world.debugSpawnExoticCreature();
+        },
+        giveCrewXp: () => {
+          audio.play('menu-select');
+          world.debugGiveActiveCrewXp();
+          saveProgress();
+        },
+        forceBoss: () => {
+          audio.play('menu-select');
+          world.debugForceBossSpawn();
+        },
+        clearSave: () => {
+          audio.play('menu-select');
+          clearProgressStorage();
+          world.reset();
+          tutorialCompleted = false;
+          tutorialStep = 0;
+          tutorialMoveOrigin = undefined;
+          tutorialBuddyReadTimer = 0;
+          tutorialExoticNoticeTimer = 0;
+          hud.hideTutorialPopup();
+          hud.pushMessage('Debug: save cleared and world reset.');
+        },
+        toggleReducedMotion: () => {
+          const nextSettings = {
+            ...hud.getSettings(),
+            reducedMotion: !hud.getSettings().reducedMotion
+          };
+          hud.setSettings(nextSettings, true);
+        },
+        getSummary: getDebugSaveSummary
+      })
+    : undefined;
 
   function playWorldEventSound(event: WorldEvent): void {
     if (event.message.startsWith('Goal complete')) {
@@ -1505,7 +1769,7 @@ export function createGymBuddyGame(root: HTMLElement): void {
     return proximityTimer <= 0 || moved > 0.25;
   }
 
-  function frame(now: number): void {
+  function frameUnsafe(now: number): void {
     const deltaSeconds = Math.min((now - lastTime) / 1000, 0.08);
     lastTime = now;
     struggleSoundCooldown = Math.max(0, struggleSoundCooldown - deltaSeconds);
@@ -1571,7 +1835,21 @@ export function createGymBuddyGame(root: HTMLElement): void {
     renderer.update(snapshot, events, deltaSeconds, inputActions);
     previewRenderer.update(deltaSeconds, !gameStarted);
     hud.update(snapshot, inputActions, deltaSeconds);
+    if (debugPanel?.isSummaryVisible()) {
+      debugPanel.refreshSummary();
+    }
     requestAnimationFrame(frame);
+  }
+
+  function frame(now: number): void {
+    try {
+      frameUnsafe(now);
+    } catch (error) {
+      recordRuntimeError(error);
+      hud.pushMessage('A gym gremlin tripped the sim. Recovered and kept going.');
+      lastTime = performance.now();
+      requestAnimationFrame(frame);
+    }
   }
 
   document.addEventListener('visibilitychange', () => {

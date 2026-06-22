@@ -1,0 +1,13 @@
+Stage: Developer debug mode
+
+Files changed:
+- src/game/content/balance.ts: added DEBUG_BALANCE values for debug steroid and XP grants.
+- src/game/simulation/world.ts: added public debug helpers for adding Steroids, spawning normal/exotic creatures, granting active crew XP, and forcing a boss spawn.
+- src/render/app/createGymBuddyGame.ts: added debug-mode detection and a developer-only debug panel wired to real world/save/settings systems.
+- src/style.css: added pixel-styled debug panel layout with mobile support.
+
+Important details:
+- Debug panel appears only when the URL includes ?debug=1 or localStorage has gym-buddy-swole-safari-debug=1, gym-buddy-swole-safari-debug=true, debug=1, or debug=true.
+- Visiting with ?debug=1 persists gym-buddy-swole-safari-debug=1 for future local testing.
+- Normal players do not see the panel unless that debug flag is present.
+- Clear save removes stored progress and resets the in-memory world without disabling debug mode.

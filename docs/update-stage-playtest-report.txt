@@ -1,0 +1,20 @@
+Playtest report export stage reference
+
+Touched areas:
+- src/ui/hud.ts: injects a Copy Playtest Report button into settings, builds a plain-text report, copies it to clipboard, and tracks recent runtime errors.
+- src/style.css: styles the report copy button as a non-destructive settings utility action.
+
+Report contents:
+- Game version and save schema label.
+- Browser user agent, viewport, screen size, and device pixel ratio.
+- Summary-only save state: captured total, steroids, stamina, active crew count, storage count, boss state.
+- Active crew summary using base creature names, not custom nicknames.
+- RepDex caught/total progress.
+- Active quests.
+- Settings summary.
+- Current zone and daily event.
+- Up to five recent runtime errors tracked during the current session.
+
+Privacy note:
+- The report does not dump raw localStorage.
+- The report omits custom creature nicknames to avoid accidental personal information.

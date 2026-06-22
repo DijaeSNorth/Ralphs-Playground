@@ -172,6 +172,50 @@ export type ProgressGoalState = {
 
 export type ProgressGoals = Record<ProgressGoalId, ProgressGoalState>;
 
+export type QuestId =
+  | 'capture_common_2'
+  | 'win_boss_1'
+  | 'use_steroid_1'
+  | 'capture_level_16'
+  | 'find_exotic_1'
+  | 'level_10';
+
+export type QuestKind =
+  | 'capture-rarity'
+  | 'boss-win'
+  | 'use-steroid'
+  | 'capture-level'
+  | 'find-exotic'
+  | 'level-creature';
+
+export type QuestReward = {
+  xp?: number;
+  steroids?: number;
+  exoticSpawnBonus?: number;
+};
+
+export type QuestDefinition = {
+  id: QuestId;
+  title: string;
+  description: string;
+  kind: QuestKind;
+  target: number;
+  reward: QuestReward;
+  oneTime: boolean;
+};
+
+export type QuestState = {
+  completed: boolean;
+  progress: number;
+};
+
+export type QuestStates = Record<QuestId, QuestState>;
+
+export type ActiveQuest = {
+  definition: QuestDefinition;
+  state: QuestState;
+};
+
 export type LocalGymEventId =
   | 'chest-day'
   | 'cardio-chaos'
@@ -195,6 +239,30 @@ export type LocalGymEvent = {
   description: string;
   bonusLabel: string;
   effects: LocalGymEventEffects;
+};
+
+export type GymZoneId =
+  | 'cardio-corner'
+  | 'heavy-lift-hall'
+  | 'flex-mirror-lane'
+  | 'mythic-platform'
+  | 'recovery-lounge';
+
+export type GymZoneSpawnWeight = {
+  id: string;
+  weight: number;
+};
+
+export type GymZoneDefinition = {
+  id: GymZoneId;
+  name: string;
+  shortName: string;
+  description: string;
+  position: Vec2;
+  radius: number;
+  spawnWeight: number;
+  spawnWeights: readonly GymZoneSpawnWeight[];
+  exoticSpawnBonus?: number;
 };
 
 export type WorkoutStation = {
@@ -267,7 +335,6 @@ export type BuddyDefinition = {
   visualHints?: BuddyVisualHints;
   mythicMetadata?: BuddyMythicMetadata;
   passive: BuddyPassive;
-  baseCatchRate: number;
   staminaReward: number;
 };
 
@@ -356,6 +423,9 @@ export type BuddyState = {
   holdTimer: number;
   ragdollTimer: number;
   level: number;
+  behavior: 'wander' | 'flex' | 'stretch' | 'react';
+  behaviorTimer: number;
+  behaviorCooldown: number;
 };
 
 export type PlayerState = {
@@ -479,6 +549,8 @@ export type WorldSnapshot = {
   };
   repDex: RepDexEntry[];
   currentEvent: LocalGymEvent;
+  currentZone: GymZoneDefinition;
+  activeQuests: ActiveQuest[];
   activeBoss?: BossState;
   activeBossBattle?: BossBattleState;
   nearestBuddy?: {

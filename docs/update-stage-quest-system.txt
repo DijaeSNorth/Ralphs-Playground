@@ -1,0 +1,15 @@
+Quest system stage reference
+
+Touched areas:
+- src/game/content/quests.ts: one-time quest definitions and active quest count.
+- src/game/types.ts: quest state/types and active quest snapshot field.
+- src/game/progress.ts: save/load sanitization for quest state.
+- src/game/simulation/world.ts: quest progress hooks and rewards.
+- src/ui/hud.ts: active quest panel.
+- src/style.css: retro quest panel styling.
+
+Important behavior:
+- Active quests are the first three incomplete definitions.
+- Quest rewards are granted once.
+- Rewards can grant crew XP, Steroids, or a small exotic spawn boost.
+- Quest state is localStorage-backed through the existing save system.

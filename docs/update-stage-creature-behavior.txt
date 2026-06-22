@@ -1,0 +1,13 @@
+Stage: Creature behavior and idle animation polish
+
+Files changed:
+- src/game/types.ts: BuddyState now includes behavior, behaviorTimer, and behaviorCooldown.
+- src/game/content/balance.ts: added CREATURE_BEHAVIOR_BALANCE for flex/stretch/react cadence and movement modifiers.
+- src/game/simulation/world.ts: normal creatures now wander, occasionally flex/stretch, and react when the player gets close; exotics move more deliberately.
+- src/render/app/createGymBuddyGame.ts: wild creature meshes animate by behavior state; exotic creatures get stronger pulse/idle motion; rendered active crew training meshes get subtle personality motion.
+- src/ui/hud.ts: updated RepDex fake BuddyState used for catch odds previews.
+
+Important details:
+- Reduced motion mode scales down extra creature motion.
+- Capture odds and capture rules were not changed.
+- No new renderer assets or dependencies were added.

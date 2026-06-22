@@ -1,0 +1,15 @@
+Runtime error handling stage reference
+
+Touched areas:
+- src/game/runtimeErrors.ts: shared in-memory recent runtime error buffer.
+- src/game/progress.ts: backs up invalid or unparsable saves before clearing the active save key.
+- src/main.ts: catches boot failures and shows a retro recovery screen with Retry Load and Reset Save and Reload.
+- src/render/app/createGymBuddyGame.ts: catches frame-loop errors, records them, shows a friendly HUD message, and keeps the loop alive.
+- src/ui/hud.ts: playtest report now reads from the shared runtime error buffer.
+- src/style.css: retro boot error/recovery screen styling.
+
+Important behavior:
+- Bad save data is copied to a timestamped localStorage key prefixed with gym-buddy-swole-safari-save-bad-backup.
+- The active save key is cleared after backup so the next boot can start clean.
+- Major boot errors no longer rethrow after rendering the recovery UI.
+- Runtime errors are summary-only and kept in memory for the playtest report.
