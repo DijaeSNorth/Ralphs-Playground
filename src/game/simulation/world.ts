@@ -7,6 +7,7 @@ import type {
   BossState,
   BuddyArchetype,
   BuddyBodyTraits,
+  BuddyDefinition,
   BuddyRosterEntry,
   BuddyState,
   FreeWeightState,
@@ -20,8 +21,12 @@ import type {
 const ARENA_RADIUS = 18;
 const CAPTURE_RANGE = 2.85;
 const MAX_STAMINA = 100;
+const ARM_WRESTLE_CAPTURE_DURATION = 1.8;
 const MAX_PROTEIN_SHAKERS = 8;
 const STARTING_PROTEIN_SHAKERS = 6;
+const MAX_STEROIDS = 12;
+const STARTING_STEROIDS = 0;
+const STEROID_LEVEL_CAP = 60;
 const ACTIVE_BUDDIES = 6;
 const MAX_ROSTER_SIZE = 4;
 const WALK_SPEED = 5.2;
@@ -124,6 +129,31 @@ function randomTrait(range: { min: number; max: number }, bias = 0): number {
   return clamp(Math.random() * (range.max - range.min) + range.min + bias, range.min, range.max);
 }
 
+export function getArmWrestleCatchChance(
+  buddy: BuddyState,
+  definition: BuddyDefinition
+): number {
+  if (definition.rarity === 'exotic' || definition.isExotic) {
+    return 0.4;
+  }
+
+  const level = Math.max(1, Math.floor(buddy.level));
+
+  if (level <= 15) {
+    return 0.9;
+  }
+
+  if (level <= 25) {
+    return 0.85;
+  }
+
+  if (level <= 35) {
+    return 0.8;
+  }
+
+  return 0.7;
+}
+
 function generateBuddyBodyTraits(archetype: BuddyArchetype): BuddyBodyTraits {
   const traitBias = BUDDY_TRAIT_BIAS[archetype];
 
@@ -140,18 +170,122 @@ function randomBossDefinitionId(): string {
   return BOSS_DEFINITIONS[Math.floor(Math.random() * BOSS_DEFINITIONS.length)].id;
 }
 
-function weightedBuddyDefinitionId(): string {
-  const roll = Math.random();
+type WeightedBuddyOption = {
+  id: string;
+  weight: number;
+};
 
-  if (roll > 0.91) {
-    return 'chalk-champ';
+function pickWeightedBuddyId(options: WeightedBuddyOption[]): string {
+  const total = options.reduce((sum, option) => sum + option.weight, 0);
+
+  if (total <= 0) {
+    return options[0]!.id;
   }
 
-  if (roll > 0.68) {
-    return Math.random() > 0.5 ? 'kettle-pal' : 'cadence-captain';
+  let remaining = Math.random() * total;
+
+  for (const option of options) {
+    remaining -= option.weight;
+
+    if (remaining <= 0) {
+      return option.id;
+    }
   }
 
-  return Math.random() > 0.5 ? 'mat-maven' : 'tempo-trotter';
+  return options[options.length - 1]?.id ?? 'buff-bunny';
+}
+
+function weightedBuddyDefinitionId(spawnProgress: number): string {
+  const spawnStage = clamp(spawnProgress, 0, 1);
+  const exoticChance = clamp(0.001 + spawnStage * 0.01, 0.001, 0.011);
+  const isExotic = Math.random() < exoticChance;
+
+  if (isExotic) {
+    const exoticOptions: WeightedBuddyOption[] = [
+      { id: 'minotaur-maximus', weight: 32 },
+      { id: 'dragon-deadlift', weight: 30 },
+      { id: 'griffin-gains', weight: 24 },
+      { id: 'cyclops-curl', weight: 20 },
+      { id: 'chrome-rhino', weight: 10 },
+      { id: 'hydra-hypertrophy', weight: 8 },
+      { id: 'pegasus-pump', weight: 7 },
+      { id: 'werewolf-warrior', weight: 8 },
+      { id: 'kraken-curl', weight: 6 },
+      { id: 'sphinx-strength', weight: 6 },
+      { id: 'phoenix-flex', weight: 5 }
+    ];
+
+    return pickWeightedBuddyId(exoticOptions);
+  }
+
+  const normalEarly: WeightedBuddyOption[] = [
+    { id: 'buff-bunny', weight: 26 },
+    { id: 'curl-corgi', weight: 16 },
+    { id: 'deadlift-deer', weight: 10 },
+    { id: 'flex-fox', weight: 20 },
+    { id: 'jacked-jaguar', weight: 8 },
+    { id: 'bench-bear', weight: 14 },
+    { id: 'press-penguin', weight: 10 },
+    { id: 'rowing-raccoon', weight: 10 },
+    { id: 'pump-panther', weight: 12 },
+    { id: 'squat-squirrel', weight: 10 },
+    { id: 'tricep-tiger', weight: 8 },
+    { id: 'iron-rhino', weight: 3 },
+    { id: 'bulk-buffalo', weight: 7 },
+    { id: 'swole-gorilla', weight: 6 }
+  ];
+
+  const normalMid: WeightedBuddyOption[] = [
+    { id: 'buff-bunny', weight: 17 },
+    { id: 'curl-corgi', weight: 14 },
+    { id: 'deadlift-deer', weight: 13 },
+    { id: 'flex-fox', weight: 17 },
+    { id: 'jacked-jaguar', weight: 11 },
+    { id: 'bench-bear', weight: 17 },
+    { id: 'press-penguin', weight: 8 },
+    { id: 'rowing-raccoon', weight: 9 },
+    { id: 'pump-panther', weight: 16 },
+    { id: 'squat-squirrel', weight: 10 },
+    { id: 'tricep-tiger', weight: 10 },
+    { id: 'iron-rhino', weight: 9 },
+    { id: 'bulk-buffalo', weight: 12 },
+    { id: 'swole-gorilla', weight: 13 }
+  ];
+
+  const normalLate: WeightedBuddyOption[] = [
+    { id: 'buff-bunny', weight: 10 },
+    { id: 'curl-corgi', weight: 8 },
+    { id: 'deadlift-deer', weight: 13 },
+    { id: 'flex-fox', weight: 10 },
+    { id: 'jacked-jaguar', weight: 12 },
+    { id: 'bench-bear', weight: 12 },
+    { id: 'press-penguin', weight: 7 },
+    { id: 'rowing-raccoon', weight: 7 },
+    { id: 'pump-panther', weight: 10 },
+    { id: 'squat-squirrel', weight: 7 },
+    { id: 'tricep-tiger', weight: 12 },
+    { id: 'iron-rhino', weight: 18 },
+    { id: 'bulk-buffalo', weight: 16 },
+    { id: 'swole-gorilla', weight: 10 }
+  ];
+
+  if (spawnStage < 0.33) {
+    return pickWeightedBuddyId(normalEarly);
+  }
+
+  if (spawnStage < 0.67) {
+    return pickWeightedBuddyId(normalMid);
+  }
+
+  return pickWeightedBuddyId(normalLate);
+}
+
+function pickWildLevelInRange(minLevel: number, maxLevel: number, spawnProgress: number): number {
+  const span = Math.max(0, maxLevel - minLevel);
+  const skew = clamp(1 - spawnProgress * 0.45, 0.48, 1);
+  const weighted = Math.pow(Math.random(), skew);
+
+  return minLevel + Math.floor(weighted * (span + 1));
 }
 
 function getWorkoutStationById(stationId?: string): WorkoutStation | undefined {
@@ -169,6 +303,7 @@ export class GymBuddyWorld {
     heading: Math.PI,
     stamina: MAX_STAMINA,
     proteinShakers: STARTING_PROTEIN_SHAKERS,
+    steroids: STARTING_STEROIDS,
     capturedTotal: 0
   };
 
@@ -176,10 +311,12 @@ export class GymBuddyWorld {
   private readonly roster: BuddyRosterEntry[] = [];
   private readonly freeWeights: FreeWeightState[] = [];
   private readonly captured = new Map<string, number>();
+  private readonly capturedHighLevel = new Map<string, number>();
   private readonly events: WorldEvent[] = [];
   private activeBoss?: BossState;
   private carriedFreeWeightId?: number;
   private catchCooldown = 0;
+  private captureCutsceneTimer = 0;
   private shakerRechargeTimer = 0;
   private vendingSnackCooldown = 0;
   private bossSpawnTimer = 18;
@@ -195,16 +332,19 @@ export class GymBuddyWorld {
       heading: Math.PI,
       stamina: MAX_STAMINA,
       proteinShakers: STARTING_PROTEIN_SHAKERS,
+      steroids: STARTING_STEROIDS,
       capturedTotal: 0
     };
     this.buddies.length = 0;
     this.roster.length = 0;
     this.freeWeights.length = 0;
     this.captured.clear();
+    this.capturedHighLevel.clear();
     this.events.length = 0;
     this.activeBoss = undefined;
     this.carriedFreeWeightId = undefined;
     this.catchCooldown = 0;
+    this.captureCutsceneTimer = 0;
     this.shakerRechargeTimer = 0;
     this.vendingSnackCooldown = 0;
     this.bossSpawnTimer = 18;
@@ -213,7 +353,7 @@ export class GymBuddyWorld {
       const buddy = this.createBuddy();
 
       if (index === 0) {
-        buddy.definitionId = 'tempo-trotter';
+        buddy.definitionId = 'flex-fox';
         buddy.position = { x: 0, z: 2.45 };
         buddy.wanderHeading = Math.PI;
         buddy.holdTimer = 4.5;
@@ -229,14 +369,28 @@ export class GymBuddyWorld {
 
   update(deltaSeconds: number, actions: ActionState): void {
     const dt = Math.min(deltaSeconds, 0.05);
+    const attemptingCapture = actions.catchPressed && this.captureCutsceneTimer <= 0;
 
     if (actions.resetPressed) {
       this.reset();
       return;
     }
 
+    this.captureCutsceneTimer = Math.max(0, this.captureCutsceneTimer - dt);
     this.catchCooldown = Math.max(0, this.catchCooldown - dt);
-    this.updatePlayer(dt, actions);
+    this.updatePlayer(
+      dt,
+      this.captureCutsceneTimer > 0 || attemptingCapture
+        ? {
+            ...actions,
+            moveX: 0,
+            moveZ: 0,
+            sprintHeld: false,
+            catchPressed: false,
+            interactPressed: false
+          }
+        : actions
+    );
     this.updateFreeWeights(dt);
     this.updateBuddies(dt);
     this.updateRoster(dt);
@@ -244,7 +398,7 @@ export class GymBuddyWorld {
     this.rechargeProteinShakers(dt);
     this.updateVending(dt);
 
-    if (actions.catchPressed) {
+    if (attemptingCapture) {
       if (!this.throwHeldFreeWeight()) {
         this.tryCapture();
       }
@@ -298,15 +452,17 @@ export class GymBuddyWorld {
   }
 
   completeWorkout(station: WorkoutStation): void {
+    const steroidGain = this.grantSteroids(Math.random() < 0.42 ? 1 : 0);
     this.player.stamina = clamp(this.player.stamina + station.staminaReward, 0, MAX_STAMINA);
     this.player.proteinShakers = clamp(
       this.player.proteinShakers + station.shakerReward,
       0,
       MAX_PROTEIN_SHAKERS
     );
+    const steroidText = steroidGain > 0 ? ` +${steroidGain} steroid` : '';
     this.events.push({
       type: 'workout',
-      message: `${station.name} complete. +${station.staminaReward} stamina, +${station.shakerReward} shaker.`
+      message: `${station.name} complete. +${station.staminaReward} stamina, +${station.shakerReward} shaker.${steroidText}`
     });
   }
 
@@ -332,9 +488,11 @@ export class GymBuddyWorld {
     const previousStamina = this.player.stamina;
     this.player.proteinShakers -= machine.energyDrinkCost;
     this.player.stamina = clamp(this.player.stamina + machine.energyDrinkStamina, 0, MAX_STAMINA);
+    const steroidGain = this.grantSteroids(1);
+    const steroidText = steroidGain > 0 ? ` +${steroidGain} steroid` : '';
     this.events.push({
       type: 'vending',
-      message: `Energy drink purchased. +${Math.round(this.player.stamina - previousStamina)} stamina.`
+      message: `Energy drink purchased. +${Math.round(this.player.stamina - previousStamina)} stamina.${steroidText}`
     });
   }
 
@@ -486,6 +644,47 @@ export class GymBuddyWorld {
     });
   }
 
+  useSteroid(rosterId: number): void {
+    const buddy = this.roster.find((entry) => entry.rosterId === rosterId);
+
+    if (!buddy) {
+      this.events.push({
+        type: 'roster',
+        message: 'That buddy is not available right now.'
+      });
+      return;
+    }
+
+    if (this.player.steroids <= 0) {
+      this.events.push({
+        type: 'roster',
+        message: 'No steroids left. Hit workouts or vending machines for more.'
+      });
+      return;
+    }
+
+    const name = this.getRosterDisplayName(buddy);
+
+    if (buddy.level >= STEROID_LEVEL_CAP) {
+      this.events.push({
+        type: 'roster',
+        message: `${name} is already as buff as it gets.`
+      });
+      return;
+    }
+
+    this.player.steroids = Math.max(0, this.player.steroids - 1);
+    buddy.level += 1;
+    buddy.xp += 55;
+    buddy.strength += 2;
+    buddy.endurance += 2;
+    buddy.focus += 2;
+    this.events.push({
+      type: 'roster',
+      message: `${name} got unreasonably swole!`
+    });
+  }
+
   challengeBoss(): void {
     if (!this.activeBoss) {
       return;
@@ -505,10 +704,12 @@ export class GymBuddyWorld {
     const bossPower = boss.strength + boss.endurance + boss.focus;
     const chance = clamp(0.38 + (crewPower - bossPower) / 110, 0.16, 0.92);
     const success = Math.random() < chance;
+    let bonusSteroids = 0;
 
     if (success) {
       this.player.stamina = clamp(this.player.stamina + 20, 0, MAX_STAMINA);
       this.player.proteinShakers = clamp(this.player.proteinShakers + 2, 0, MAX_PROTEIN_SHAKERS);
+      bonusSteroids = this.grantSteroids(1);
       for (const buddy of this.roster) {
         this.addRosterXp(buddy, 18);
         buddy.energy = clamp(buddy.energy - 6, 0, 100);
@@ -524,7 +725,7 @@ export class GymBuddyWorld {
       type: 'boss',
       boss: this.copyBoss(boss),
       message: success
-        ? `${boss.name} got outlifted. Crew gained XP.`
+        ? `${boss.name} got outlifted. Crew gained XP.${bonusSteroids > 0 ? ` +${bonusSteroids} steroid.` : ''}`
         : `${boss.name} won the set. Train your crew and try again.`
     });
     this.activeBoss = undefined;
@@ -536,7 +737,8 @@ export class GymBuddyWorld {
     const nearestFreeWeight = this.getNearestFreeWeight();
     const repDex: RepDexEntry[] = BUDDY_DEFINITIONS.map((definition) => ({
       definition,
-      count: this.captured.get(definition.id) ?? 0
+      count: this.captured.get(definition.id) ?? 0,
+      highestLevel: this.capturedHighLevel.get(definition.id) ?? 0
     }));
 
     return {
@@ -545,6 +747,7 @@ export class GymBuddyWorld {
         heading: this.player.heading,
         stamina: this.player.stamina,
         proteinShakers: this.player.proteinShakers,
+        steroids: this.player.steroids,
         capturedTotal: this.player.capturedTotal
       },
       buddies: this.buddies.map((buddy) => ({
@@ -575,7 +778,9 @@ export class GymBuddyWorld {
         : undefined,
       activeBuddyCount: this.buddies.filter((buddy) => !buddy.captured).length,
       captureRange: CAPTURE_RANGE,
-      arenaRadius: ARENA_RADIUS
+      arenaRadius: ARENA_RADIUS,
+      captureCutsceneRemaining: this.captureCutsceneTimer,
+      captureCutsceneDuration: ARM_WRESTLE_CAPTURE_DURATION
     };
   }
 
@@ -857,23 +1062,17 @@ export class GymBuddyWorld {
     if (this.catchCooldown > 0) {
       return;
     }
-
-    this.catchCooldown = 0.6;
-
-    if (this.player.proteinShakers <= 0) {
-      this.events.push({
-        type: 'capture',
-        result: 'empty',
-        start,
-        message: 'Out of protein shakers. Jog a lap to restock.'
-      });
+    if (this.captureCutsceneTimer > 0) {
       return;
     }
+
+    this.catchCooldown = 0.6;
 
     if (this.roster.length >= MAX_ROSTER_SIZE) {
       this.events.push({
         type: 'capture',
         result: 'empty',
+        captureStyle: 'arm-wrestle',
         start,
         message: `Crew is full (${MAX_ROSTER_SIZE}/${MAX_ROSTER_SIZE}). Remove a buddy to make room.`
       });
@@ -888,6 +1087,7 @@ export class GymBuddyWorld {
       this.events.push({
         type: 'capture',
         result: 'too-far',
+        captureStyle: 'arm-wrestle',
         start,
         target: {
           x: start.x + direction.x * CAPTURE_RANGE,
@@ -898,29 +1098,35 @@ export class GymBuddyWorld {
       return;
     }
 
-    this.player.proteinShakers -= 1;
-
     const buddy = nearest.buddy;
     const definition = getBuddyDefinition(buddy.definitionId);
     const bodyTraits = { ...buddy.bodyTraits };
     const buddyDisplayName = buddy.displayName ?? definition.name;
-    const staminaBonus = this.player.stamina / MAX_STAMINA * 0.12;
-    const closenessBonus = (CAPTURE_RANGE - nearest.distance) / CAPTURE_RANGE * 0.16;
-    const chance = clamp(definition.baseCatchRate + staminaBonus + closenessBonus, 0.24, 0.92);
+    const chance = getArmWrestleCatchChance(buddy, definition);
     const success = Math.random() < chance;
+    const creatureFacing = Math.atan2(this.player.position.x - buddy.position.x, this.player.position.z - buddy.position.z);
+    let milestoneSteroids = 0;
+    const captureBeatSequence = [
+      { at: 0.06, text: 'Arm wrestle!' },
+      { at: 0.56, text: "It's close..." },
+      { at: 1.14, text: success ? 'You pinned it!' : 'It powered out!' }
+    ];
 
     if (success) {
       buddy.captured = true;
       buddy.respawnTimer = 1.45;
       this.player.capturedTotal += 1;
-      this.roster.push(this.createRosterEntry(definition.id, bodyTraits, buddyDisplayName));
+      if (this.player.capturedTotal % 5 === 0) {
+        milestoneSteroids = this.grantSteroids(1);
+      }
+      this.roster.push(this.createRosterEntry(definition.id, bodyTraits, buddyDisplayName, buddy.level));
       this.player.stamina = clamp(this.player.stamina + definition.staminaReward, 0, MAX_STAMINA);
-      this.player.proteinShakers = clamp(
-        this.player.proteinShakers + 1,
-        0,
-        MAX_PROTEIN_SHAKERS
-      );
       this.captured.set(definition.id, (this.captured.get(definition.id) ?? 0) + 1);
+      const previousHigh = this.capturedHighLevel.get(definition.id) ?? 0;
+      if (buddy.level > previousHigh) {
+        this.capturedHighLevel.set(definition.id, buddy.level);
+      }
+      this.captureCutsceneTimer = ARM_WRESTLE_CAPTURE_DURATION;
     } else {
       const away = {
         x: buddy.position.x - this.player.position.x,
@@ -929,18 +1135,41 @@ export class GymBuddyWorld {
       buddy.wanderHeading = Math.atan2(away.x, away.z);
       buddy.dodgeTimer = 1.15;
       this.player.stamina = clamp(this.player.stamina - 8, 0, MAX_STAMINA);
+      this.captureCutsceneTimer = ARM_WRESTLE_CAPTURE_DURATION;
     }
 
     this.events.push({
       type: 'capture',
       result: success ? 'success' : 'miss',
+      captureStyle: 'arm-wrestle',
       buddy: { ...buddy, position: copyVec2(buddy.position) },
       chance,
       start,
       target: copyVec2(buddy.position),
+      capturePose: {
+        player: {
+          position: start,
+          heading: this.player.heading
+        },
+        creature: {
+          position: copyVec2(buddy.position),
+          heading: creatureFacing
+        }
+      },
+      dramaticBeat: {
+        beat: success ? 'lockout' : 'grapple',
+        winner: success ? 'player' : 'creature',
+        caption: success
+          ? `${buddyDisplayName} hit the mat first.`
+          : `${buddyDisplayName} powered out and escaped.`
+      },
+      captureBeatSequence,
+      captureDuration: ARM_WRESTLE_CAPTURE_DURATION,
       message: success
-        ? `${buddyDisplayName} joined your crew (${this.roster.length}/${MAX_ROSTER_SIZE}).`
-        : `${buddyDisplayName} broke form and dodged.`
+        ? `${buddyDisplayName} lost the arm-wrestle hold and joined your crew (${this.roster.length}/${MAX_ROSTER_SIZE}).${
+            milestoneSteroids > 0 ? ` +${milestoneSteroids} milestone steroid!` : ''
+          }`
+        : `${buddyDisplayName} powered out and escaped.`
     });
   }
 
@@ -1029,10 +1258,22 @@ export class GymBuddyWorld {
     }
   }
 
+  private grantSteroids(amount: number): number {
+    const requested = Math.max(0, Math.floor(amount));
+    if (requested <= 0) {
+      return 0;
+    }
+
+    const previous = this.player.steroids;
+    this.player.steroids = clamp(previous + requested, 0, MAX_STEROIDS);
+    return this.player.steroids - previous;
+  }
+
   private createRosterEntry(
     definitionId: string,
     bodyTraits: BuddyBodyTraits,
-    displayName?: string
+    displayName?: string,
+    level = 1
   ): BuddyRosterEntry {
     const definition = getBuddyDefinition(definitionId);
     const base = this.getBaseStats(definition.archetype);
@@ -1042,7 +1283,7 @@ export class GymBuddyWorld {
       definitionId,
       bodyTraits: { ...bodyTraits },
       displayName: displayName ?? getRandomBuddyName(definitionId),
-      level: 1,
+      level,
       xp: 0,
       strength: base.strength,
       endurance: base.endurance,
@@ -1233,7 +1474,8 @@ export class GymBuddyWorld {
 
   private createBuddy(): BuddyState {
     let position = randomPoint();
-    const definitionId = weightedBuddyDefinitionId();
+    const spawnProgress = this.getWildSpawnProgress();
+    const definitionId = weightedBuddyDefinitionId(spawnProgress);
     const definition = getBuddyDefinition(definitionId);
 
     for (let attempts = 0; attempts < 8; attempts += 1) {
@@ -1249,6 +1491,7 @@ export class GymBuddyWorld {
       definitionId,
       bodyTraits: generateBuddyBodyTraits(definition.archetype),
       displayName: getRandomBuddyName(definitionId),
+      level: this.getWildBuddyLevel(spawnProgress),
       position,
       heading: randomHeading(),
       wanderHeading: randomHeading(),
@@ -1259,5 +1502,50 @@ export class GymBuddyWorld {
       holdTimer: 0,
       ragdollTimer: 0
     };
+  }
+
+  private getWildSpawnProgress(): number {
+    const capturedProgress = clamp(this.player.capturedTotal / 45, 0, 1);
+    const crewAverage = this.getCrewAverageLevel();
+    const crewProgress = clamp(crewAverage / 40, 0, 1);
+
+    return clamp(capturedProgress * 0.68 + crewProgress * 0.32, 0, 1);
+  }
+
+  private getCrewAverageLevel(): number {
+    if (this.roster.length === 0) {
+      return 0;
+    }
+
+    return (
+      this.roster.reduce((total, entry) => total + entry.level, 0) / this.roster.length
+    );
+  }
+
+  private getWildBuddyLevel(spawnProgress: number): number {
+    const progression = clamp(spawnProgress, 0, 1);
+    const normalLowWeight = 14 - progression * 12;
+    const level16to25Weight = 0.7 + progression * 4.9;
+    const level26to35Weight = 0.15 + progression * 2.65;
+    const level36PlusWeight = 0.03 + progression * 1.15;
+    const total = normalLowWeight + level16to25Weight + level26to35Weight + level36PlusWeight;
+    const roll = Math.random() * total;
+    const normalizedLow = normalLowWeight;
+    const normalizedMid = normalizedLow + level16to25Weight;
+    const normalizedHigh = normalizedMid + level26to35Weight;
+
+    if (roll < normalizedLow) {
+      return pickWildLevelInRange(1, 15, progression);
+    }
+
+    if (roll < normalizedMid) {
+      return pickWildLevelInRange(16, 25, progression);
+    }
+
+    if (roll < normalizedHigh) {
+      return pickWildLevelInRange(26, 35, progression);
+    }
+
+    return pickWildLevelInRange(36, 50, progression);
   }
 }

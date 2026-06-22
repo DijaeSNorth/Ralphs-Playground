@@ -1,13 +1,11 @@
 import {
+  AmbientLight,
   Color,
   DirectionalLight,
-  Fog,
   Group,
-  HemisphereLight,
   Mesh,
   MeshBasicMaterial,
   Object3D,
-  PCFSoftShadowMap,
   PerspectiveCamera,
   Scene,
   SRGBColorSpace,
@@ -24,10 +22,11 @@ import {
   createArena,
   createBuddyMesh,
   createCaptureRing,
+  createArmWrestleArmMesh,
+  createBabyCryingDrops,
   createBossMesh,
   createFreeWeightMesh,
   createGymProps,
-  createProteinShakerProjectile,
   createPlayerMesh,
   createVendingMachines,
   createWorkoutEquipment
@@ -40,9 +39,24 @@ type CaptureEffect = {
   duration: number;
   start: Vec2;
   target: Vec2;
-  projectile: Group;
+  ringStart: Vec2;
+  captureMidpoint: Vec2;
   ring: Mesh;
   success: boolean;
+  style: 'arm-wrestle' | 'legacy';
+  playerMesh?: Group;
+  creatureMesh?: Group;
+  playerArm?: Group;
+  creatureArm?: Group;
+  tears?: Group;
+  playerHeading?: number;
+  creatureHeading?: number;
+  playerEnd?: Vec2;
+  creatureEnd?: Vec2;
+  playerBaseScale?: number;
+  creatureBaseScale?: number;
+  captureBeatSequence?: { at: number; text: string }[];
+  captureBeatIndex?: number;
 };
 
 type RenderCullable = {
@@ -60,6 +74,18 @@ const BUDDY_RENDER_DISTANCE = 24;
 const BUDDY_RENDER_DISTANCE_TOUCH = 18;
 const DEFAULT_STATION_RENDER_DISTANCE = 25;
 const DEFAULT_STATION_RENDER_DISTANCE_TOUCH = 21;
+const WORLD_PIXEL_SCALE = 2.25;
+const WORLD_PIXEL_SCALE_TOUCH = 2.85;
+const PREVIEW_PIXEL_SCALE = 2.1;
+const PREVIEW_PIXEL_SCALE_TOUCH = 2.6;
+const RETRO_ARENA_SKY = 0x87c8ff;
+const RETRO_CAMERA_OFFSET = 11.2;
+const RETRO_CAMERA_HEIGHT = 10.9;
+const RETRO_LOOK_AT_HEIGHT = 1.2;
+const CUTSCENE_CAMERA_OFFSET = 5.6;
+const CUTSCENE_CAMERA_HEIGHT = 5.5;
+const CUTSCENE_LOOK_AT_HEIGHT = 0.62;
+const CAPTURE_BEAT_TEXT_HOLD_SECONDS = 0.4;
 
 class CharacterPreviewRenderer {
   private readonly scene = new Scene();
@@ -77,11 +103,11 @@ class CharacterPreviewRenderer {
   constructor(private readonly container: HTMLElement) {
     this.renderer = new WebGLRenderer({
       alpha: true,
-      antialias: !this.touchOptimized,
+      antialias: false,
       preserveDrawingBuffer: true,
       powerPreference: 'default'
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.touchOptimized ? 1.1 : 1.4));
+    this.renderer.setPixelRatio(1);
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.domElement.addEventListener('webglcontextlost', (event) => {
@@ -95,8 +121,8 @@ class CharacterPreviewRenderer {
     this.platform.scale.setScalar(1.1);
     this.scene.add(this.platform);
     this.addLights();
-    this.camera.position.set(0, 1.12, 4.25);
-    this.camera.lookAt(0, 0.72, 0);
+    this.camera.position.set(0, 1.25, 4);
+    this.camera.lookAt(0, 0.78, 0);
 
     const resizeObserver = new ResizeObserver(() => this.resize());
     resizeObserver.observe(this.container);
@@ -127,14 +153,14 @@ class CharacterPreviewRenderer {
   }
 
   private addLights(): void {
-    this.scene.add(new HemisphereLight(0xf6fbff, 0x7a5b42, 2.4));
+    this.scene.add(new AmbientLight(0x9fcfff, 0.9));
 
-    const key = new DirectionalLight(0xfff4dc, 2.6);
-    key.position.set(3.8, 5.6, 4.4);
+    const key = new DirectionalLight(0xfff5ca, 0.95);
+    key.position.set(3.2, 4.1, 2.8);
     this.scene.add(key);
 
-    const rim = new DirectionalLight(0x7bdad6, 1.25);
-    rim.position.set(-4, 2.4, -3.4);
+    const rim = new DirectionalLight(0x8bd8f8, 0.45);
+    rim.position.set(-3.4, 2.1, -2.9);
     this.scene.add(rim);
   }
 
@@ -144,8 +170,13 @@ class CharacterPreviewRenderer {
     this.height = Math.max(1, Math.floor(rect.height));
     this.camera.aspect = this.width / this.height;
     this.camera.updateProjectionMatrix();
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.touchOptimized ? 1.1 : 1.4));
-    this.renderer.setSize(this.width, this.height, false);
+    const pixelScale = this.touchOptimized ? PREVIEW_PIXEL_SCALE_TOUCH : PREVIEW_PIXEL_SCALE;
+    this.renderer.setPixelRatio(1);
+    this.renderer.setSize(
+      Math.max(1, Math.floor(this.width / pixelScale)),
+      Math.max(1, Math.floor(this.height / pixelScale)),
+      false
+    );
   }
 
   private disposeObject(object: Object3D): void {
@@ -161,8 +192,8 @@ function shouldUseTouchRendering(): boolean {
   return window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 || window.innerWidth <= 820;
 }
 
-function getRenderPixelRatioCap(touchOptimized: boolean): number {
-  return touchOptimized ? 1.15 : 1.5;
+function getPixelCanvasScale(touchOptimized: boolean): number {
+  return touchOptimized ? WORLD_PIXEL_SCALE_TOUCH : WORLD_PIXEL_SCALE;
 }
 
 function lerp(start: number, end: number, amount: number): number {
@@ -172,6 +203,27 @@ function lerp(start: number, end: number, amount: number): number {
 function easeOutCubic(value: number): number {
   return 1 - Math.pow(1 - value, 3);
 }
+
+function clamp(value: number, min: number, max: number): number {
+  return value < min ? min : value > max ? max : value;
+}
+
+function safeDirection(from: Vec2, to: Vec2): Vec2 {
+  const dx = to.x - from.x;
+  const dz = to.z - from.z;
+  const distance = Math.hypot(dx, dz);
+
+  if (distance < 0.0001) {
+    return { x: 0, z: 0 };
+  }
+
+  return { x: dx / distance, z: dz / distance };
+}
+
+const WRESTLE_ARM_WOBBLE_SPEED = 24;
+const WRESTLE_PRONE_ROT_X = 1.34;
+const WRESTLE_FIGHT_PHASE = 0.58;
+const WRESTLE_ARM_BASE_TWITCH = 0.1;
 
 class GymBuddyRenderer {
   private readonly scene = new Scene();
@@ -188,28 +240,62 @@ class GymBuddyRenderer {
   private readonly effects: CaptureEffect[] = [];
   private readonly clockShadowTarget = new Object3D();
   private lastCullPosition?: Vec2;
+  private captureBeatText = '';
+  private captureBeatOpacity = 0;
+  private captureBeatTimer = 0;
+  private readonly captureBeatOverlay: HTMLDivElement;
+  private readonly captureBeatTextElement: HTMLDivElement;
   private width = 1;
   private height = 1;
 
   constructor(private readonly container: HTMLElement, initialSnapshot: WorldSnapshot) {
     this.renderer = new WebGLRenderer({
-      antialias: !this.touchOptimized,
+      antialias: false,
       preserveDrawingBuffer: false,
       powerPreference: this.touchOptimized ? 'default' : 'high-performance'
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, getRenderPixelRatioCap(this.touchOptimized)));
+    this.renderer.setPixelRatio(1);
     this.renderer.outputColorSpace = SRGBColorSpace;
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = PCFSoftShadowMap;
+    this.renderer.shadowMap.enabled = false;
     this.renderer.domElement.addEventListener('webglcontextlost', (event) => {
       event.preventDefault();
     });
 
     this.container.appendChild(this.renderer.domElement);
-    this.scene.background = new Color(0xc7d8dc);
-    this.scene.fog = new Fog(0xc7d8dc, 32, 82);
+    this.captureBeatTextElement = document.createElement('div');
+    this.captureBeatTextElement.className = 'capture-beat-overlay__text';
+    this.captureBeatTextElement.style.position = 'absolute';
+    this.captureBeatTextElement.style.left = '50%';
+    this.captureBeatTextElement.style.top = '10%';
+    this.captureBeatTextElement.style.transform = 'translate(-50%, -50%)';
+    this.captureBeatTextElement.style.color = '#ffffff';
+    this.captureBeatTextElement.style.fontFamily = 'monospace';
+    this.captureBeatTextElement.style.fontWeight = '700';
+    this.captureBeatTextElement.style.fontSize = '20px';
+    this.captureBeatTextElement.style.textAlign = 'center';
+    this.captureBeatTextElement.style.textShadow = '0 0 6px rgba(0, 0, 0, 0.45)';
+    this.captureBeatTextElement.style.pointerEvents = 'none';
+    this.captureBeatTextElement.style.opacity = '0';
+    this.captureBeatTextElement.style.transition = 'opacity 0.12s linear';
+    this.captureBeatTextElement.style.zIndex = '3';
+    this.captureBeatOverlay = document.createElement('div');
+    this.captureBeatOverlay.style.position = 'absolute';
+    this.captureBeatOverlay.style.left = '0';
+    this.captureBeatOverlay.style.top = '0';
+    this.captureBeatOverlay.style.right = '0';
+    this.captureBeatOverlay.style.bottom = '0';
+    this.captureBeatOverlay.style.display = 'flex';
+    this.captureBeatOverlay.style.alignItems = 'flex-start';
+    this.captureBeatOverlay.style.justifyContent = 'center';
+    this.captureBeatOverlay.style.pointerEvents = 'none';
+    this.captureBeatOverlay.style.zIndex = '3';
+    this.captureBeatOverlay.appendChild(this.captureBeatTextElement);
+    this.container.appendChild(this.captureBeatOverlay);
 
-    this.camera.position.set(0, 11, 14);
+    this.scene.background = new Color(RETRO_ARENA_SKY);
+    this.scene.fog = null;
+
+    this.camera.position.set(0, RETRO_CAMERA_HEIGHT, RETRO_CAMERA_OFFSET + 2.5);
     this.scene.add(this.clockShadowTarget);
     this.addLights();
     const workoutEquipment = createWorkoutEquipment(WORKOUT_STATIONS);
@@ -236,8 +322,10 @@ class GymBuddyRenderer {
     this.syncBoss(snapshot);
     this.syncFreeWeights(snapshot);
     this.handleEvents(events);
-    this.updateCamera(snapshot, deltaSeconds);
-    this.updateEffects(deltaSeconds);
+    const activeCaptureEffect = this.findActiveArmWrestleEffect();
+    this.updateCamera(snapshot, deltaSeconds, activeCaptureEffect);
+    this.updateEffects(deltaSeconds, activeCaptureEffect);
+    this.updateCaptureBeatOverlay(deltaSeconds);
     this.updateRenderDistance(snapshot.player.position);
     this.renderer.render(this.scene, this.camera);
   }
@@ -273,22 +361,17 @@ class GymBuddyRenderer {
   }
 
   private addLights(): void {
-    const hemi = new HemisphereLight(0xf6fbff, 0xa06f4c, 1.75);
-    this.scene.add(hemi);
+    this.scene.add(new AmbientLight(0x9fc7ff, 0.82));
 
-    const sun = new DirectionalLight(0xfff4dc, 2.05);
-    sun.position.set(10, 16, 7);
-    sun.castShadow = true;
-    const shadowSize = this.touchOptimized ? 512 : 1024;
-    sun.shadow.mapSize.set(shadowSize, shadowSize);
-    sun.shadow.camera.near = 1;
-    sun.shadow.camera.far = 60;
-    sun.shadow.camera.left = -24;
-    sun.shadow.camera.right = 24;
-    sun.shadow.camera.top = 24;
-    sun.shadow.camera.bottom = -24;
+    const sun = new DirectionalLight(0xf2df9f, 1.15);
+    sun.position.set(7.6, 8.8, 4.8);
+    const rim = new DirectionalLight(0x7de6f5, 0.58);
+    rim.position.set(-5.8, 5.2, -4.1);
+    const fill = new DirectionalLight(0xffddb4, 0.28);
+    fill.position.set(0, 3.8, 4.7);
     sun.target = this.clockShadowTarget;
     this.scene.add(sun, sun.target);
+    this.scene.add(rim, fill);
   }
 
   private syncPlayer(snapshot: WorldSnapshot): void {
@@ -484,36 +567,165 @@ class GymBuddyRenderer {
         continue;
       }
 
-      const projectile = createProteinShakerProjectile();
       const ring = createCaptureRing(event.result === 'success' ? 0xf6c85f : 0xffffff);
-      projectile.position.set(event.start.x, 0.8, event.start.z);
-      ring.position.set(event.target.x, 0.08, event.target.z);
+      const midpoint = {
+        x: (event.start.x + event.target.x) / 2,
+        z: (event.start.z + event.target.z) / 2
+      };
+      ring.position.set(midpoint.x, 0.1, midpoint.z);
       ring.scale.setScalar(0.2);
-      this.scene.add(projectile, ring);
+
+      if (event.captureStyle !== 'arm-wrestle' || !event.capturePose || !event.buddy) {
+        this.scene.add(ring);
+        this.effects.push({
+          age: 0,
+          duration: event.result === 'success' ? 0.78 : 0.55,
+          start: event.start,
+          target: event.target,
+          ringStart: midpoint,
+          captureMidpoint: midpoint,
+          ring,
+          style: 'legacy',
+          success: event.result === 'success'
+        });
+        continue;
+      }
+
+      const capturePose = event.capturePose;
+      const playerMesh = createPlayerMesh();
+      const creatureMesh = createBuddyMesh(getBuddyDefinition(event.buddy.definitionId), event.buddy.bodyTraits);
+      const playerStart = capturePose?.player?.position ?? event.start;
+      const creatureStart = capturePose?.creature?.position ?? event.target;
+      const direction = safeDirection(playerStart, creatureStart);
+      const gap = this.touchOptimized ? 0.48 : 0.58;
+      const proneHeight = this.touchOptimized ? 0.025 : 0.03;
+      const actorScale = this.touchOptimized ? 0.63 : 0.58;
+      const playerEnd = {
+        x: (playerStart.x + creatureStart.x) / 2 - direction.x * gap,
+        z: (playerStart.z + creatureStart.z) / 2 - direction.z * gap
+      };
+      const creatureEnd = {
+        x: (playerStart.x + creatureStart.x) / 2 + direction.x * gap,
+        z: (playerStart.z + creatureStart.z) / 2 + direction.z * gap
+      };
+
+      const playerHeading = capturePose?.player?.heading ?? 0;
+      const creatureHeading = capturePose?.creature?.heading ?? event.buddy.heading ?? 0;
+      playerMesh.position.set(playerStart.x, proneHeight, playerStart.z);
+      creatureMesh.position.set(creatureStart.x, proneHeight, creatureStart.z);
+      playerMesh.rotation.set(WRESTLE_PRONE_ROT_X, playerHeading, 0);
+      creatureMesh.rotation.set(WRESTLE_PRONE_ROT_X, creatureHeading, 0);
+      playerMesh.scale.setScalar(actorScale);
+      creatureMesh.scale.setScalar(actorScale);
+
+      const playerArm = createArmWrestleArmMesh();
+      const creatureArm = createArmWrestleArmMesh();
+      this.scene.add(playerMesh, creatureMesh, playerArm, creatureArm, ring);
+
+      const tears = event.result === 'success' ? createBabyCryingDrops() : undefined;
+      if (tears) {
+        tears.visible = false;
+        tears.scale.setScalar(0);
+        creatureMesh.add(tears);
+      }
+
       this.effects.push({
         age: 0,
-        duration: event.result === 'success' ? 0.78 : 0.55,
-        start: event.start,
-        target: event.target,
-        projectile,
+        duration: event.captureDuration ?? (event.result === 'success' ? 0.92 : 0.72),
+        start: playerStart,
+        target: creatureStart,
+        ringStart: midpoint,
+        captureMidpoint: midpoint,
         ring,
-        success: event.result === 'success'
+        success: event.result === 'success',
+        style: 'arm-wrestle',
+        playerMesh,
+        creatureMesh,
+        playerArm,
+        creatureArm,
+        tears,
+        playerHeading: capturePose?.player?.heading ?? 0,
+        creatureHeading: capturePose?.creature?.heading ?? creatureMesh.rotation.y,
+        playerEnd,
+        creatureEnd,
+        playerBaseScale: actorScale,
+        creatureBaseScale: actorScale,
+        captureBeatSequence: event.captureBeatSequence ?? [
+          {
+            at: 0.06,
+            text: 'Arm wrestle!'
+          },
+          {
+            at: 0.56,
+            text: "It's close..."
+          },
+          {
+            at: 1.14,
+            text: event.result === 'success' ? 'You pinned it!' : 'It powered out!'
+          }
+        ]
       });
     }
   }
 
-  private updateCamera(snapshot: WorldSnapshot, deltaSeconds: number): void {
+  private findActiveArmWrestleEffect(): CaptureEffect | undefined {
+    for (let index = this.effects.length - 1; index >= 0; index -= 1) {
+      const effect = this.effects[index];
+
+      if (effect.style === 'arm-wrestle' && effect.age < effect.duration) {
+        return effect;
+      }
+    }
+
+    return undefined;
+  }
+
+  private updateCamera(snapshot: WorldSnapshot, deltaSeconds: number, captureEffect?: CaptureEffect): void {
     const player = snapshot.player;
     const backward = {
       x: -Math.sin(player.heading),
       z: -Math.cos(player.heading)
     };
-    const desired = new Vector3(
-      player.position.x + backward.x * 11,
-      9.5,
-      player.position.z + backward.z * 11
+    const defaultPosition = new Vector3(
+      player.position.x + backward.x * RETRO_CAMERA_OFFSET,
+      RETRO_CAMERA_HEIGHT,
+      player.position.z + backward.z * RETRO_CAMERA_OFFSET
     );
-    const lookAt = new Vector3(player.position.x, 0.75, player.position.z);
+    const defaultLookAt = new Vector3(player.position.x, RETRO_LOOK_AT_HEIGHT, player.position.z);
+    let desired = defaultPosition;
+    let lookAt = defaultLookAt;
+
+    if (captureEffect && captureEffect.duration > 0) {
+      const progress = clamp(captureEffect.age / captureEffect.duration, 0, 1);
+      const focusBlend = clamp(progress / 0.8, 0, 1);
+      const settleBlend = clamp((progress - 0.1) / 0.7, 0, 1);
+      const midpoint = captureEffect.captureMidpoint;
+      const direction = safeDirection(captureEffect.start, captureEffect.target);
+      const cutsceneOffset = captureEffect.target
+        ? {
+            x: captureEffect.captureMidpoint.x - direction.x * CUTSCENE_CAMERA_OFFSET,
+            z: captureEffect.captureMidpoint.z - direction.z * CUTSCENE_CAMERA_OFFSET
+          }
+        : {
+            x: captureEffect.captureMidpoint.x,
+            z: captureEffect.captureMidpoint.z
+          };
+      const cutscenePosition = new Vector3(
+        cutsceneOffset.x,
+        lerp(RETRO_CAMERA_HEIGHT, CUTSCENE_CAMERA_HEIGHT, focusBlend),
+        cutsceneOffset.z
+      );
+      const cutsceneLookAt = new Vector3(
+        captureEffect.captureMidpoint.x,
+        lerp(RETRO_LOOK_AT_HEIGHT, CUTSCENE_LOOK_AT_HEIGHT, settleBlend),
+        captureEffect.captureMidpoint.z
+      );
+
+      const blend = clamp((1.7 * focusBlend + settleBlend) / 2, 0, 1);
+      desired = defaultPosition.clone().lerp(cutscenePosition, blend);
+      lookAt = defaultLookAt.clone().lerp(cutsceneLookAt, blend);
+    }
+
     const smoothing = 1 - Math.pow(0.001, deltaSeconds);
 
     this.camera.position.lerp(desired, smoothing);
@@ -521,39 +733,204 @@ class GymBuddyRenderer {
     this.clockShadowTarget.position.copy(lookAt);
   }
 
-  private updateEffects(deltaSeconds: number): void {
+  private updateEffects(deltaSeconds: number, activeCaptureEffect?: CaptureEffect): void {
     for (let index = this.effects.length - 1; index >= 0; index -= 1) {
       const effect = this.effects[index];
       effect.age += deltaSeconds;
       const progress = Math.min(effect.age / effect.duration, 1);
       const eased = easeOutCubic(progress);
-      const arc = Math.sin(progress * Math.PI) * 2.2;
+      const direction = safeDirection(effect.start, effect.target);
+      const approach = effect.success ? Math.min(1, easeOutCubic(progress * 0.95)) : Math.min(1, easeOutCubic(progress * 1.02));
+      const contest = clamp((progress - WRESTLE_FIGHT_PHASE) / 0.48, 0, 1);
+      const shake = Math.sin(progress * WRESTLE_ARM_WOBBLE_SPEED) * 0.013;
 
-      effect.projectile.position.set(
-        lerp(effect.start.x, effect.target.x, eased),
-        0.8 + arc,
-        lerp(effect.start.z, effect.target.z, eased)
-      );
-      effect.projectile.rotation.x += deltaSeconds * 8;
-      effect.projectile.rotation.z += deltaSeconds * 5;
+      if (effect.style === 'arm-wrestle' && effect.playerMesh && effect.creatureMesh) {
+        if (effect === activeCaptureEffect) {
+          this.advanceCaptureBeat(effect, progress);
+        }
 
-      effect.ring.position.set(effect.target.x, 0.12, effect.target.z);
+        const settle = effect.success ? approach : approach * 0.94;
+        const playerX = lerp(effect.start.x, effect.playerEnd?.x ?? effect.start.x, settle);
+        const playerZ = lerp(effect.start.z, effect.playerEnd?.z ?? effect.start.z, settle);
+        const creatureX = lerp(effect.target.x, effect.creatureEnd?.x ?? effect.target.x, settle);
+        const creatureZ = lerp(effect.target.z, effect.creatureEnd?.z ?? effect.target.z, settle);
+        const failRecoil = effect.success ? 0 : clamp((progress - 0.6) * 1.65, 0, 1);
+        const recoilAmount = Math.min(1, failRecoil);
+        const recoil = {
+          x: direction.x * 0.55 * recoilAmount,
+          z: direction.z * 0.55 * recoilAmount
+        };
+
+        effect.playerMesh.position.set(
+          playerX - recoil.x,
+          0.03 + Math.abs(Math.sin(progress * Math.PI)) * 0.014 + Math.abs(Math.cos(progress * 7.4)) * 0.004,
+          playerZ - recoil.z
+        );
+        effect.creatureMesh.position.set(
+          creatureX + recoil.x,
+          0.03 + Math.abs(Math.sin(progress * Math.PI)) * 0.014 + Math.abs(Math.cos(progress * 7.4)) * 0.004,
+          creatureZ + recoil.z
+        );
+
+        effect.playerMesh.rotation.set(
+          WRESTLE_PRONE_ROT_X - recoilAmount * 0.15 * (effect.success ? 0.4 : 1),
+          effect.playerHeading ?? Math.atan2(direction.x, direction.z),
+          shake * 2
+        );
+        effect.creatureMesh.rotation.set(
+          WRESTLE_PRONE_ROT_X + recoilAmount * 0.08 * (effect.success ? 0.25 : 0.95),
+          effect.creatureHeading ?? Math.atan2(-direction.x, -direction.z),
+          -shake * 2
+        );
+
+        if (effect.playerArm && effect.creatureArm) {
+          const midpoint = {
+            x: (playerX + creatureX) / 2,
+            z: (playerZ + creatureZ) / 2
+          };
+          const playerLead = clamp(
+            effect.success ? 0.52 + contest * 0.35 : 0.52 - contest * 0.06,
+            0.16,
+            0.9
+          );
+          const creatureLead = clamp(1 - playerLead, 0.1, 0.86);
+          const playerArmX = lerp(playerX, midpoint.x, playerLead);
+          const playerArmZ = lerp(playerZ, midpoint.z, playerLead);
+          const creatureArmX = lerp(creatureX, midpoint.x, creatureLead);
+          const creatureArmZ = lerp(creatureZ, midpoint.z, creatureLead);
+          const playerArmSwing = 1.0 + Math.sin(progress * 31 + Math.PI / 2) * WRESTLE_ARM_BASE_TWITCH;
+          const creatureArmSwing = 1.0 + Math.sin(progress * 31 + 1.6) * (WRESTLE_ARM_BASE_TWITCH * 1.25);
+
+          effect.playerArm.position.set(playerArmX + direction.x * 0.05, 0.16 + shake, playerArmZ + direction.z * 0.05);
+          effect.creatureArm.position.set(creatureArmX - direction.x * 0.05, 0.16 - shake, creatureArmZ - direction.z * 0.05);
+          effect.playerArm.rotation.set(
+            0.18 + Math.sin(progress * 4 + contest * 3) * 0.12,
+            Math.atan2(creatureX - playerX, creatureZ - playerZ),
+            Math.sin(progress * 16) * 0.22
+          );
+          effect.creatureArm.rotation.set(
+            0.18 + Math.sin(progress * 4 + 0.9 + contest * 3) * 0.12,
+            Math.atan2(playerX - creatureX, playerZ - creatureZ),
+            Math.sin(progress * 16 + 1.2) * 0.22
+          );
+
+          effect.playerArm.scale.set(1, 1, playerArmSwing * 0.6 + playerLead);
+          effect.creatureArm.scale.set(1, 1, creatureArmSwing * 0.6 + creatureLead);
+        }
+
+        if (effect.success && effect.tears) {
+          const cry = clamp((progress - 0.58) / 0.38, 0, 1);
+          effect.tears.visible = cry > 0.02;
+          effect.tears.scale.setScalar(clamp(0.2 + cry * 0.8, 0, 1));
+          effect.tears.rotation.z = Math.sin(progress * 22) * 0.18;
+          effect.tears.position.y = 0.09 + Math.sin(progress * 12) * 0.03;
+        }
+
+        if (effect.success) {
+          const vanish = clamp((progress - 0.66) / 0.33, 0, 1);
+          const creatureScale = effect.creatureBaseScale ?? 0.58;
+          effect.creatureMesh.scale.set(
+            creatureScale * (1 - vanish * 0.95),
+            creatureScale * (1 + (1 - vanish) * 0.1),
+            creatureScale * (1 - vanish * 0.95)
+          );
+        } else {
+          const escape = clamp((progress - 0.58) / 0.34, 0, 1);
+          const escapeDirection = safeDirection(effect.playerMesh.position, {
+            x: creatureX,
+            z: creatureZ
+          });
+          effect.creatureMesh.position.x += escapeDirection.x * 0.34 * escape;
+          effect.creatureMesh.position.z += escapeDirection.z * 0.34 * escape;
+          effect.creatureMesh.position.y = 0.02 + escape * 0.24;
+          effect.creatureMesh.rotation.x = lerp(WRESTLE_PRONE_ROT_X, 0.44, escape);
+          effect.creatureMesh.rotation.z = -Math.sin(progress * 16) * 0.2 * escape;
+        }
+      } else {
+        const playerX = lerp(effect.start.x, effect.target.x, eased);
+        const playerZ = lerp(effect.start.z, effect.target.z, eased);
+        if (effect.playerMesh) {
+          effect.playerMesh.position.set(playerX, 0.03 + Math.sin(progress * Math.PI) * 0.01, playerZ);
+        }
+
+        if (effect.creatureMesh) {
+          effect.creatureMesh.position.set(
+            lerp(effect.target.x, playerX, eased),
+            0.03 + Math.sin(progress * Math.PI) * 0.01,
+            lerp(effect.target.z, playerZ, eased)
+          );
+        }
+      }
+
+      effect.ring.position.set(effect.ringStart.x, 0.12, effect.ringStart.z);
       effect.ring.scale.setScalar(effect.success ? 0.35 + eased * 2.3 : 0.3 + eased * 1.2);
 
       const material = effect.ring.material as MeshBasicMaterial;
-      material.opacity = Math.max(0, 0.9 * (1 - progress));
+        material.opacity = Math.max(0, 0.9 * (1 - progress));
 
-      if (progress >= 1) {
-        this.scene.remove(effect.projectile, effect.ring);
-        effect.projectile.traverse((child) => {
-          if (child instanceof Mesh) {
-            child.geometry.dispose();
-          }
-        });
+        if (progress >= 1) {
+        if (effect.playerMesh) {
+          this.scene.remove(effect.playerMesh);
+          this.disposeObject(effect.playerMesh);
+        }
+
+        if (effect.creatureMesh) {
+          this.scene.remove(effect.creatureMesh);
+          this.disposeObject(effect.creatureMesh);
+        }
+
+        if (effect.playerArm) {
+          this.scene.remove(effect.playerArm);
+          this.disposeObject(effect.playerArm);
+        }
+
+        if (effect.creatureArm) {
+          this.scene.remove(effect.creatureArm);
+          this.disposeObject(effect.creatureArm);
+        }
+
+        this.scene.remove(effect.ring);
         effect.ring.geometry.dispose();
         material.dispose();
         this.effects.splice(index, 1);
       }
+    }
+  }
+
+  private advanceCaptureBeat(effect: CaptureEffect, progress: number): void {
+    const sequence = effect.captureBeatSequence;
+
+    if (!sequence || sequence.length === 0) {
+      return;
+    }
+
+    let index = effect.captureBeatIndex ?? 0;
+
+    while (index < sequence.length && progress >= sequence[index].at) {
+      this.captureBeatText = sequence[index].text;
+      this.captureBeatTextElement.textContent = this.captureBeatText;
+      this.captureBeatOpacity = 1;
+      this.captureBeatTimer = CAPTURE_BEAT_TEXT_HOLD_SECONDS;
+      this.captureBeatTextElement.style.opacity = '1';
+      index += 1;
+    }
+
+    effect.captureBeatIndex = index;
+  }
+
+  private updateCaptureBeatOverlay(deltaSeconds: number): void {
+    if (this.captureBeatTimer > 0) {
+      this.captureBeatTimer = Math.max(0, this.captureBeatTimer - deltaSeconds);
+      this.captureBeatOpacity = clamp(this.captureBeatTimer / CAPTURE_BEAT_TEXT_HOLD_SECONDS, 0, 1);
+      this.captureBeatTextElement.style.opacity = String(this.captureBeatOpacity);
+      return;
+    }
+
+    if (this.captureBeatText !== '') {
+      this.captureBeatText = '';
+      this.captureBeatTextElement.textContent = '';
+      this.captureBeatTextElement.style.opacity = '0';
+      this.captureBeatOpacity = 0;
     }
   }
 
@@ -603,8 +980,13 @@ class GymBuddyRenderer {
     this.height = Math.max(1, Math.floor(rect.height));
     this.camera.aspect = this.width / this.height;
     this.camera.updateProjectionMatrix();
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, getRenderPixelRatioCap(this.touchOptimized)));
-    this.renderer.setSize(this.width, this.height, false);
+    this.renderer.setPixelRatio(1);
+    const pixelScale = getPixelCanvasScale(this.touchOptimized);
+    this.renderer.setSize(
+      Math.max(1, Math.floor(this.width / pixelScale)),
+      Math.max(1, Math.floor(this.height / pixelScale)),
+      false
+    );
   }
 
   private disposeObject(object: Object3D): void {
@@ -672,7 +1054,7 @@ export function createGymBuddyGame(root: HTMLElement): void {
   });
   hud.onStart(() => {
     gameStarted = true;
-    hud.pushMessage('Mega Gym is open.');
+    hud.pushMessage('The safari has opened.');
   });
   hud.onWorkoutComplete((station) => {
     world.completeWorkout(station);
@@ -694,6 +1076,9 @@ export function createGymBuddyGame(root: HTMLElement): void {
   });
   hud.onRosterRemove((rosterId) => {
     world.removeBuddy(rosterId);
+  });
+  hud.onRosterUseSteroid((rosterId) => {
+    world.useSteroid(rosterId);
   });
   hud.onBossChallenge(() => {
     world.challengeBoss();
@@ -761,9 +1146,11 @@ export function createGymBuddyGame(root: HTMLElement): void {
       }
     }
 
+    const captureCutsceneActive = preUpdateSnapshot.captureCutsceneRemaining > 0;
     const canSimulate = gameStarted && !hud.isInteractionActive();
-    const actions = canSimulate ? movementActions : createPausedActions(movementActions);
-    world.update(canSimulate ? deltaSeconds : 0, actions);
+    const shouldAdvanceWorld = canSimulate;
+    const actions = canSimulate && !captureCutsceneActive ? movementActions : createPausedActions(movementActions);
+    world.update(shouldAdvanceWorld ? deltaSeconds : 0, actions);
     const events = world.drainEvents();
     const snapshot = world.getSnapshot();
 
