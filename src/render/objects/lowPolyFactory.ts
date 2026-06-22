@@ -1537,13 +1537,37 @@ function addPlayerMuscleGeometry(
 
 export function createPlayerMesh(appearance?: PlayerAppearance): Group {
   const group = new Group();
-  const appearanceHints = appearance as { skinTone?: number; hairColor?: number } | undefined;
-  const skin = typeof appearanceHints?.skinTone === 'number' ? appearanceHints.skinTone : 0xffc58f;
-  const hair = typeof appearanceHints?.hairColor === 'number' ? appearanceHints.hairColor : 0x2f2b35;
+  const resolvedAppearance: PlayerAppearance = {
+    ...DEFAULT_PLAYER_APPEARANCE,
+    ...(appearance ?? {}),
+    hair: normalizeHairStyle(appearance?.hair ?? DEFAULT_PLAYER_APPEARANCE.hair),
+    muscleBuild: normalizeMuscleBuild(appearance?.muscleBuild ?? DEFAULT_PLAYER_APPEARANCE.muscleBuild),
+    skinTone:
+      typeof appearance?.skinTone === 'string'
+        ? appearance.skinTone
+        : DEFAULT_PLAYER_APPEARANCE.skinTone,
+    body: {
+      ...DEFAULT_PLAYER_APPEARANCE.body,
+      ...(appearance?.body ?? {})
+    }
+  };
+  const sizing = getBodySize(resolvedAppearance);
+  const buildSpec = MUSCLE_SPECS[resolveBuild(resolvedAppearance.muscleBuild)];
+  const frameSpec = FRAME_SPECS[resolvedAppearance.frame] ?? FRAME_SPECS.balanced;
+  const buildMass = buildSpec.baseScale / MUSCLE_SPECS.athletic.baseScale;
+  const skin = getSkinToneOption(resolvedAppearance.skinTone).color;
+  const hair = getHairOption(resolvedAppearance.hair).color;
   const outline = 0x162238;
   const shirt = 0x3f7cf0;
   const shorts = 0x23324d;
   const accent = 0xffe56d;
+  const torsoWidth = 0.68 * buildMass * sizing.torso * frameSpec.torsoTopScale;
+  const torsoHeight = 0.62 * Math.max(0.9, frameSpec.heightScale);
+  const shoulderWidth = 0.18 * buildMass * sizing.arms;
+  const armHeight = 0.46 * sizing.arms;
+  const legWidth = 0.26 * sizing.thighs;
+  const legHeight = 0.34 * sizing.legs;
+  const hipOffset = 0.16 * frameSpec.hipSpread;
   const shadow = new Mesh(new CylinderGeometry(0.62, 0.62, 0.035, 16), basicMaterial(outline, 0.28));
   shadow.scale.set(1.28, 1, 0.42);
   shadow.rotation.x = Math.PI / 2;
@@ -1555,21 +1579,23 @@ export function createPlayerMesh(appearance?: PlayerAppearance): Group {
     group.add(back, front);
     return front;
   };
-  addFlat(0.28, 0.34, 0.16, shorts, -0.16, 0.28, 0.02);
-  addFlat(0.28, 0.34, 0.16, shorts, 0.16, 0.28, 0.02);
+  addFlat(legWidth, legHeight, 0.16, shorts, -hipOffset, 0.28, 0.02);
+  addFlat(legWidth, legHeight, 0.16, shorts, hipOffset, 0.28, 0.02);
   addFlat(0.38, 0.16, 0.18, 0xffffff, -0.18, 0.08, 0.05);
   addFlat(0.38, 0.16, 0.18, 0xffffff, 0.18, 0.08, 0.05);
-  addFlat(0.74, 0.62, 0.18, shirt, 0, 0.75, 0.03);
-  addFlat(0.86, 0.18, 0.2, accent, 0, 1.0, 0.06);
-  addFlat(0.18, 0.46, 0.15, skin, -0.52, 0.77, 0.03).rotation.z = -0.22;
-  addFlat(0.18, 0.46, 0.15, skin, 0.52, 0.77, 0.03).rotation.z = 0.22;
+  addFlat(torsoWidth, torsoHeight, 0.18, shirt, 0, 0.75, 0.03);
+  addFlat(torsoWidth * 1.12 * sizing.shoulders * frameSpec.shoulderSpread, 0.18, 0.2, accent, 0, 1.0, 0.06);
+  addFlat(shoulderWidth, armHeight, 0.15, skin, -0.52 * sizing.shoulders * frameSpec.shoulderSpread, 0.77, 0.03).rotation.z = -0.22;
+  addFlat(shoulderWidth, armHeight, 0.15, skin, 0.52 * sizing.shoulders * frameSpec.shoulderSpread, 0.77, 0.03).rotation.z = 0.22;
   addFlat(0.48, 0.48, 0.19, skin, 0, 1.32, 0.05);
   addFlat(0.52, 0.18, 0.18, hair, 0, 1.56, 0.03);
-  addFlat(0.54, 0.15, 0.2, 0xef3d4f, 0.05, 1.59, 0.1);
-  addFlat(0.34, 0.08, 0.24, accent, 0.28, 1.52, 0.16);
+  addFlat(0.54, 0.15, 0.2, hair, 0.05, 1.59, 0.1);
+  addFlat(0.34, 0.08, 0.24, hair, 0.28, 1.52, 0.16);
   addFlat(0.09, 0.09, 0.08, outline, -0.1, 1.32, 0.17);
   addFlat(0.09, 0.09, 0.08, outline, 0.1, 1.32, 0.17);
-  group.scale.setScalar(0.92);
+  addPlayerMuscleGeometry(group, resolvedAppearance, skin, accent);
+  addPlayerHair(group, resolvedAppearance);
+  group.scale.setScalar(0.92 * sizing.height * frameSpec.heightScale);
   return markShadows(group) as Group;
 }
 

@@ -26,3 +26,10 @@ Follow-up input priority fix:
 - Connected HUD capture action events to the existing input capture queue in createGymBuddyGame.ts.
 - Pointer movement now starts only when the game has started and HUD interaction/capture/customization overlays are not active.
 - CSS now explicitly keeps visible HUD controls above the canvas and disables pointer events for hidden panels.
+
+Customization fix:
+- Player mesh creation now reads real PlayerAppearance values instead of legacy numeric color hints.
+- Skin tone, hair style, muscle build, frame, height, shoulders, torso, arms, legs, chest, wings/back, glutes, thighs, and calves all feed the rendered player mesh.
+- Appearance listeners now hydrate immediately, so the preview and gameplay player receive the current appearance on startup and update live from Settings customization.
+- Creator controls include short helper descriptions and a live Build/Frame/Focus summary.
+- Front View, Back View, Rotate Left, Rotate Right, and Reset View continue to drive the existing preview rotation listener.

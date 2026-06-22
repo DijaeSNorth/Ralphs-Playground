@@ -8,9 +8,9 @@ import type {
   SkinTone
 } from '../types';
 
-export const SEX_OPTIONS: Array<{ id: CharacterSex; label: string }> = [
-  { id: 'man', label: 'Man' },
-  { id: 'woman', label: 'Woman' }
+export const SEX_OPTIONS: Array<{ id: CharacterSex; label: string; description: string }> = [
+  { id: 'man', label: 'Man', description: 'Broader base shoulders and straighter hips.' },
+  { id: 'woman', label: 'Woman', description: 'Curvier base hips and softer shoulder line.' }
 ];
 
 const HAIR_CANONICAL_OPTIONS: Array<{
@@ -74,22 +74,23 @@ const MUSCLE_BUILD_ALIAS: Partial<Record<MuscleBuild, MuscleBuild>> = {
   sculpted: 'bodybuilder'
 };
 
-export const MUSCLE_BUILD_OPTIONS: Array<{ id: MuscleBuild; label: string }> = [
-  { id: 'beginner', label: 'Beginner' },
-  { id: 'average', label: 'Average' },
-  { id: 'toned', label: 'Toned' },
-  { id: 'athletic', label: 'Athletic' },
-  { id: 'bodybuilder', label: 'Bodybuilder' },
-  { id: 'elite', label: 'Elite' }
+export const MUSCLE_BUILD_OPTIONS: Array<{ id: MuscleBuild; label: string; description: string }> = [
+  { id: 'beginner', label: 'Beginner', description: 'Smaller frame with lighter definition.' },
+  { id: 'average', label: 'Average', description: 'Balanced everyday build.' },
+  { id: 'toned', label: 'Toned', description: 'Lean definition and sharper muscle lines.' },
+  { id: 'athletic', label: 'Athletic', description: 'Stronger shoulders, arms, and legs.' },
+  { id: 'muscular', label: 'Muscular', description: 'Visibly larger arms, chest, and back.' },
+  { id: 'bodybuilder', label: 'Bodybuilder', description: 'Exaggerated upper body and mass.' },
+  { id: 'elite', label: 'Elite', description: 'Maximum stylized build.' }
 ];
 
-export const FRAME_OPTIONS: Array<{ id: BodyFrame; label: string }> = [
-  { id: 'balanced', label: 'Balanced' },
-  { id: 'tapered', label: 'Tapered' },
-  { id: 'curved', label: 'Curved' },
-  { id: 'compact', label: 'Compact' },
-  { id: 'voluptuous', label: 'Voluptuous' },
-  { id: 'pear', label: 'Pear Heavy' }
+export const FRAME_OPTIONS: Array<{ id: BodyFrame; label: string; description: string }> = [
+  { id: 'balanced', label: 'Balanced', description: 'Even proportions from top to bottom.' },
+  { id: 'tapered', label: 'Tapered', description: 'Wider shoulders with a narrower waist.' },
+  { id: 'curved', label: 'Curved', description: 'More hip and lower-body shape.' },
+  { id: 'compact', label: 'Compact', description: 'Shorter, powerful build.' },
+  { id: 'voluptuous', label: 'Voluptuous', description: 'Fuller chest, hips, and lower body.' },
+  { id: 'pear', label: 'Pear Heavy', description: 'Fuller lower-body emphasis.' }
 ];
 
 export const BODY_SIZE_CONTROLS: Array<{
@@ -98,17 +99,18 @@ export const BODY_SIZE_CONTROLS: Array<{
   min: number;
   max: number;
   step: number;
+  description: string;
 }> = [
-  { id: 'height', label: 'Height', min: 0.88, max: 1.18, step: 0.02 },
-  { id: 'shoulders', label: 'Shoulders', min: 0.82, max: 1.28, step: 0.02 },
-  { id: 'torso', label: 'Torso', min: 0.86, max: 1.22, step: 0.02 },
-  { id: 'arms', label: 'Arms', min: 0.82, max: 1.3, step: 0.02 },
-  { id: 'legs', label: 'Legs', min: 0.84, max: 1.32, step: 0.02 },
-  { id: 'chest', label: 'Chest', min: 0.68, max: 1.4, step: 0.02 },
-  { id: 'wings', label: 'Wings', min: 0.6, max: 1.55, step: 0.02 },
-  { id: 'glutes', label: 'Glutes', min: 0.68, max: 1.42, step: 0.02 },
-  { id: 'thighs', label: 'Thighs', min: 0.8, max: 1.38, step: 0.02 },
-  { id: 'calfs', label: 'Calfs', min: 0.8, max: 1.38, step: 0.02 }
+  { id: 'height', label: 'Height', min: 0.88, max: 1.18, step: 0.02, description: 'Overall size.' },
+  { id: 'shoulders', label: 'Shoulders', min: 0.82, max: 1.28, step: 0.02, description: 'Upper body width.' },
+  { id: 'torso', label: 'Torso', min: 0.86, max: 1.22, step: 0.02, description: 'Core/body thickness.' },
+  { id: 'arms', label: 'Arms', min: 0.82, max: 1.3, step: 0.02, description: 'Biceps and forearms.' },
+  { id: 'legs', label: 'Legs', min: 0.84, max: 1.32, step: 0.02, description: 'Leg length and mass.' },
+  { id: 'chest', label: 'Chest', min: 0.68, max: 1.4, step: 0.02, description: 'Upper torso/chest mass.' },
+  { id: 'wings', label: 'Wings', min: 0.6, max: 1.55, step: 0.02, description: 'Back and lat width.' },
+  { id: 'glutes', label: 'Glutes', min: 0.68, max: 1.42, step: 0.02, description: 'Lower-body shape.' },
+  { id: 'thighs', label: 'Thighs', min: 0.8, max: 1.38, step: 0.02, description: 'Upper-leg size.' },
+  { id: 'calfs', label: 'Calfs', min: 0.8, max: 1.38, step: 0.02, description: 'Lower-leg size.' }
 ];
 
 export const DEFAULT_PLAYER_APPEARANCE: PlayerAppearance = {

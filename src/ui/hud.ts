@@ -205,6 +205,7 @@ export class GameHud {
   private readonly previewRotateLeft: HTMLButtonElement;
   private readonly previewRotateRight: HTMLButtonElement;
   private readonly previewRotateReset: HTMLButtonElement;
+  private readonly creatorSummary: HTMLDivElement;
   private readonly vendingTitle: HTMLHeadingElement;
   private readonly vendingEnergyMeta: HTMLSpanElement;
   private readonly vendingSnackMeta: HTMLSpanElement;
@@ -428,14 +429,14 @@ export class GameHud {
           </div>
         </section>
         <section class="repdex-detail" data-repdex-detail hidden aria-label="RepDex creature detail">
-          <button type="button" class="repdex-detail-close" data-repdex-detail-close aria-label="Close creature card">ï¿½</button>
+          <button type="button" class="repdex-detail-close" data-repdex-detail-close aria-label="Close creature card">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½</button>
           <h2 class="repdex-detail-title" data-repdex-detail-title>Creature</h2>
           <div class="repdex-detail-grid">
             <div class="repdex-detail-field"><span>Species</span><strong data-repdex-detail-species>Unknown</strong></div>
             <div class="repdex-detail-field"><span>Type</span><strong data-repdex-detail-type>Normal</strong></div>
             <div class="repdex-detail-field"><span>Rarity</span><strong data-repdex-detail-rarity>Normal</strong></div>
-            <div class="repdex-detail-field repdex-detail-full"><span>Personality</span><strong data-repdex-detail-personality>ï¿½</strong></div>
-            <div class="repdex-detail-field repdex-detail-full"><span>Favorite Workout</span><strong data-repdex-detail-fav-workout>ï¿½</strong></div>
+            <div class="repdex-detail-field repdex-detail-full"><span>Personality</span><strong data-repdex-detail-personality>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½</strong></div>
+            <div class="repdex-detail-field repdex-detail-full"><span>Favorite Workout</span><strong data-repdex-detail-fav-workout>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½</strong></div>
             <div class="repdex-detail-field repdex-detail-full"><span>Caught</span><strong data-repdex-detail-count>0</strong></div>
           </div>
           <p class="repdex-detail-description" data-repdex-detail-description>Capture a creature to add details.</p>
@@ -465,7 +466,7 @@ export class GameHud {
           </div>
         </section>
         <section class="crew-detail" data-crew-detail hidden aria-label="Crew creature detail">
-          <button type="button" class="crew-detail-close" data-crew-detail-close aria-label="Close crew detail">ï¿½</button>
+          <button type="button" class="crew-detail-close" data-crew-detail-close aria-label="Close crew detail">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½</button>
           <h2 class="crew-detail-title" data-crew-detail-title>Creature</h2>
           <div class="crew-detail-grid">
             <div class="crew-detail-field"><span>Species</span><strong data-crew-detail-species>Unknown</strong></div>
@@ -476,7 +477,7 @@ export class GameHud {
             <div class="crew-detail-field"><span>Endurance</span><strong data-crew-detail-endurance>0</strong></div>
             <div class="crew-detail-field"><span>Focus</span><strong data-crew-detail-focus>0</strong></div>
             <div class="crew-detail-field"><span>Energy</span><strong data-crew-detail-energy>100</strong></div>
-            <div class="crew-detail-field"><span>Caught</span><strong data-crew-detail-caught>ï¿½</strong></div>
+            <div class="crew-detail-field"><span>Caught</span><strong data-crew-detail-caught>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½</strong></div>
             <div class="crew-detail-field crew-detail-field--wide">
               <span>Rename this buddy</span>
               <div class="crew-detail-rename">
@@ -642,6 +643,9 @@ export class GameHud {
                 <button type="button" class="creator-preview-rotate" data-preview-back>Back View</button>
               </div>
             </div>
+              <div class="creator-live-summary" data-creator-summary>
+                Build: Athletic. Frame: Balanced. Focus: balanced proportions.
+              </div>
           <div class="creator-panel">
           <div class="creator-head">
             <h1>Ralph's Swole Safari</h1>
@@ -657,7 +661,7 @@ export class GameHud {
             <details class="creator-customize">
               <summary>Customize Character</summary>
             <div class="creator-group" aria-label="Hair">
-              <div class="creator-label">Hair</div>
+              <div class="creator-label">Hair</div><p class="creator-helper">Changes the head silhouette and is easiest to inspect from Front or Back View.</p>
               <div class="creator-options">
                 ${HAIR_OPTIONS.map(
                   (option) => `
@@ -670,19 +674,20 @@ export class GameHud {
               </div>
             </div>
             <div class="creator-group" aria-label="Sex">
-              <div class="creator-label">Sex</div>
+              <div class="creator-label">Sex</div><p class="creator-helper">Changes the base body proportions before frame and sliders are applied.</p>
               <div class="creator-options creator-options--frame">
                 ${SEX_OPTIONS.map(
                   (option) => `
-                    <button type="button" class="creator-choice creator-choice--frame" data-sex="${option.id}" aria-pressed="false">
+                    <button type="button" class="creator-choice creator-choice--frame" data-sex="${option.id}" aria-pressed="false" title="${option.description}">
                       <span>${option.label}</span>
+                      <small>${option.description}</small>
                     </button>
                   `
                 ).join('')}
               </div>
             </div>
             <div class="creator-group" aria-label="Skin tone">
-              <div class="creator-label">Skin Tone</div>
+              <div class="creator-label">Skin Tone</div><p class="creator-helper">Updates face, arms, shoulders, and muscle highlights immediately.</p>
               <div class="creator-options">
                 ${SKIN_TONE_OPTIONS.map(
                   (option) => `
@@ -695,36 +700,39 @@ export class GameHud {
               </div>
             </div>
             <div class="creator-group" aria-label="Muscle build">
-              <div class="creator-label">Muscle</div>
+              <div class="creator-label">Muscle</div><p class="creator-helper">Controls overall muscle mass, definition, and silhouette size.</p>
               <div class="creator-options creator-options--muscle">
                 ${MUSCLE_BUILD_OPTIONS.map(
                   (option) => `
-                    <button type="button" class="creator-choice creator-choice--muscle" data-muscle="${option.id}" aria-pressed="false">
+                    <button type="button" class="creator-choice creator-choice--muscle" data-muscle="${option.id}" aria-pressed="false" title="${option.description}">
                       <span>${option.label}</span>
+                      <small>${option.description}</small>
                     </button>
                   `
                 ).join('')}
               </div>
             </div>
             <div class="creator-group" aria-label="Frame">
-              <div class="creator-label">Frame</div>
+              <div class="creator-label">Frame</div><p class="creator-helper">Changes shoulder, waist, hip, and height proportions.</p>
               <div class="creator-options creator-options--frame">
                 ${FRAME_OPTIONS.map(
                   (option) => `
-                    <button type="button" class="creator-choice creator-choice--frame" data-frame="${option.id}" aria-pressed="false">
+                    <button type="button" class="creator-choice creator-choice--frame" data-frame="${option.id}" aria-pressed="false" title="${option.description}">
                       <span>${option.label}</span>
+                      <small>${option.description}</small>
                     </button>
                   `
                 ).join('')}
               </div>
             </div>
             <div class="creator-group" aria-label="Body sizing">
-              <div class="creator-label">Body Scale</div>
+              <div class="creator-label">Body Scale</div><p class="creator-helper">Fine-tunes shoulders, arms, chest, back, legs, glutes, thighs, and calves.</p>
               <div class="creator-sliders">
                 ${BODY_SIZE_CONTROLS.map(
                   (control) => `
                     <label class="creator-slider">
                       <span>${control.label}</span>
+                      <small>${control.description}</small>
                       <input
                         type="range"
                         min="${control.min}"
@@ -878,6 +886,7 @@ export class GameHud {
     const previewRotateLeft = root.querySelector<HTMLButtonElement>('[data-preview-rotate-left]');
     const previewRotateRight = root.querySelector<HTMLButtonElement>('[data-preview-rotate-right]');
     const previewRotateReset = root.querySelector<HTMLButtonElement>('[data-preview-rotate-reset]');
+    const creatorSummary = root.querySelector<HTMLDivElement>('[data-creator-summary]');
     const creatorCustomize = root.querySelector<HTMLDetailsElement>('.creator-customize');
     const creatorCustomizeToggleButton = root.querySelector<HTMLButtonElement>('[data-toggle-customize]');
     const creatorStartButton = root.querySelector<HTMLButtonElement>('[data-start-game]');
@@ -1037,6 +1046,7 @@ export class GameHud {
       !previewRotateLeft ||
       !previewRotateRight ||
       !previewRotateReset ||
+      !creatorSummary ||
       !creatorCustomize ||
       !creatorCustomizeToggleButton ||
       !creatorStartButton ||
@@ -1204,6 +1214,7 @@ export class GameHud {
     this.previewRotateLeft = previewRotateLeft;
     this.previewRotateRight = previewRotateRight;
     this.previewRotateReset = previewRotateReset;
+    this.creatorSummary = creatorSummary;
     this.vendingEnergyMeta = vendingEnergyMeta;
     this.vendingSnackMeta = vendingSnackMeta;
     this.vendingEnergyButton = vendingEnergyButton;
@@ -1394,7 +1405,7 @@ export class GameHud {
               <span class="dex-row-meta">Species ${entry.definition.species}</span>
               ${this.renderRarityBadge(entry.definition.rarity)}
               <span class="dex-row-meta">Personality ${entry.definition.personalityTag}</span>
-              <span class="dex-row-meta">${entry.count} caught ï¿½ Best Lv ${entry.highestLevel}</span>
+              <span class="dex-row-meta">${entry.count} caught ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ Best Lv ${entry.highestLevel}</span>
             </div>
           </div>
         `
@@ -1829,7 +1840,7 @@ export class GameHud {
     this.setRarityBadgeClasses(this.repDexDetailRarity, definition.rarity, 'detail-rarity-badge');
     this.repDexDetailPersonality.textContent = definition.personalityTag;
     this.repDexDetailFavoriteWorkout.textContent = definition.favoriteWorkout;
-    this.repDexDetailCount.textContent = `${entry.count} caught ï¿½ Best Lv ${entry.highestLevel}`;
+    this.repDexDetailCount.textContent = `${entry.count} caught ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ Best Lv ${entry.highestLevel}`;
     this.repDexDetailDescription.textContent = this.getRepDexDescription(definition);
     this.repDexDetailOdds.innerHTML = `
       <div class="repdex-detail-odds-title">Catch odds by level</div>
@@ -1961,11 +1972,17 @@ export class GameHud {
   }
 
   getAppearance(): PlayerAppearance {
-    return { ...this.appearance };
+    return {
+      ...this.appearance,
+      body: {
+        ...this.appearance.body
+      }
+    };
   }
 
   onAppearanceChange(callback: (appearance: PlayerAppearance) => void): void {
     this.appearanceListeners.push(callback);
+    callback(this.getAppearance());
   }
 
   onStart(callback: () => void): void {
@@ -2026,6 +2043,7 @@ export class GameHud {
 
   onPreviewRotationChange(callback: (rotation: number) => void): void {
     this.previewRotationListeners.push(callback);
+    callback(this.previewRotation);
   }
 
   onInputModeChange(callback: (mode: InputMode) => void): void {
@@ -4187,6 +4205,31 @@ export class GameHud {
         output.textContent = `${Math.round(value * 100)}%`;
       }
     });
+
+    this.updateCreatorSummary();
+  }
+
+  private updateCreatorSummary(): void {
+    const muscle = MUSCLE_BUILD_OPTIONS.find((option) => option.id === this.appearance.muscleBuild);
+    const frame = FRAME_OPTIONS.find((option) => option.id === this.appearance.frame);
+    const sex = SEX_OPTIONS.find((option) => option.id === this.appearance.sex);
+    const bodyFocus = BODY_SIZE_CONTROLS.filter((control) => {
+      const value = this.appearance.body[control.id] ?? 1;
+      return Math.abs(value - 1) >= 0.08;
+    })
+      .slice(0, 3)
+      .map((control) => `${control.label}: ${control.description}`);
+    const focus =
+      bodyFocus.length > 0
+        ? bodyFocus.join(' | ')
+        : `${muscle?.description ?? 'Balanced build.'} ${frame?.description ?? 'Even proportions.'}`;
+
+    this.creatorSummary.innerHTML = `
+      <strong>Build: ${muscle?.label ?? this.appearance.muscleBuild}</strong>
+      <span>Frame: ${frame?.label ?? this.appearance.frame}</span>
+      <span>Base: ${sex?.label ?? this.appearance.sex}</span>
+      <span>Focus: ${focus}</span>
+    `;
   }
 
   private scheduleAppearanceNotifications(): void {
