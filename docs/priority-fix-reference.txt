@@ -67,3 +67,10 @@ Arm-wrestle close-up action scene:
 - Renderer now enlarges the player/creature, scales arm meshes, adds impact burst/pin visuals, and makes success tears larger.
 - Failure pops the creature farther up/back for a clearer overpower escape.
 - Capture-active HUD CSS hides target preview, touch controls, boss battle, and unrelated prompts while the action scene plays.
+
+Art body construction plan:
+- Scope: Planning only; no character rebuild or gameplay changes.
+- New file: docs/art-body-construction-plan.md
+- Direction: Move player art toward layered 2D illustrated body construction rather than low-poly mesh deformation.
+- Plan covers visual art direction, body anatomy map, muscle groups, frames, build presets, customization categories, front/back/gameplay views, technical module path, and quality rules.
+- Recommended path: generated SVG/canvas placeholder rig first, future hand-drawn asset replacement later.
