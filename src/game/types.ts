@@ -169,6 +169,8 @@ export type WorkoutType =
   | 'free-weight-bench';
 
 export type ProgressGoalId =
+  | 'capture_first'
+  | 'workout_first'
   | 'capture_3'
   | 'capture_6'
   | 'capture_10'

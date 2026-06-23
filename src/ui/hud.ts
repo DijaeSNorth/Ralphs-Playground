@@ -187,6 +187,7 @@ export class GameHud {
   private readonly targetPreviewName: HTMLDivElement;
   private readonly targetPreviewRarity: HTMLDivElement;
   private readonly targetPreviewChance: HTMLDivElement;
+  private readonly targetPreviewFlavor: HTMLDivElement;
   private readonly targetCaptureButton: HTMLButtonElement;
   private readonly goalsList: HTMLDivElement;
   private readonly goalsPanel: HTMLElement;
@@ -368,6 +369,7 @@ export class GameHud {
   private renderedTargetPreviewName = '';
   private renderedTargetPreviewRarity = '';
   private renderedTargetPreviewChance = '';
+  private renderedTargetPreviewFlavor = '';
   private renderedGoalsMarkup = '';
   private renderedQuestsMarkup = '';
   private renderedToastVisible = false;
@@ -455,6 +457,7 @@ export class GameHud {
             <div class="target-preview-name" data-target-preview-name></div>
             <div class="target-preview-rarity" data-target-preview-rarity></div>
             <div class="target-preview-chance" data-target-preview-chance></div>
+            <div class="target-preview-flavor" data-target-preview-flavor></div>
             <button type="button" class="target-preview-action" data-capture-action>Arm Wrestle</button>
           </section>
           <section class="goals-panel hud-panel--collapsible" data-panel="goals" aria-label="Progress goals">
@@ -875,6 +878,7 @@ export class GameHud {
     const targetPreviewName = root.querySelector<HTMLDivElement>('[data-target-preview-name]');
     const targetPreviewRarity = root.querySelector<HTMLDivElement>('[data-target-preview-rarity]');
     const targetPreviewChance = root.querySelector<HTMLDivElement>('[data-target-preview-chance]');
+    const targetPreviewFlavor = root.querySelector<HTMLDivElement>('[data-target-preview-flavor]');
     const targetCaptureButton = root.querySelector<HTMLButtonElement>('[data-capture-action]');
     const goalsList = root.querySelector<HTMLDivElement>('[data-goals-list]');
     const goalsPanel = root.querySelector<HTMLElement>('.goals-panel[data-panel="goals"]');
@@ -1028,6 +1032,7 @@ export class GameHud {
       !targetPreviewName ||
       !targetPreviewRarity ||
       !targetPreviewChance ||
+      !targetPreviewFlavor ||
       !targetCaptureButton ||
       !goalsList ||
       !goalsPanel ||
@@ -1197,6 +1202,7 @@ export class GameHud {
     this.targetPreviewName = targetPreviewName;
     this.targetPreviewRarity = targetPreviewRarity;
     this.targetPreviewChance = targetPreviewChance;
+    this.targetPreviewFlavor = targetPreviewFlavor;
     this.targetCaptureButton = targetCaptureButton;
     this.goalsList = goalsList;
     this.goalsPanel = goalsPanel;
@@ -1422,6 +1428,7 @@ export class GameHud {
     let previewName = '';
     let previewRarity = '';
     let previewChance = '';
+    let previewFlavor = '';
     let previewRarityLevel: BuddyDefinition['rarity'] = 'common';
     let showTargetPreview = false;
     if (carriedFreeWeight) {
@@ -1450,6 +1457,10 @@ export class GameHud {
       previewRarity = this.getRarityDisplayName(definition.rarity);
       previewRarityLevel = definition.rarity;
       previewChance = chance;
+      const flavorDescription = definition.description ?? 'Ready to test your arm.';
+      previewFlavor = definition.personalityTag
+        ? `${definition.personalityTag}: ${flavorDescription}`
+        : flavorDescription;
     }
 
     this.renderedTarget = this.setText(this.target, this.renderedTarget, targetText);
@@ -1473,11 +1484,17 @@ export class GameHud {
         this.renderedTargetPreviewChance,
         previewChance
       );
+      this.renderedTargetPreviewFlavor = this.setText(
+        this.targetPreviewFlavor,
+        this.renderedTargetPreviewFlavor,
+        previewFlavor
+      );
     } else {
       this.targetPreview.classList.add('target-preview--hidden');
       this.renderedTargetPreviewName = '';
       this.renderedTargetPreviewRarity = '';
       this.renderedTargetPreviewChance = '';
+      this.renderedTargetPreviewFlavor = '';
       this.setRarityBadgeClasses(this.targetPreviewRarity, 'common', 'target-preview-rarity');
     }
 
@@ -2071,6 +2088,10 @@ export class GameHud {
         ...this.appearance.body
       }
     };
+  }
+
+  applySavedAppearance(appearance: PlayerAppearance): void {
+    this.setAppearance(appearance);
   }
 
   onAppearanceChange(callback: (appearance: PlayerAppearance) => void): void {

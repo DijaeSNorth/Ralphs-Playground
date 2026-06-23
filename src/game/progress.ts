@@ -1,7 +1,21 @@
 ﻿import { BUDDY_DEFINITIONS } from './content/buddies';
 import { QUEST_DEFINITIONS } from './content/quests';
+import {
+  DEFAULT_PLAYER_APPEARANCE,
+  normalizeBodyFrame,
+  normalizeHairStyle,
+  normalizeMuscleBuild
+} from './content/playerAppearance';
 import { recordRuntimeError } from './runtimeErrors';
-import type { BuddyBodyTraits, ProgressGoals, QuestStates } from './types';
+import type {
+  BodySizeKey,
+  BuddyBodyTraits,
+  CharacterSex,
+  PlayerAppearance,
+  ProgressGoals,
+  QuestStates,
+  SkinTone
+} from './types';
 
 export const SAVE_DATA_VERSION = 1;
 export const SAVE_STORAGE_KEY = 'gym-buddy-swole-safari-save';
@@ -40,6 +54,7 @@ export type SavedProgress = {
   version: number;
   timestamp: number;
   tutorialCompleted: boolean;
+  appearance: PlayerAppearance;
   goals: ProgressGoals;
   quests: QuestStates;
   player: {
@@ -68,6 +83,8 @@ const LEGACY_ROSTER_STATUS: SavedRosterStatus[] = ['ready', 'training', 'needs-s
 const LEGACY_TASK_OUTCOMES: SavedTaskOutcome[] = ['success', 'needs-spot'];
 const DEFINITION_IDS = new Set(BUDDY_DEFINITIONS.map((definition) => definition.id));
 const DEFAULT_GOALS: ProgressGoals = {
+  capture_first: { completed: false, progress: 0 },
+  workout_first: { completed: false, progress: 0 },
   capture_3: { completed: false, progress: 0 },
   capture_6: { completed: false, progress: 0 },
   capture_10: { completed: false, progress: 0 },
@@ -126,6 +143,40 @@ function sanitizeTaskOutcome(value: unknown): SavedTaskOutcome | undefined {
 
 function sanitizeTutorialCompleted(value: unknown): boolean {
   return value === true;
+}
+
+function sanitizeAppearance(raw: unknown): PlayerAppearance {
+  const source = isObject(raw) ? raw : {};
+  const bodySource = isObject(source.body) ? source.body : {};
+  const body = { ...DEFAULT_PLAYER_APPEARANCE.body };
+
+  (Object.keys(body) as BodySizeKey[]).forEach((key) => {
+    body[key] = clampNumber(bodySource[key], 0.75, 1.55, DEFAULT_PLAYER_APPEARANCE.body[key]);
+  });
+
+  const sex: CharacterSex = source.sex === 'woman' ? 'woman' : 'man';
+  const skinTone: SkinTone =
+    source.skinTone === 'light' || source.skinTone === 'deep' || source.skinTone === 'warm'
+      ? source.skinTone
+      : DEFAULT_PLAYER_APPEARANCE.skinTone;
+
+  return {
+    ...DEFAULT_PLAYER_APPEARANCE,
+    sex,
+    hair: normalizeHairStyle(
+      typeof source.hair === 'string' ? (source.hair as PlayerAppearance['hair']) : DEFAULT_PLAYER_APPEARANCE.hair
+    ),
+    skinTone,
+    muscleBuild: normalizeMuscleBuild(
+      typeof source.muscleBuild === 'string'
+        ? (source.muscleBuild as PlayerAppearance['muscleBuild'])
+        : DEFAULT_PLAYER_APPEARANCE.muscleBuild
+    ),
+    frame: normalizeBodyFrame(
+      typeof source.frame === 'string' ? (source.frame as PlayerAppearance['frame']) : DEFAULT_PLAYER_APPEARANCE.frame
+    ),
+    body
+  };
 }
 
 function sanitizeBodyTraits(input: unknown): BuddyBodyTraits {
@@ -189,6 +240,8 @@ function parseGoals(raw: unknown): ProgressGoals {
   });
 
   return {
+    capture_first: parsed.capture_first ?? DEFAULT_GOALS.capture_first,
+    workout_first: parsed.workout_first ?? DEFAULT_GOALS.workout_first,
     capture_3: parsed.capture_3 ?? DEFAULT_GOALS.capture_3,
     capture_6: parsed.capture_6 ?? DEFAULT_GOALS.capture_6,
     capture_10: parsed.capture_10 ?? DEFAULT_GOALS.capture_10,
@@ -314,6 +367,7 @@ export function sanitizeSavedProgress(raw: unknown): SavedProgress | undefined {
     version,
     timestamp: Math.max(0, toInteger((raw as SavedProgress).timestamp, Date.now())),
     tutorialCompleted: sanitizeTutorialCompleted((raw as SavedProgress).tutorialCompleted),
+    appearance: sanitizeAppearance((raw as SavedProgress).appearance),
     player: {
       position: {
         x: clampNumber(savedPosition?.x, -9999, 9999, 0),

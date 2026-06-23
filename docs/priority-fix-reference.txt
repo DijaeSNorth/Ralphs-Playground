@@ -96,3 +96,12 @@ Full gameplay loop design:
 - The design locks the core loop: customize trainer, explore zones, inspect creatures, arm-wrestle capture, manage crew/storage, train through workouts, progress through goals/bosses/exotic hunts, and fill the RepDex.
 - Catch odds remain fixed at 90/85/80/70 percent for normal level tiers and 40 percent for exotics.
 - Recommended next order starts with visual/UX verification, first-five-minutes cleanup, capture polish, workout loop polish, progression tuning, crew/storage/RepDex clarity, boss/exotic polish, then playtest readiness.
+
+Core gameplay loop MVP:
+- Scope: Minimum playable loop from title/customization to first capture, first workout, first goal rewards, and saved progress.
+- Added first milestone goals: capture_first and workout_first.
+- First nearby starter creature remains Flex Fox but is capped to level 8 for generous early catch odds.
+- Compact target panel includes creature personality/description flavor and still avoids auto-opening full Creature Data.
+- Workouts now award active crew XP directly when the player has a captured crew member and advance the first workout goal.
+- Trainer appearance is included in localStorage progress and restored on boot.
+- Crew, RepDex, and Goals stay hidden until the player has captured a creature; Settings remains available.

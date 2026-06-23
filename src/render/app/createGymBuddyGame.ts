@@ -1794,6 +1794,7 @@ export function createGymBuddyGame(root: HTMLElement): void {
   const initialTutorialCompleted = Boolean(savedProgress?.tutorialCompleted);
 
   if (savedProgress) {
+    hud.applySavedAppearance(savedProgress.appearance);
     world.loadSaveData(savedProgress);
   }
 
@@ -1811,6 +1812,7 @@ export function createGymBuddyGame(root: HTMLElement): void {
   const saveProgress = (): void => {
     saveProgressToStorage({
       ...world.getSaveData(),
+      appearance: hud.getAppearance(),
       tutorialCompleted
     });
   };

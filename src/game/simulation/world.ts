@@ -34,6 +34,7 @@ import {
 } from '../content/balance';
 import { FREE_WEIGHT_PICKUPS, WORKOUT_STATIONS } from '../content/equipment';
 import { getCurrentGymEvent } from '../content/gymEvents';
+import { DEFAULT_PLAYER_APPEARANCE } from '../content/playerAppearance';
 import { VENDING_MACHINES } from '../content/vending';
 import { getGymZoneAt, getRandomGymSpawnZone, randomPointInZone } from '../content/zones';
 import type {
@@ -195,6 +196,8 @@ function randomPointForZone(zone: GymZoneDefinition): Vec2 {
 
 function createDefaultGoalState(): ProgressGoals {
   return {
+    capture_first: { completed: false, progress: 0 },
+    workout_first: { completed: false, progress: 0 },
     capture_3: { completed: false, progress: 0 },
     capture_6: { completed: false, progress: 0 },
     capture_10: { completed: false, progress: 0 },
@@ -378,6 +381,7 @@ export class GymBuddyWorld {
 
       if (index === 0) {
         buddy.definitionId = 'flex-fox';
+        buddy.level = Math.min(buddy.level, 8);
         buddy.position = { x: 0, z: 2.45 };
         buddy.wanderHeading = Math.PI;
         buddy.holdTimer = 4.5;
@@ -480,6 +484,8 @@ export class GymBuddyWorld {
     const steroidGain = this.grantSteroids(
       Math.random() < STEROID_BALANCE.workoutRewardChance ? 1 : 0
     );
+    const xpGain = Math.round(XP_REWARDS.workoutBase);
+    const xpRecipients = this.awardActiveCrewXp(xpGain, 'workout');
     this.player.stamina = clamp(this.player.stamina + station.staminaReward, 0, MAX_STAMINA);
     this.player.proteinShakers = clamp(
       this.player.proteinShakers + station.shakerReward,
@@ -487,10 +493,14 @@ export class GymBuddyWorld {
       MAX_PROTEIN_SHAKERS
     );
     const steroidText = steroidGain > 0 ? ` +${steroidGain} steroid` : '';
+    const xpText = xpRecipients > 0
+      ? ` Crew +${xpGain} XP.`
+      : ' Catch a creature to turn workouts into crew XP.';
     this.events.push({
       type: 'workout',
-      message: `${station.name} complete. +${station.staminaReward} stamina, +${station.shakerReward} gym token.${steroidText}`
+      message: `${station.name} complete.${xpText} +${station.staminaReward} stamina, +${station.shakerReward} gym token.${steroidText}`
     });
+    this.updateGoalProgress('workout_first', 1);
   }
 
   buyEnergyDrink(): void {
@@ -888,6 +898,8 @@ export class GymBuddyWorld {
 
   private getGoalStateSnapshot(): ProgressGoals {
     return {
+      capture_first: { ...this.goalState.capture_first },
+      workout_first: { ...this.goalState.workout_first },
       capture_3: { ...this.goalState.capture_3 },
       capture_6: { ...this.goalState.capture_6 },
       capture_10: { ...this.goalState.capture_10 },
@@ -953,6 +965,7 @@ export class GymBuddyWorld {
   }
 
   private evaluateCaptureGoals(definition: BuddyDefinition): void {
+    this.updateGoalProgress('capture_first', this.player.capturedTotal);
     this.updateGoalProgress('capture_3', this.player.capturedTotal);
     this.updateGoalProgress('capture_6', this.player.capturedTotal);
     this.updateGoalProgress('capture_10', this.player.capturedTotal);
@@ -1055,6 +1068,7 @@ export class GymBuddyWorld {
   }
 
   private syncGoalStateFromLoadedProgress(): void {
+    this.updateGoalProgress('capture_first', this.player.capturedTotal, false);
     this.updateGoalProgress('capture_3', this.player.capturedTotal, false);
     this.updateGoalProgress('capture_6', this.player.capturedTotal, false);
     this.updateGoalProgress('capture_10', this.player.capturedTotal, false);
@@ -1164,6 +1178,7 @@ export class GymBuddyWorld {
       version: SAVE_DATA_VERSION,
       timestamp: Date.now(),
       tutorialCompleted: false,
+      appearance: DEFAULT_PLAYER_APPEARANCE,
       player: {
         position: copyVec2(this.player.position),
         heading: this.player.heading,
@@ -1403,6 +1418,7 @@ export class GymBuddyWorld {
 
       if (index === 0) {
         buddy.definitionId = 'flex-fox';
+        buddy.level = Math.min(buddy.level, 8);
         buddy.position = { x: 0, z: 2.45 };
         buddy.wanderHeading = Math.PI;
         buddy.holdTimer = 4.5;

@@ -247,6 +247,8 @@ export function getBuddyXpForNextLevel(level: number): number {
 
 // Goal targets and one-time milestone rewards.
 export const PROGRESS_GOAL_TARGETS = {
+  capture_first: 1,
+  workout_first: 1,
   capture_3: 3,
   capture_6: 6,
   capture_10: 10,
@@ -257,6 +259,8 @@ export const PROGRESS_GOAL_TARGETS = {
 
 export function getGoalTargets(repdexSize: number): Record<ProgressGoalId, number> {
   return {
+    capture_first: PROGRESS_GOAL_TARGETS.capture_first,
+    workout_first: PROGRESS_GOAL_TARGETS.workout_first,
     capture_3: PROGRESS_GOAL_TARGETS.capture_3,
     capture_6: PROGRESS_GOAL_TARGETS.capture_6,
     capture_10: PROGRESS_GOAL_TARGETS.capture_10,
@@ -267,6 +271,8 @@ export function getGoalTargets(repdexSize: number): Record<ProgressGoalId, numbe
 }
 
 export const GOAL_STEROID_REWARDS: Record<ProgressGoalId, number> = {
+  capture_first: 1,
+  workout_first: 0,
   capture_3: 1,
   capture_6: 0,
   capture_10: 2,
@@ -276,6 +282,8 @@ export const GOAL_STEROID_REWARDS: Record<ProgressGoalId, number> = {
 };
 
 export const GOAL_CREW_XP_REWARDS: Record<ProgressGoalId, number> = {
+  capture_first: 35,
+  workout_first: 45,
   capture_3: 50,
   capture_6: 60,
   capture_10: 80,
@@ -285,6 +293,8 @@ export const GOAL_CREW_XP_REWARDS: Record<ProgressGoalId, number> = {
 };
 
 export const GOAL_MESSAGES: Record<ProgressGoalId, string> = {
+  capture_first: 'Goal complete: first creature captured. Train your new crew member.',
+  workout_first: 'Goal complete: first workout done. Crew XP gained.',
   capture_3: 'Goal complete: 3 captures reward unlocked.',
   capture_6: 'Goal complete: mid-tier gym beasts are now common.',
   capture_10: 'Goal complete: 10 captures reward unlocked.',
@@ -294,6 +304,8 @@ export const GOAL_MESSAGES: Record<ProgressGoalId, string> = {
 };
 
 export const GOAL_LABELS: Record<ProgressGoalId, string> = {
+  capture_first: 'Capture your first creature',
+  workout_first: 'Complete your first workout',
   capture_3: 'Capture 3 creatures',
   capture_6: 'Capture 6 creatures',
   capture_10: 'Capture 10 creatures',

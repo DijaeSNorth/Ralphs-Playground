@@ -3726,8 +3726,17 @@ button {
 
 .target-preview-name,
 .target-preview-chance,
+.target-preview-flavor,
 .target-preview-action {
   letter-spacing: 0.02em;
+}
+
+.target-preview-flavor {
+  max-width: 240px;
+  color: var(--muted);
+  font-size: 0.58rem;
+  line-height: 1.35;
+  text-transform: none;
 }
 
 @media (max-width: 820px) {
@@ -3803,9 +3812,6 @@ button {
   z-index: 26;
 }
 
-.game-root:not(.game-root--creating) .hud-menu-button[data-menu-open='crew'],
-.game-root:not(.game-root--creating) .hud-menu-button[data-menu-open='repdex'],
-.game-root:not(.game-root--creating) .hud-menu-button[data-menu-open='goals'],
 .game-root:not(.game-root--creating) .hud-menu-button[data-menu-open='settings'] {
   display: inline-flex !important;
   align-items: center;
