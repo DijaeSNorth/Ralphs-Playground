@@ -1509,7 +1509,7 @@ export function createGymBuddyGame(root: HTMLElement): void {
   }
 
   input.bindTouchControls(hud.touchControls);
-  input.bindMouseControls(hud.canvasMount, () => gameStarted && !hud.isInteractionActive());
+  input.bindMouseControls(hud.canvasMount);
   hud.onCaptureAction(() => {
     input.queueCapture();
   });

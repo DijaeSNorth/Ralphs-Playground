@@ -9,8 +9,8 @@ Scope:
 
 Movement:
 - Keyboard input is screen-relative for the fixed 2.5D camera: W/Up moves visually upward, S/Down moves downward, A/Left moves left, and D/Right moves right.
-- Pointer movement now supports click/tap-and-hold on the playfield, using the screen position relative to the canvas center.
-- UI pointer events remain separate from playfield movement.
+- Click/tap-to-move is disabled. Mouse clicks are for UI only.
+- Touch movement remains limited to the intended touch joystick/buttons.
 
 Files touched:
 - src/ui/hud.ts
@@ -26,6 +26,13 @@ Follow-up input priority fix:
 - Connected HUD capture action events to the existing input capture queue in createGymBuddyGame.ts.
 - Pointer movement now starts only when the game has started and HUD interaction/capture/customization overlays are not active.
 - CSS now explicitly keeps visible HUD controls above the canvas and disables pointer events for hidden panels.
+
+Click/tap movement removal:
+- Removed pointer direction movement state from src/game/input/actions.ts.
+- Removed playfield pointerdown/pointermove/pointerup movement handlers.
+- Removed pointer movement gating from createGymBuddyGame.ts.
+- Kept keyboard movement, gamepad movement, and touch joystick/button movement.
+- HUD Arm Wrestle still queues capture through InputController.queueCapture().
 
 Customization fix:
 - Player mesh creation now reads real PlayerAppearance values instead of legacy numeric color hints.
