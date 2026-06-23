@@ -3621,6 +3621,9 @@ button {
 .game-root--capture-active .hud-cluster,
 .game-root--capture-active .hud-menu-bar,
 .game-root--capture-active .control-hint,
+.game-root--capture-active .target-preview,
+.game-root--capture-active .touch-controls,
+.game-root--capture-active .input-mode-toggle,
 .game-root--capture-active .tutorial-popup,
 .game-root--capture-active .workout-prompt,
 .game-root--capture-active .freeweight-prompt,
@@ -3631,7 +3634,8 @@ button {
 .game-root--capture-active .crew-panel,
 .game-root--capture-active .goals-panel,
 .game-root--capture-active .quests-panel,
-.game-root--capture-active .boss-panel {
+.game-root--capture-active .boss-panel,
+.game-root--capture-active .boss-battle-panel {
   display: none !important;
 }
 

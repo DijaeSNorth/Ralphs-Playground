@@ -60,3 +60,10 @@ Workout animation pass:
 - Renderer creates one temporary workout animation group while the workout panel is active, then disposes it when the panel closes/completes.
 - Supported animation families: press/bench, squat/leg press, free weights/dumbbells, cable/pulldown/row.
 - Reduced motion keeps the same readable poses with smaller, slower movement.
+
+Arm-wrestle close-up action scene:
+- Scope: Presentation-only capture scene upgrade; catch odds/rules unchanged.
+- Approach: Same-scene orthographic camera cut with temporary battle mat/table stage at the capture midpoint.
+- Renderer now enlarges the player/creature, scales arm meshes, adds impact burst/pin visuals, and makes success tears larger.
+- Failure pops the creature farther up/back for a clearer overpower escape.
+- Capture-active HUD CSS hides target preview, touch controls, boss battle, and unrelated prompts while the action scene plays.

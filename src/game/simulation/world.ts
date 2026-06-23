@@ -1905,9 +1905,9 @@ export class GymBuddyWorld {
       : 'It powered out!';
     const creatureFacing = Math.atan2(this.player.position.x - buddy.position.x, this.player.position.z - buddy.position.z);
     const captureBeatSequence = [
-      { at: 0.06, text: 'Arm wrestle!' },
-      { at: 0.56, text: "It's close..." },
-      { at: 1.14, text: success ? 'You pinned it!' : 'It powered out!' }
+      { at: 0.06, text: 'Arm Wrestle!' },
+      { at: 0.56, text: "It's close!" },
+      { at: 1.14, text: success ? 'Pinned!' : 'It powered out!' }
     ];
     let captureDestination: 'active' | 'storage' = 'active';
     let captureCrewXp = 0;

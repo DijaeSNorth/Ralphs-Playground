@@ -76,6 +76,8 @@ type CaptureEffect = {
   playerArm?: Group;
   creatureArm?: Group;
   tears?: Group;
+  battleStage?: Group;
+  impactBurst?: Group;
   playerHeading?: number;
   creatureHeading?: number;
   playerEnd?: Vec2;
@@ -130,6 +132,11 @@ const RETRO_LOOK_AT_HEIGHT = 0.72;
 const CUTSCENE_CAMERA_OFFSET = 6.4;
 const CUTSCENE_CAMERA_HEIGHT = 5.9;
 const CUTSCENE_LOOK_AT_HEIGHT = 0.62;
+const CAPTURE_CLOSEUP_CAMERA_OFFSET = 3.15;
+const CAPTURE_CLOSEUP_CAMERA_HEIGHT = 3.2;
+const CAPTURE_CLOSEUP_LOOK_AT_HEIGHT = 0.42;
+const CAPTURE_CLOSEUP_ZOOM = 1.85;
+const CAPTURE_CLOSEUP_ZOOM_TOUCH = 1.55;
 const CAPTURE_BEAT_TEXT_HOLD_SECONDS = 0.4;
 const WRESTLE_STRUGGLE_METER_GAIN = 0.44;
 const WRESTLE_STRUGGLE_MOMENTUM_GAIN = 0.9;
@@ -1057,6 +1064,41 @@ class GymBuddyRenderer {
     return group;
   }
 
+  private createCaptureBattleStage(success: boolean): { stage: Group; impact: Group } {
+    const stage = new Group();
+    const impact = new Group();
+    const matBack = this.createWorkoutBox(3.8, 0.05, 1.82, 0x141d33);
+    const mat = this.createWorkoutBox(3.55, 0.06, 1.62, success ? 0xf6c85f : 0x8bb7ff);
+    const centerStripe = this.createWorkoutBox(0.16, 0.07, 1.52, 0xff705c);
+    const tableTop = this.createWorkoutBox(1.28, 0.16, 0.74, 0x8b6542);
+    const tableEdge = this.createWorkoutBox(1.4, 0.06, 0.86, 0x24324a);
+    const leftLeg = this.createWorkoutBox(0.12, 0.34, 0.12, 0x24324a);
+    const rightLeg = this.createWorkoutBox(0.12, 0.34, 0.12, 0x24324a);
+
+    matBack.position.set(0.1, 0.025, 0.1);
+    mat.position.set(0, 0.055, 0);
+    centerStripe.position.set(0, 0.095, 0);
+    tableTop.position.set(0, 0.34, 0);
+    tableEdge.position.set(0, 0.43, 0);
+    leftLeg.position.set(-0.48, 0.18, -0.26);
+    rightLeg.position.set(0.48, 0.18, 0.26);
+    stage.add(matBack, mat, centerStripe, leftLeg, rightLeg, tableTop, tableEdge, impact);
+
+    const burstColor = success ? 0xffffff : 0xff705c;
+    for (let index = 0; index < 6; index += 1) {
+      const ray = this.createWorkoutBox(index % 2 === 0 ? 0.08 : 0.06, 0.08, 0.54, burstColor);
+      const angle = (index / 6) * Math.PI * 2;
+      ray.position.set(Math.sin(angle) * 0.28, 0.58, Math.cos(angle) * 0.28);
+      ray.rotation.y = angle;
+      ray.rotation.z = index % 2 === 0 ? 0.34 : -0.34;
+      impact.add(ray);
+    }
+
+    impact.visible = false;
+    impact.scale.setScalar(0.2);
+    return { stage, impact };
+  }
+
   private handleEvents(events: WorldEvent[]): void {
     for (const event of events) {
       if (event.type === 'workout') {
@@ -1098,9 +1140,10 @@ class GymBuddyRenderer {
       const playerStart = capturePose?.player?.position ?? event.start;
       const creatureStart = capturePose?.creature?.position ?? event.target;
       const direction = safeDirection(playerStart, creatureStart);
-      const gap = this.touchOptimized ? 0.48 : 0.58;
-      const proneHeight = this.touchOptimized ? 0.025 : 0.03;
-      const actorScale = this.touchOptimized ? 0.63 : 0.58;
+      const stageRotation = Math.atan2(direction.x, direction.z);
+      const gap = this.touchOptimized ? 1.02 : 1.12;
+      const proneHeight = this.touchOptimized ? 0.13 : 0.15;
+      const actorScale = this.touchOptimized ? 0.98 : 1.08;
       const playerEnd = {
         x: (playerStart.x + creatureStart.x) / 2 - direction.x * gap,
         z: (playerStart.z + creatureStart.z) / 2 - direction.z * gap
@@ -1119,9 +1162,12 @@ class GymBuddyRenderer {
       playerMesh.scale.setScalar(actorScale);
       creatureMesh.scale.setScalar(actorScale);
 
-      const playerArm = createArmWrestleArmMesh();
-      const creatureArm = createArmWrestleArmMesh();
-      this.scene.add(playerMesh, creatureMesh, playerArm, creatureArm, ring);
+      const playerArm = createArmWrestleArmMesh(this.touchOptimized ? 1.24 : 1.38);
+      const creatureArm = createArmWrestleArmMesh(this.touchOptimized ? 1.24 : 1.38);
+      const { stage, impact } = this.createCaptureBattleStage(event.result === 'success');
+      stage.position.set(midpoint.x, 0, midpoint.z);
+      stage.rotation.y = stageRotation;
+      this.scene.add(stage, playerMesh, creatureMesh, playerArm, creatureArm, ring);
 
       const tears = event.result === 'success' ? createBabyCryingDrops() : undefined;
       if (tears) {
@@ -1147,6 +1193,8 @@ class GymBuddyRenderer {
         playerArm,
         creatureArm,
         tears,
+        battleStage: stage,
+        impactBurst: impact,
         playerHeading: capturePose?.player?.heading ?? 0,
         creatureHeading: capturePose?.creature?.heading ?? creatureMesh.rotation.y,
         playerEnd,
@@ -1158,15 +1206,15 @@ class GymBuddyRenderer {
         captureBeatSequence: event.captureBeatSequence ?? [
           {
             at: 0.06,
-            text: 'Arm wrestle!'
+            text: 'Arm Wrestle!'
           },
           {
             at: 0.56,
-            text: "It's close..."
+            text: "It's close!"
           },
           {
             at: 1.14,
-            text: event.result === 'success' ? 'You pinned it!' : 'It powered out!'
+            text: event.result === 'success' ? 'Pinned!' : 'It powered out!'
           }
         ]
       });
@@ -1210,10 +1258,12 @@ class GymBuddyRenderer {
       const motionBlend = this.settings.reducedMotion ? 0.42 : 1;
       const midpoint = captureEffect.captureMidpoint;
       const direction = safeDirection(captureEffect.start, captureEffect.target);
+      const closeupOffset = this.touchOptimized ? CAPTURE_CLOSEUP_CAMERA_OFFSET * 1.12 : CAPTURE_CLOSEUP_CAMERA_OFFSET;
+      const closeupHeight = this.touchOptimized ? CAPTURE_CLOSEUP_CAMERA_HEIGHT * 1.08 : CAPTURE_CLOSEUP_CAMERA_HEIGHT;
       const cutsceneOffset = captureEffect.target
         ? {
-            x: captureEffect.captureMidpoint.x - direction.x * CUTSCENE_CAMERA_OFFSET * cameraSettings.offset,
-            z: captureEffect.captureMidpoint.z - direction.z * CUTSCENE_CAMERA_OFFSET * cameraSettings.offset
+            x: captureEffect.captureMidpoint.x - direction.x * closeupOffset * cameraSettings.offset,
+            z: captureEffect.captureMidpoint.z - direction.z * closeupOffset * cameraSettings.offset
           }
         : {
             x: captureEffect.captureMidpoint.x,
@@ -1221,12 +1271,12 @@ class GymBuddyRenderer {
           };
       const cutscenePosition = new Vector3(
         cutsceneOffset.x,
-        lerp(cameraHeight, CUTSCENE_CAMERA_HEIGHT, focusBlend),
+        lerp(cameraHeight, closeupHeight, focusBlend),
         cutsceneOffset.z
       );
       const cutsceneLookAt = new Vector3(
         captureEffect.captureMidpoint.x,
-        lerp(RETRO_LOOK_AT_HEIGHT, CUTSCENE_LOOK_AT_HEIGHT, settleBlend),
+        lerp(RETRO_LOOK_AT_HEIGHT, CAPTURE_CLOSEUP_LOOK_AT_HEIGHT, settleBlend),
         captureEffect.captureMidpoint.z
       );
 
@@ -1236,8 +1286,20 @@ class GymBuddyRenderer {
     }
 
     const smoothing = 1 - Math.pow(this.settings.reducedMotion ? 0.00001 : 0.001, deltaSeconds);
+    const targetZoom = captureEffect
+      ? lerp(
+          1,
+          this.touchOptimized ? CAPTURE_CLOSEUP_ZOOM_TOUCH : CAPTURE_CLOSEUP_ZOOM,
+          clamp((captureEffect.age / captureEffect.duration) / 0.32, 0, 1)
+        )
+      : 1;
 
     this.camera.position.lerp(desired, smoothing);
+    const nextZoom = lerp(this.camera.zoom, targetZoom, smoothing);
+    if (Math.abs(nextZoom - this.camera.zoom) > 0.001) {
+      this.camera.zoom = nextZoom;
+      this.camera.updateProjectionMatrix();
+    }
     this.camera.lookAt(lookAt);
     this.clockShadowTarget.position.copy(lookAt);
   }
@@ -1265,21 +1327,21 @@ class GymBuddyRenderer {
         const playerZ = lerp(effect.start.z, effect.playerEnd?.z ?? effect.start.z, settle);
         const creatureX = lerp(effect.target.x, effect.creatureEnd?.x ?? effect.target.x, settle);
         const creatureZ = lerp(effect.target.z, effect.creatureEnd?.z ?? effect.target.z, settle);
-        const failRecoil = effect.success ? 0 : clamp((progress - 0.6) * 1.65, 0, 1);
+        const failRecoil = effect.success ? 0 : clamp((progress - 0.58) * 1.75, 0, 1);
         const recoilAmount = Math.min(1, failRecoil);
         const recoil = {
-          x: direction.x * 0.55 * recoilAmount,
-          z: direction.z * 0.55 * recoilAmount
+          x: direction.x * 0.72 * recoilAmount,
+          z: direction.z * 0.72 * recoilAmount
         };
 
         effect.playerMesh.position.set(
           playerX - recoil.x,
-          0.03 + (Math.abs(Math.sin(progress * Math.PI)) * 0.014 + Math.abs(Math.cos(progress * 7.4)) * 0.004) * motionScale,
+          0.12 + (Math.abs(Math.sin(progress * Math.PI)) * 0.026 + Math.abs(Math.cos(progress * 7.4)) * 0.009) * motionScale,
           playerZ - recoil.z
         );
         effect.creatureMesh.position.set(
           creatureX + recoil.x,
-          0.03 + (Math.abs(Math.sin(progress * Math.PI)) * 0.014 + Math.abs(Math.cos(progress * 7.4)) * 0.004) * motionScale,
+          0.12 + (Math.abs(Math.sin(progress * Math.PI)) * 0.026 + Math.abs(Math.cos(progress * 7.4)) * 0.009) * motionScale,
           creatureZ + recoil.z
         );
 
@@ -1311,11 +1373,11 @@ class GymBuddyRenderer {
           const playerArmZ = lerp(playerZ, midpoint.z, playerLead);
           const creatureArmX = lerp(creatureX, midpoint.x, creatureLead);
           const creatureArmZ = lerp(creatureZ, midpoint.z, creatureLead);
-          const playerArmSwing = 1.0 + Math.sin(progress * 31 + Math.PI / 2) * (WRESTLE_ARM_BASE_TWITCH + struggle * 0.28) * motionScale;
-          const creatureArmSwing = 1.0 + Math.sin(progress * 31 + 1.6) * ((WRESTLE_ARM_BASE_TWITCH + struggle * 0.24) * 1.25) * motionScale;
+          const playerArmSwing = 1.0 + Math.sin(progress * 31 + Math.PI / 2) * (WRESTLE_ARM_BASE_TWITCH + struggle * 0.32) * motionScale;
+          const creatureArmSwing = 1.0 + Math.sin(progress * 31 + 1.6) * ((WRESTLE_ARM_BASE_TWITCH + struggle * 0.28) * 1.25) * motionScale;
 
-          effect.playerArm.position.set(playerArmX + direction.x * 0.05, 0.16 + shake, playerArmZ + direction.z * 0.05);
-          effect.creatureArm.position.set(creatureArmX - direction.x * 0.05, 0.16 - shake, creatureArmZ - direction.z * 0.05);
+          effect.playerArm.position.set(playerArmX + direction.x * 0.06, 0.55 + shake * 1.5, playerArmZ + direction.z * 0.06);
+          effect.creatureArm.position.set(creatureArmX - direction.x * 0.06, 0.55 - shake * 1.5, creatureArmZ - direction.z * 0.06);
           effect.playerArm.rotation.set(
             0.18 + Math.sin(progress * 4 + contest * 3) * 0.12 * motionScale,
             Math.atan2(creatureX - playerX, creatureZ - playerZ),
@@ -1332,11 +1394,12 @@ class GymBuddyRenderer {
         }
 
         if (effect.success && effect.tears) {
-          const cry = clamp((progress - 0.58) / 0.38, 0, 1);
+          const cry = clamp((progress - 0.56) / 0.36, 0, 1);
           effect.tears.visible = cry > 0.02;
-          effect.tears.scale.setScalar(clamp(0.2 + cry * 0.8, 0, 1));
+          effect.tears.scale.setScalar(clamp(0.4 + cry * 1.45, 0, 1.85));
           effect.tears.rotation.z = Math.sin(progress * 22) * 0.18 * motionScale;
-          effect.tears.position.y = 0.09 + Math.sin(progress * 12) * 0.03 * motionScale;
+          effect.tears.position.y = 0.22 + Math.sin(progress * 12) * 0.08 * motionScale;
+          effect.tears.position.z = 0.28;
         }
 
         if (effect.success) {
@@ -1357,19 +1420,27 @@ class GymBuddyRenderer {
             x: creatureX,
             z: creatureZ
           });
-          effect.creatureMesh.position.x += escapeDirection.x * 0.34 * escape;
-          effect.creatureMesh.position.z += escapeDirection.z * 0.34 * escape;
-          effect.creatureMesh.position.y = 0.02 + escape * 0.24 * motionScale;
-          effect.creatureMesh.rotation.x = lerp(WRESTLE_PRONE_ROT_X, 0.44, escape);
-          effect.creatureMesh.rotation.z = -Math.sin(progress * 16) * 0.2 * escape * motionScale;
+          effect.creatureMesh.position.x += escapeDirection.x * 0.72 * escape;
+          effect.creatureMesh.position.z += escapeDirection.z * 0.72 * escape;
+          effect.creatureMesh.position.y = 0.12 + escape * 0.44 * motionScale;
+          effect.creatureMesh.rotation.x = lerp(WRESTLE_PRONE_ROT_X, 0.25, escape);
+          effect.creatureMesh.rotation.z = -Math.sin(progress * 18) * 0.38 * escape * motionScale;
         }
 
         if (effect.success) {
           const pin = clamp((progress - 0.66) / 0.28, 0, 1);
-          const pinBoost = WRESTLE_PIN_STRENGTH * pin * (0.56 + struggle * 0.44) * (this.settings.reducedMotion ? 0.65 : 1);
+          const pinBoost = WRESTLE_PIN_STRENGTH * 1.75 * pin * (0.56 + struggle * 0.44) * (this.settings.reducedMotion ? 0.65 : 1);
           effect.playerMesh.position.x -= direction.x * pinBoost;
           effect.playerMesh.position.z -= direction.z * pinBoost;
-          effect.playerMesh.rotation.x = WRESTLE_PRONE_ROT_X + pin * 0.03 * (1 + struggle) * motionScale;
+          effect.playerMesh.rotation.x = WRESTLE_PRONE_ROT_X + pin * 0.08 * (1 + struggle) * motionScale;
+        }
+
+        if (effect.impactBurst) {
+          const impact = effect.success ? clamp((progress - 0.64) / 0.16, 0, 1) : clamp((progress - 0.56) / 0.18, 0, 1);
+          const fade = clamp((progress - (effect.success ? 0.78 : 0.72)) / 0.18, 0, 1);
+          effect.impactBurst.visible = impact > 0.04 && fade < 1;
+          effect.impactBurst.scale.setScalar((0.25 + impact * 1.15) * (1 - fade * 0.45));
+          effect.impactBurst.rotation.y = progress * 5.5;
         }
       } else {
         const playerX = lerp(effect.start.x, effect.target.x, eased);
@@ -1412,6 +1483,11 @@ class GymBuddyRenderer {
         if (effect.creatureArm) {
           this.scene.remove(effect.creatureArm);
           this.disposeObject(effect.creatureArm);
+        }
+
+        if (effect.battleStage) {
+          this.scene.remove(effect.battleStage);
+          this.disposeObject(effect.battleStage);
         }
 
         this.scene.remove(effect.ring);
