@@ -89,3 +89,10 @@ Body construction customization UX:
 - Quick presets: Lean Runner, Balanced Athlete, Upper Body Power, Lower Body Power, Bodybuilder, Elite Hero.
 - Detailed sculpt controls now target shoulders, traps, chest, lats/wings, biceps, triceps, forearms, abs/core, obliques, torso thickness, glutes, thighs/quads, hamstrings, and calves.
 - Quick presets and sliders reuse the same appearance/body construction update path so preview and gameplay character stay matched.
+
+Full gameplay loop design:
+- Scope: Planning/documentation only; no gameplay implementation.
+- New file: docs/full-gameplay-loop.md
+- The design locks the core loop: customize trainer, explore zones, inspect creatures, arm-wrestle capture, manage crew/storage, train through workouts, progress through goals/bosses/exotic hunts, and fill the RepDex.
+- Catch odds remain fixed at 90/85/80/70 percent for normal level tiers and 40 percent for exotics.
+- Recommended next order starts with visual/UX verification, first-five-minutes cleanup, capture polish, workout loop polish, progression tuning, crew/storage/RepDex clarity, boss/exotic polish, then playtest readiness.
