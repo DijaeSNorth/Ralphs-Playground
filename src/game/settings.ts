@@ -1,6 +1,7 @@
 export type CameraDistanceSetting = 'close' | 'normal' | 'far';
 
 export type GameSettings = {
+  masterVolume: number;
   musicVolume: number;
   sfxVolume: number;
   muted: boolean;
@@ -13,6 +14,7 @@ export type GameSettings = {
 export const SETTINGS_STORAGE_KEY = 'gym-buddy-swole-safari-settings';
 
 export const DEFAULT_GAME_SETTINGS: GameSettings = {
+  masterVolume: 80,
   musicVolume: 60,
   sfxVolume: 75,
   muted: false,
@@ -44,6 +46,7 @@ export function sanitizeGameSettings(raw: unknown): GameSettings {
   }
 
   return {
+    masterVolume: clampVolume(raw.masterVolume, DEFAULT_GAME_SETTINGS.masterVolume),
     musicVolume: clampVolume(raw.musicVolume, DEFAULT_GAME_SETTINGS.musicVolume),
     sfxVolume: clampVolume(raw.sfxVolume, DEFAULT_GAME_SETTINGS.sfxVolume),
     muted: typeof raw.muted === 'boolean' ? raw.muted : DEFAULT_GAME_SETTINGS.muted,

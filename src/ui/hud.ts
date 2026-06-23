@@ -279,6 +279,8 @@ export class GameHud {
   private readonly menuGoalsButton: HTMLButtonElement;
   private readonly menuSettingsButton: HTMLButtonElement;
   private readonly panelCloseButtons: NodeListOf<HTMLButtonElement>;
+  private readonly settingsMasterInput: HTMLInputElement;
+  private readonly settingsMasterValue: HTMLSpanElement;
   private readonly settingsMusicInput: HTMLInputElement;
   private readonly settingsMusicValue: HTMLSpanElement;
   private readonly settingsSfxInput: HTMLInputElement;
@@ -331,6 +333,8 @@ export class GameHud {
   private readonly workoutButtons: HTMLDivElement;
   private readonly appearanceListeners: Array<(appearance: PlayerAppearance) => void> = [];
   private readonly startListeners: Array<() => void> = [];
+  private readonly workoutStartListeners: Array<(station: WorkoutStation) => void> = [];
+  private readonly workoutRepListeners: Array<(result: 'rep' | 'miss') => void> = [];
   private readonly workoutCompleteListeners: Array<(station: WorkoutStation) => void> = [];
   private readonly vendingEnergyListeners: Array<() => void> = [];
   private readonly vendingSnackListeners: Array<() => void> = [];
@@ -643,6 +647,11 @@ export class GameHud {
             <h2>Settings</h2>
             <button type="button" data-settings-close aria-label="Close settings">Close</button>
           </div>
+          <label class="settings-control">
+            <span>Master</span>
+            <input type="range" min="0" max="100" step="5" data-settings-master />
+            <strong data-settings-master-value>80</strong>
+          </label>
           <label class="settings-control">
             <span>Music</span>
             <input type="range" min="0" max="100" step="5" data-settings-music />
@@ -978,6 +987,8 @@ export class GameHud {
     const menuGoalsButton = root.querySelector<HTMLButtonElement>('[data-menu-open="goals"]');
     const menuSettingsButton = root.querySelector<HTMLButtonElement>('[data-menu-open="settings"]');
     const panelCloseButtons = root.querySelectorAll<HTMLButtonElement>('[data-panel-close]');
+    const settingsMasterInput = root.querySelector<HTMLInputElement>('[data-settings-master]');
+    const settingsMasterValue = root.querySelector<HTMLSpanElement>('[data-settings-master-value]');
     const settingsMusicInput = root.querySelector<HTMLInputElement>('[data-settings-music]');
     const settingsMusicValue = root.querySelector<HTMLSpanElement>('[data-settings-music-value]');
     const settingsSfxInput = root.querySelector<HTMLInputElement>('[data-settings-sfx]');
@@ -1133,6 +1144,8 @@ export class GameHud {
       !menuRepDexButton ||
       !menuGoalsButton ||
       !menuSettingsButton ||
+      !settingsMasterInput ||
+      !settingsMasterValue ||
       !settingsMusicInput ||
       !settingsMusicValue ||
       !settingsSfxInput ||
@@ -1305,6 +1318,8 @@ export class GameHud {
     this.menuGoalsButton = menuGoalsButton;
     this.menuSettingsButton = menuSettingsButton;
     this.panelCloseButtons = panelCloseButtons;
+    this.settingsMasterInput = settingsMasterInput;
+    this.settingsMasterValue = settingsMasterValue;
     this.settingsMusicInput = settingsMusicInput;
     this.settingsMusicValue = settingsMusicValue;
     this.settingsSfxInput = settingsSfxInput;
@@ -2323,6 +2338,14 @@ export class GameHud {
     this.startListeners.push(callback);
   }
 
+  onWorkoutStart(callback: (station: WorkoutStation) => void): void {
+    this.workoutStartListeners.push(callback);
+  }
+
+  onWorkoutRep(callback: (result: 'rep' | 'miss') => void): void {
+    this.workoutRepListeners.push(callback);
+  }
+
   onWorkoutComplete(callback: (station: WorkoutStation) => void): void {
     this.workoutCompleteListeners.push(callback);
   }
@@ -2450,6 +2473,8 @@ export class GameHud {
   }
 
   private applySettings(): void {
+    this.settingsMasterInput.value = String(this.settings.masterVolume);
+    this.settingsMasterValue.textContent = String(this.settings.masterVolume);
     this.settingsMusicInput.value = String(this.settings.musicVolume);
     this.settingsMusicValue.textContent = String(this.settings.musicVolume);
     this.settingsSfxInput.value = String(this.settings.sfxVolume);
@@ -2946,6 +2971,7 @@ export class GameHud {
       '',
       'Settings summary',
       [
+        `Master volume: ${this.settings.masterVolume}`,
         `Music volume: ${this.settings.musicVolume}`,
         `SFX volume: ${this.settings.sfxVolume}`,
         `Muted: ${this.settings.muted}`,
@@ -3071,6 +3097,10 @@ export class GameHud {
 
     this.bindMobilePress(this.settingsCloseButton, () => {
       this.setSettingsPanelOpen(false);
+    });
+
+    this.settingsMasterInput.addEventListener('input', () => {
+      this.updateSettings({ masterVolume: Number(this.settingsMasterInput.value) });
     });
 
     this.settingsMusicInput.addEventListener('input', () => {
@@ -4130,6 +4160,7 @@ export class GameHud {
     this.root.classList.add('game-root--workout');
     this.setHidden(this.workoutPrompt, true);
     this.setHidden(this.workoutPanel, false);
+    this.workoutStartListeners.forEach((callback) => callback(station));
     this.renderWorkout();
   }
 
@@ -4210,6 +4241,8 @@ export class GameHud {
       workout.score = Math.max(0, workout.score - 1);
       workout.message = this.getMissMessage(workout.station.type);
     }
+
+    this.workoutRepListeners.forEach((callback) => callback(correct ? 'rep' : 'miss'));
 
     if (workout.score >= WORKOUT_GOAL) {
       const completedStation = workout.station;

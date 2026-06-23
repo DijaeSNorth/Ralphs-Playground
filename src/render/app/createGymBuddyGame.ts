@@ -1906,6 +1906,7 @@ export function createGymBuddyGame(root: HTMLElement): void {
   hud.setSettings(initialSettings);
   const audio = new RetroAudio(initialSettings);
   audio.bindUnlockEvents();
+  audio.setMusicMode('title');
   const input = new InputController();
   input.setInputMode(hud.getInputMode());
   const world = new GymBuddyWorld();
@@ -1927,6 +1928,8 @@ export function createGymBuddyGame(root: HTMLElement): void {
   let tutorialBuddyReadTimer = 0;
   let tutorialExoticNoticeTimer = 0;
   let struggleSoundCooldown = 0;
+  let nearbyCreatureSoundCooldown = 0;
+  let lastNearbyCreatureSoundId: number | undefined;
 
   const saveProgress = (): void => {
     saveProgressToStorage({
@@ -2023,6 +2026,27 @@ export function createGymBuddyGame(root: HTMLElement): void {
       return;
     }
 
+    if (event.type === 'workout') {
+      audio.play('workout-complete');
+      return;
+    }
+
+    if (event.type === 'boss') {
+      if (event.message.includes('entered') || event.message.includes('accepted')) {
+        audio.play('boss-intro');
+        if (event.message.includes('accepted')) {
+          audio.setMusicMode('boss-capture');
+        }
+      } else if (event.message.includes('outlifted')) {
+        audio.play('boss-win');
+        window.setTimeout(() => audio.setMusicMode('gameplay'), 1000);
+      } else if (event.message.includes('won the set')) {
+        audio.play('boss-loss');
+        window.setTimeout(() => audio.setMusicMode('gameplay'), 1000);
+      }
+      return;
+    }
+
     if (
       event.type === 'capture' &&
       event.captureStyle === 'arm-wrestle' &&
@@ -2030,8 +2054,13 @@ export function createGymBuddyGame(root: HTMLElement): void {
       event.target &&
       (event.result === 'success' || event.result === 'miss')
     ) {
+      audio.setMusicMode('boss-capture');
       audio.play('capture-start');
       audio.play(event.result === 'success' ? 'capture-success' : 'capture-fail', 0.76);
+      if (event.result === 'success') {
+        audio.play('creature-cry', 1.04);
+      }
+      window.setTimeout(() => audio.setMusicMode('gameplay'), Math.round((event.captureDuration ?? 1.45) * 1000) + 360);
       return;
     }
 
@@ -2060,7 +2089,7 @@ export function createGymBuddyGame(root: HTMLElement): void {
     previewRenderer.updateAppearance(appearance);
   });
   hud.onPreviewRotationChange((rotation) => {
-    audio.play('menu-select');
+    audio.play('customization-change');
     previewRenderer.setRotation(rotation);
   });
   hud.onSettingsChange((settings) => {
@@ -2071,13 +2100,19 @@ export function createGymBuddyGame(root: HTMLElement): void {
     previewRenderer.applySettings(settings);
   });
   hud.onStart(() => {
-    audio.play('menu-select');
+    audio.play('start-game');
+    audio.setMusicMode('gameplay');
     gameStarted = true;
     hud.pushMessage('The safari has opened.');
     tutorialMoveOrigin = undefined;
   });
+  hud.onWorkoutStart(() => {
+    audio.play('workout-start');
+  });
+  hud.onWorkoutRep((result) => {
+    audio.play(result === 'rep' ? 'workout-rep' : 'menu-back');
+  });
   hud.onWorkoutComplete((station) => {
-    audio.play('menu-select');
     world.completeWorkout(station);
   });
   hud.onVendingEnergyDrink(() => {
@@ -2152,6 +2187,37 @@ export function createGymBuddyGame(root: HTMLElement): void {
   });
   renderer.updatePlayerAppearance(hud.getAppearance());
   previewRenderer.updateAppearance(hud.getAppearance());
+
+  root.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    if (
+      target.closest(
+        '[data-settings-close], [data-panel-close], [data-repdex-detail-close], [data-crew-detail-close], [data-capture-result-close], [data-capture-result-keep-playing], [data-workout-close], [data-vending-close]'
+      )
+    ) {
+      audio.play('menu-back');
+      return;
+    }
+
+    if (
+      target.closest(
+        '[data-body-preset], [data-hair], [data-skin], [data-sex], [data-muscle], [data-frame], [data-preview-front], [data-preview-back], [data-preview-rotate-left], [data-preview-rotate-right], [data-preview-rotate-reset]'
+      )
+    ) {
+      audio.play('customization-change');
+    }
+  });
+
+  root.addEventListener('input', (event) => {
+    const target = event.target;
+    if (target instanceof Element && target.closest('.character-creator')) {
+      audio.play('customization-change');
+    }
+  });
 
   let lastTime = performance.now();
   let proximityTimer = 0;
@@ -2314,6 +2380,7 @@ export function createGymBuddyGame(root: HTMLElement): void {
     const deltaSeconds = Math.min((now - lastTime) / 1000, 0.08);
     lastTime = now;
     struggleSoundCooldown = Math.max(0, struggleSoundCooldown - deltaSeconds);
+    nearbyCreatureSoundCooldown = Math.max(0, nearbyCreatureSoundCooldown - deltaSeconds);
 
     const inputActions = input.read();
     const movementActions = createCameraRelativeActions(inputActions, renderer.getMovementBasis());
@@ -2342,6 +2409,22 @@ export function createGymBuddyGame(root: HTMLElement): void {
     const snapshot = world.getSnapshot();
     const tutorialAdvanced = updateTutorial(preUpdateSnapshot, snapshot, deltaSeconds, inputActions, events);
     const captureCutsceneNowActive = snapshot.captureCutsceneRemaining > 0;
+
+    if (
+      gameStarted &&
+      !captureCutsceneNowActive &&
+      snapshot.nearestBuddy &&
+      snapshot.nearestBuddy.distance <= snapshot.captureRange * 1.18
+    ) {
+      const nearbyId = snapshot.nearestBuddy.buddy.id;
+      if (nearbyId !== lastNearbyCreatureSoundId && nearbyCreatureSoundCooldown <= 0) {
+        audio.play('creature-nearby');
+        nearbyCreatureSoundCooldown = 2.4;
+        lastNearbyCreatureSoundId = nearbyId;
+      }
+    } else {
+      lastNearbyCreatureSoundId = undefined;
+    }
 
     if (captureCutsceneNowActive && inputActions.catchPressed && struggleSoundCooldown <= 0) {
       audio.play('arm-wrestle-struggle');

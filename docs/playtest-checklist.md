@@ -1,83 +1,93 @@
 # Playtest Checklist
 
 Version: `0.1.0-playtest.1`
+Live game URL: https://dijaesnorth.github.io/Ralphs-Playground/
 
-## 1. Game URL
+## Game goal
 
-- Public playtest URL: https://dijaesnorth.github.io/Ralphs-Playground/
-- Local preview for maintainers: run `npm run build`, then `npm run preview`.
+Build a crew of muscular animal and mythological gym beasts by exploring zones, reading catch odds, arm-wrestling creatures, training your crew, and filling the RepDex.
 
-## 2. What testers should try first
+## First 10-minute test instructions
 
-- Start a new game and confirm the title explains the creature-catching loop.
-- Move around the gym and approach the nearest creature.
-- Read the target panel for name, level, rarity, and catch chance.
-- Try one arm-wrestling capture and watch the result screen.
-- Open Crew, Storage, RepDex, Goals, and Settings.
-- Open Settings and confirm the version label reads `0.1.0-playtest.1`.
-- If Steroids are available, use one on a captured creature.
-- Keep playing long enough to see higher-level spawns, a boss, or an exotic creature.
+1. Hard refresh the page.
+2. Confirm the title screen shows Ralph's Swole Safari and version `0.1.0-playtest.1`.
+3. Open Customize Character, change one visible option, then start the game.
+4. Move until the first creature target panel appears.
+5. Confirm name, level, rarity, flavor, and catch chance are readable.
+6. Start Arm Wrestle and tap or press Space during the struggle meter.
+7. Confirm success or failure result is clear.
+8. If captured, open Crew and RepDex.
+9. Complete one workout and confirm XP/reward feedback.
+10. Open Settings, copy the Playtest Report, and include it with feedback.
 
-## 3. Controls
+## Controls
 
 - Move: `WASD` or arrow keys.
-- Sprint: `Shift` or the on-screen sprint button.
-- Capture/interact: `Space`, click, or tap the on-screen button when near a creature.
-- Arm-wrestle struggle: tap, click, or press `Space` during the meter for visual push only.
-- Menus: click or tap HUD buttons for Crew, Storage, RepDex, Goals, and Settings.
-- Tester report: Settings -> Copy Playtest Report.
+- Sprint: `Shift` or on-screen sprint.
+- Arm Wrestle: target panel button, `Space`, or touch action when near a creature.
+- Struggle Meter: tap, click, or press `Space`; this changes animation intensity only, not catch odds.
+- Interact/workout: `E`, right click, or contextual button.
+- Menus: Crew, RepDex, Goals, and Settings buttons after they unlock.
 
-## 4. How to capture creatures
+## How to capture creatures
 
-- Walk near a wild creature until the target preview appears.
-- Confirm the preview shows the creature name, level, rarity, and catch chance.
-- Start the arm-wrestling capture attempt.
-- The final catch result uses the displayed odds; struggle input only changes the animation.
-- On success, the creature joins the active crew if a slot is open, otherwise it goes to storage.
+- Approach a wild creature until the target panel appears.
+- Read level, rarity, and catch chance before starting.
+- Arm Wrestle triggers a short close-up capture scene.
+- Normal catch odds: Lv 1-15 90%, Lv 16-25 85%, Lv 26-35 80%, Lv 36+ 70%.
+- Exotic catch odds are always 40%.
+- Captured creatures join active crew when a slot is open, otherwise storage.
 
-## 5. How Steroids work
+## How workouts work
+
+- Approach a workout station and press Use or interact.
+- Complete the short workout input sequence.
+- Workouts grant crew XP and station-themed stat growth.
+- Workout sounds and animations should feel short, readable, and not spammy.
+
+## How Steroids work
 
 - Steroids are a fictional arcade level-up item.
-- Using one on a captured creature consumes 1 Steroid and adds 1 level.
-- Steroids boost creature stats but do not change wild capture odds.
-- If multiple crew creatures exist, confirm the prompt shows the selected creature name.
+- They instantly add one level to a captured creature.
+- They do not change wild capture odds.
+- Do not report or discuss real-world dosage or medical effects; this is game flavor only.
 
-## 6. How exotic creatures work
+## Exotics and bosses
 
-- Exotic creatures are rare mythological gym beasts with special badges and stronger visuals.
-- Exotic catch chance should always display and resolve at 40%.
-- Date-based events may slightly improve exotic spawn chances, but exotics should still feel uncommon.
+- Exotic creatures are rare mythological gym beasts with Exotic badges and special audio/visual feedback.
+- Bosses appear after progression gates and use the active crew's power.
+- Losing a boss battle should not wipe progress.
 
-## 7. What feedback to collect
+## Audio checks
 
-- Was the first-time tutorial clear and short enough?
-- Did capture odds, rarity, levels, and result screens make sense?
-- Did arm wrestling feel readable and fun on your device?
-- Were Crew, Storage, RepDex, Goals, Settings, and Reset Save easy to find?
-- Did Steroids feel clearly fictional and understandable?
-- Did mobile/touch controls cover important UI or feel hard to tap?
-- Did performance drop, stutter, overheat, or drain battery quickly?
-- Did save/load preserve crew, storage, levels, goals, settings, and RepDex progress?
-- Did Copy Playtest Report create a useful plain-text report without exposing personal info?
-- Did corrupt-save recovery show a friendly reset/reload screen instead of breaking permanently?
-- Any stale wording that implies protein shakers are capture items should be reported.
+- Sounds should start only after the first click/tap/key press.
+- Settings should control Master, Music, SFX, and Mute.
+- Mute should stop new audio immediately.
+- Reduced motion should not mute audio.
 
-## 8. Known issues
+## Feedback to collect
 
-- Feedback collection is manual; the game does not upload tester notes.
-- Audio uses lightweight generated Web Audio tones, not final music or external sound assets.
-- Local rotating events are based on the tester's device date and do not require a backend.
-- Gym Tokens may exist as non-capture gym economy flavor if present, but they should not be described as the capture method.
-- Playtest reports include browser user agent and screen size by design, but omit raw save data and custom creature nicknames.
-- Save corruption backups stay in localStorage under a bad-save backup key for debugging; testers can still reset the active save.
+- Was the first objective obvious?
+- Did the target panel explain capture odds clearly?
+- Did the arm-wrestling scene read as a close-up action moment?
+- Did animations or sounds feel too slow, loud, harsh, repetitive, or distracting?
+- Were Crew, RepDex, Goals, Settings, and Reset Save easy to find?
+- Did save/load preserve crew, storage, RepDex, goals, settings, and tutorial state?
+- Did mobile controls or panels cover important gameplay information?
+- Did performance stutter during capture, workouts, boss moments, or RepDex scrolling?
 
-## 9. Browser/device info testers should report
+## Bug report instructions
 
-- Browser name and version.
-- Device model and operating system.
-- Desktop, tablet, or phone.
+Include:
+
+- Browser and version.
+- Device and operating system.
 - Screen size and orientation.
 - Input method: keyboard, mouse, touch, controller, or mixed.
-- Approximate performance: smooth, occasional stutter, frequent stutter, or unplayable.
-- Console errors, screenshots, or exact steps for any bug.
-- Paste the Copy Playtest Report output when reporting a bug.
+- Steps to reproduce.
+- Screenshot or screen recording if possible.
+- Settings -> Copy Playtest Report output.
+
+## Known issues
+
+See `docs/known-issues.md` for the current known issue list.

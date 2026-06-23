@@ -27,7 +27,7 @@ npm run preview -- --host 127.0.0.1 --port 4173
 
 ## Verification run
 
-- `npm run build` passed for `0.1.0-playtest.1` on 2026-06-22.
+- `npm run build` passed for `0.1.0-playtest.1` on 2026-06-23.
 - Local Vite preview served `dist/index.html` at `http://127.0.0.1:4173/`.
 - Built HTML assets returned HTTP 200 in preview:
   - `./favicon.svg`
@@ -42,7 +42,7 @@ npm run preview -- --host 127.0.0.1 --port 4173
 
 ## Known issues
 
-- Music volume remains a placeholder for future music tracks; SFX volume controls generated Web Audio effects.
-- Local headless Chrome/Edge console validation was attempted, but the installed Chromium browsers crashed or hung in this environment before page execution. HTTP asset validation passed; a final browser console check should be done in a normal browser session after GitHub Pages publishes.
+- Audio uses lightweight generated Web Audio effects and subtle placeholder music loops; final authored audio assets are not included yet.
+- Local production preview returned HTTP 200 for `http://127.0.0.1:4173/`. A final browser console check should be done in a normal browser session after GitHub Pages publishes.
 - Feedback collection is manual; testers should use Settings -> Copy Playtest Report and send the plain-text output with notes.
 - Local daily gym events depend on the tester's device date.

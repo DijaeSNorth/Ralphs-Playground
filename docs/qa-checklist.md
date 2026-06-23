@@ -1,105 +1,141 @@
-﻿# QA Checklist: Ralph's Swole Safari
+# QA Checklist: Ralph's Swole Safari
 
-## 1) Build and deploy
-- [ ] `npm run build` completes without TypeScript or bundling errors.
-- [ ] Production bundle artifacts are produced in `dist/`.
-- [ ] Boot text renders as `Loading Ralph's Swole Safari` before mount (`src/main.ts`).
-- [ ] Failure fallback shows `Ralph's Swole Safari failed to load.`.
-- [ ] Vite/GitHub Pages behavior remains unchanged (no changes to deployment config files).
+Version: `0.1.0-playtest.1`
 
-## 2) Movement/input
-- [ ] Keyboard input reads WASD/Arrow movement in `InputController.read()` (`src/game/input/actions.ts`).
-- [ ] `Shift` enables sprint in desktop mode (`src/game/input/actions.ts`).
-- [ ] Space / left mouse triggers capture attempt and does not break movement pathing when capture is unavailable.
-- [ ] Right click continues to route to interaction (`interactPressed`) for workout/vending/spot actions.
-- [ ] Touch joystick produces smoothed movement and respects touch dead-zone behavior.
-- [ ] Touch sprint button sets `virtualSprintHeld` and returns to normal sprint state on release.
-- [ ] Input mode switch updates the `inputLabel` shown in HUD (`src/ui/hud.ts`).
-- [ ] During arm-wrestle cutscene, movement/actions are temporarily suppressed (`captureCutsceneTimer` in `world.ts` + `createGymBuddyGame.ts`).
+## Build and release
 
-## 3) Creature spawning
-- [ ] Normal wild roster includes all new normal animals in definitions and weights:
-  - `buff-bunny`, `curl-corgi`, `deadlift-deer`, `flex-fox`, `bench-bear`, `pump-panther`, `press-penguin`, `rowing-raccoon`, `squat-squirrel`, `tricep-tiger`, `iron-rhino`, `bulk-buffalo`, `jacked-jaguar`, `swole-gorilla`.
-- [ ] These entries are present in normal weighted pools (`weightedBuddyDefinitionId`) in `src/game/simulation/world.ts`.
-- [ ] Wild buddy levels are set at spawn (`getWildBuddyLevel`) and preserved to roster entry on capture (`buddy.level` passed to `createRosterEntry`).
-- [ ] Active wild creature count on field remains bounded by existing spawn constants and active buddy array behavior.
-- [ ] New exotics appear when `isExotic` roll in spawn resolves (`exoticChance` path), and normal pool is still the default.
+- [ ] `npm run build` passes.
+- [ ] Version `0.1.0-playtest.1` appears on title screen.
+- [ ] Version `0.1.0-playtest.1` appears in Settings.
+- [ ] Playtest report includes version, browser, screen, save summary, settings summary, zone/event, and recent errors.
+- [ ] GitHub Pages URL returns HTTP 200: https://dijaesnorth.github.io/Ralphs-Playground/
 
-## 4) Capture odds
-- [ ] `getArmWrestleCatchChance` is the only helper used for arm-wrestle outcomes (`src/game/simulation/world.ts`).
-- [ ] Odds table remains:
-  - Lv 1–15: 90%
-  - Lv 16–25: 85%
-  - Lv 26–35: 80%
-  - Lv 36+: 70%
-  - Exotic flag (`rarity: exotic` or `isExotic: true`): 40%
-- [ ] UI preview in `targetPreviewChance` is sourced from the same helper (`formatCatchChanceText` in `src/ui/hud.ts`).
-- [ ] RepDex detail odds preview uses helper logic at multiple tiers (`getRepDexCaptureOdds`).
-- [ ] `WorldEvent` sent on attempt includes `chance` value.
+## Start screen
 
-## 5) Arm-wrestling animation
-- [ ] Capture event with `captureStyle: 'arm-wrestle'` is rendered with new pose actors (`createGymBuddyGame.ts` capture handler).
-- [ ] Player and creature transition into prone-to-fight positions and return.
-- [ ] Beat text appears at intervals around cutscene (`Arm wrestle!`, `It's close...`, success/fail final beat).
-- [ ] Cutscene movement lock and camera framing occur while `captureCutsceneRemaining` is active (`world` + `GymBuddyRenderer`).
-- [ ] On success path, creature tears marker is attached and played (`createBabyCryingDrops`).
+- [ ] Title reads Ralph's Swole Safari.
+- [ ] Subtitle explains arm-wrestling wild gym beasts.
+- [ ] Start Game, Customize Character, Settings, and version label are visible.
+- [ ] RepDex, Crew, Goals, Storage, Debug, and Playtest Report are not shown as main-screen clutter.
 
-## 6) Normal creature capture
-- [ ] Capture an in-range normal creature from nearestBuddy and verify event `result: success` / `result: miss` appears.
-- [ ] On success, target roster entry is created and level is retained from wild state.
-- [ ] On miss, buddy reacts (`dodgeTimer`), and player stamina change is applied.
-- [ ] Success and miss messages in capture event remain arm-wrestle-specific (no throw/shaker wording).
+## Customization
 
-## 7) Exotic creature capture
-- [ ] At least 10%? 0.1%–1.1% spawn path is enabled through `exoticChance` and does not overwrite normal pools.
-- [ ] Every exotic capture checks the same helper and evaluates as 40%.
-- [ ] Exotic species identifiers are defined and available in weighted list:
-  - `minotaur-maximus`
-  - `dragon-deadlift`
-  - `griffin-gains`
-  - `cyclops-curl`
-  - `chrome-rhino`
-  - `hydra-hypertrophy`
-  - `pegasus-pump`
-  - `werewolf-warrior`
-  - `kraken-curl`
-  - `sphinx-strength`
-  - `phoenix-flex`
-- [ ] Exotic row styling is applied when rarity is flagged (`isExoticBuddyDefinition`) in UI.
-- [ ] Verify exotics show `Rarity` labels in RepDex and target preview.
+- [ ] Customize Character opens from title screen.
+- [ ] Front View, Back View, Rotate Left, Rotate Right, and Reset View work.
+- [ ] Hair, skin tone, build, frame, presets, and muscle sculpt controls visibly update preview.
+- [ ] Settings can reopen customization after gameplay starts.
+- [ ] Customization clicks do not move the player.
 
-## 8) Steroids item
-- [ ] Player HUD shows steroid count and flavor copy.
-- [ ] `Use Steroid` action exists in crew row and calls `world.useSteroid`.
-- [ ] Using steroid increments level, updates XP and basic stats, and decrements player steroid inventory.
-- [ ] Message appears confirming use.
-- [ ] Guardrails trigger when roster creature is at level cap, when no steroids are owned, or when invalid roster id is sent.
+## Movement
 
-## 9) RepDex
-- [ ] RepDex list renders all creature definitions from snapshot (including highest level metadata and rarity badge).
-- [ ] Tapping/clicking a row opens detail card.
-- [ ] Detail card shows species, type, rarity, caught count and best level.
-- [ ] Exotic label and flavor text path remains visible and distinct.
-- [ ] Capture odds in detail are computed from helper and match preview tiers.
+- [ ] WASD and arrows move screen-relative to the 2.5D camera.
+- [ ] Diagonal keyboard movement works.
+- [ ] Mouse clicks do not move the player.
+- [ ] Touch joystick or touch controls move the player without stealing UI taps.
+- [ ] Sprint works and stamina changes are readable.
 
-## 10) Mobile/touch controls
-- [ ] Touch joystick captures pointer movement and recenters on release.
-- [ ] Sprint + movement touch actions are responsive under short taps and sustained hold.
-- [ ] Touch capture action still works and displays `Wrestle` in touch action button label.
-- [ ] On low-end devices, capture/mesh animation still uses mobile tuned scales and durations.
-- [ ] No severe CPU spikes from animation loops while cutscene is active (check average frame time during repeated tests).
+## Menus and HUD
 
-## 11) Performance
-- [ ] Build output sizes stay within expected bounds from previous commits.
-- [ ] Wild creature meshes remain low-poly and low-material count.
-- [ ] Arm-wrestle effect allocates small actor count and clears on completion (no persistent stale effects).
-- [ ] Input and update loops remain stable at normal cadence while no captures are running.
-- [ ] Mobile mode uses adjusted actor scale/gap/camera offsets where defined in renderer.
+- [ ] First gameplay screen only shows objective, minimal status, and relevant controls.
+- [ ] Target panel appears only near a creature.
+- [ ] Crew, RepDex, Goals, and Settings buttons open one panel at a time.
+- [ ] Close buttons, Escape, and outside click close detail sheets.
+- [ ] Debug tools are hidden unless `?debug=1` is active.
 
-## 12) Known issues
-- The game still uses generic terms (`buddy`) in several runtime internals and non-capture HUD snippets; this is cosmetic and not gameplay-affecting.
-- Full end-to-end balance verification for catch progression and RNG probability distribution is inherently stochastic and can only be sampled over time, not proven in a single pass.
-- Performance baselines vary by device; mobile frame-rate needs device-specific sampling with browser devtools.
+## Creature encounter
 
-- **Created**: 2026-06-22
+- [ ] Nearby target panel shows creature name, level, rarity, catch chance, and short flavor.
+- [ ] Buff animal silhouettes are readable from the 2.5D camera.
+- [ ] Exotic badges and glow are readable without hurting contrast.
+- [ ] Creature nearby audio plays once per encounter, not constantly.
 
+## Arm-wrestle capture
+
+- [ ] Capture odds remain exact: 90%, 85%, 80%, 70%, and Exotic 40%.
+- [ ] Capture starts a close-up action scene, not a shaker projectile.
+- [ ] HUD hides unrelated panels during capture.
+- [ ] Struggle input affects animation intensity only.
+- [ ] Success shows pin, cry reaction, result card, and crew/storage destination.
+- [ ] Failure shows power-out/escape and result card.
+- [ ] Capture music/sounds start only after user interaction.
+
+## Crew and storage
+
+- [ ] Captured creature appears in active crew if space exists.
+- [ ] Captured creature goes to storage if active crew is full.
+- [ ] Active crew limit is 4.
+- [ ] Sorting, detail card, rename, release confirmation, storage swap, and steroid buttons work.
+- [ ] Save updates after rename, release, storage swap, steroid use, and capture.
+
+## RepDex
+
+- [ ] Overview shows discovered/captured/normal/exotic progress.
+- [ ] Filters work: All, Caught, Mystery, Normal, Exotic.
+- [ ] Locked entries show mystery state, rarity clue, and zone clue.
+- [ ] Caught entries show species, rarity, caught count, best level, role/passive, and favorite workout.
+- [ ] Detail card shows flavor, personality, reactions, passive, role, workout, zone clue, and catch odds.
+- [ ] Detail cards close reliably on desktop and mobile.
+
+## Workouts
+
+- [ ] Workout prompt appears only near station.
+- [ ] Bench/press, squat/leg, cable/row, and free-weight workouts have distinct animations.
+- [ ] Workout start, rep, and complete sounds play at reasonable volume.
+- [ ] Workout completion grants XP/stat progress and does not trap the UI.
+
+## Goals and progression
+
+- [ ] First capture goal rewards once.
+- [ ] First workout goal rewards once.
+- [ ] Goals panel stays hidden until useful and does not clutter first playthrough.
+- [ ] Boss gates and exotic encounter goals progress when expected.
+
+## Steroids
+
+- [ ] Steroids appear in inventory only when relevant.
+- [ ] Use Steroid increases level by 1 and consumes 1 item.
+- [ ] Steroids are framed as fictional arcade item only.
+- [ ] No real-world medical guidance appears.
+
+## Bosses
+
+- [ ] Boss panel appears only when a boss is active.
+- [ ] Boss challenge requires at least one creature.
+- [ ] Boss battle panel shows crew/boss power and result.
+- [ ] Boss intro, win, and loss sounds trigger.
+- [ ] Losing does not wipe progress.
+
+## Save/load
+
+- [ ] Refresh preserves appearance, crew, storage, levels, XP, steroids, RepDex, goals, tutorial state, and settings.
+- [ ] Reset Save requires confirmation.
+- [ ] Corrupt save fallback backs up bad data and starts clean.
+
+## Mobile
+
+- [ ] Main screen is readable at phone width.
+- [ ] Panels become full-screen or bottom-sheet style.
+- [ ] Touch controls do not cover target odds or capture buttons.
+- [ ] RepDex and crew scroll cleanly.
+
+## Reduced motion
+
+- [ ] Reduced motion tones down capture shake, creature motion, UI animations, and glow.
+- [ ] Reduced motion does not mute audio.
+
+## Audio
+
+- [ ] No sound plays before first user interaction.
+- [ ] Master, Music, SFX, and Mute settings work.
+- [ ] Menu/select, back/close, start, customization, nearby, capture, struggle, success, fail, crying, workout, level-up, steroid, goal, exotic, and boss sounds trigger.
+- [ ] Sounds are short and not harsh.
+
+## Performance
+
+- [ ] Build size remains reasonable.
+- [ ] Repeated capture effects clean up.
+- [ ] Workout/capture/boss audio does not create runaway overlapping sound.
+- [ ] Mobile capture and RepDex scrolling remain stable.
+
+## Known issues
+
+- [ ] Current known issues are documented in `docs/known-issues.md`.

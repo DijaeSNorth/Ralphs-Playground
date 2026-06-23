@@ -138,3 +138,14 @@ Animation and RepDex polish stage:
 - RepDex now has collection summary, All/Caught/Mystery/Normal/Exotic filters, mystery locked cards, rarity badges, zone clues, and richer detail cards.
 - Locked RepDex entries do not auto-open; they only open from intentional RepDex row activation and show limited clue data.
 - Build command used: npm.cmd run build, passed.
+
+Sound and playtest readiness stage:
+- Scope: presentation, audio feedback, QA docs, and release readiness only; no gameplay rule changes.
+- src/game/audio.ts now covers menu/select, back/close, start game, customization, nearby creature, arm-wrestle start/struggle/success/fail, creature cry, workout start/rep/complete, level up, Steroids, goal complete, exotic encounter, boss intro/win/loss.
+- Audio remains Web Audio API only; no external audio files or large dependencies.
+- Settings now include Master volume in addition to Music, SFX, and Mute; missing older settings fall back safely.
+- Lightweight title/gameplay/boss-capture music loops are generated and respect first-interaction unlock, mute, master, and music volume.
+- src/render/app/createGymBuddyGame.ts maps existing HUD/world events to the new sound IDs and keeps reduced motion independent from audio.
+- docs/playtest-checklist.md, docs/qa-checklist.md, docs/known-issues.md, and docs/deployment-checklist.md were refreshed for playtest v1.
+- Local build command used: npm.cmd run build, passed.
+- Local production preview reached HTTP 200 at http://127.0.0.1:4173/ using the built dist output.
