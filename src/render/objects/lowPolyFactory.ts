@@ -1014,6 +1014,42 @@ const FRAME_SPECS: Record<
     legSpread: 1.02,
     heightScale: 0.94
   },
+  power: {
+    shoulderSpread: 1.14,
+    hipSpread: 1.08,
+    torsoTopScale: 1.14,
+    torsoBottomScale: 1.1,
+    torsoDepth: 1.14,
+    legSpread: 1.08,
+    heightScale: 1
+  },
+  athletic: {
+    shoulderSpread: 1.06,
+    hipSpread: 0.99,
+    torsoTopScale: 1.04,
+    torsoBottomScale: 0.98,
+    torsoDepth: 1,
+    legSpread: 1.02,
+    heightScale: 1.04
+  },
+  heavyweight: {
+    shoulderSpread: 1.18,
+    hipSpread: 1.15,
+    torsoTopScale: 1.18,
+    torsoBottomScale: 1.16,
+    torsoDepth: 1.18,
+    legSpread: 1.12,
+    heightScale: 1.03
+  },
+  lean: {
+    shoulderSpread: 0.96,
+    hipSpread: 0.92,
+    torsoTopScale: 0.96,
+    torsoBottomScale: 0.9,
+    torsoDepth: 0.94,
+    legSpread: 0.94,
+    heightScale: 1.08
+  },
   voluptuous: {
     shoulderSpread: 0.95,
     hipSpread: 1.38,
@@ -1576,6 +1612,10 @@ export function createPlayerMesh(appearance?: PlayerAppearance): Group {
     tapered: { shoulders: 1.08, waist: 0.94, hips: 0.96, height: 1.01, lower: 0.97 },
     curved: { shoulders: 0.96, waist: 0.98, hips: 1.09, height: 1, lower: 1.07 },
     compact: { shoulders: 1.04, waist: 1.02, hips: 1.03, height: 0.94, lower: 1.04 },
+    power: { shoulders: 1.1, waist: 1.06, hips: 1.06, height: 1, lower: 1.08 },
+    athletic: { shoulders: 1.05, waist: 0.96, hips: 0.99, height: 1.04, lower: 1.03 },
+    heavyweight: { shoulders: 1.14, waist: 1.1, hips: 1.12, height: 1.02, lower: 1.12 },
+    lean: { shoulders: 0.96, waist: 0.9, hips: 0.92, height: 1.08, lower: 0.96 },
     voluptuous: { shoulders: 0.98, waist: 1.02, hips: 1.12, height: 1, lower: 1.11 },
     pear: { shoulders: 0.94, waist: 1, hips: 1.16, height: 1, lower: 1.14 }
   };

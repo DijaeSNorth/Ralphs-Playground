@@ -114,6 +114,10 @@ export type BodyFrame =
   | 'tapered'
   | 'curved'
   | 'compact'
+  | 'power'
+  | 'athletic'
+  | 'heavyweight'
+  | 'lean'
   | 'voluptuous'
   | 'pear';
 

@@ -54,10 +54,10 @@ import {
   createBossMesh,
   createFreeWeightMesh,
   createGymProps,
-  createPlayerMesh,
   createVendingMachines,
   createWorkoutEquipment
 } from '../objects/lowPolyFactory';
+import { createPlayerMesh } from '../objects/illustratedCharacterFactory';
 import { getBuddyDefinition } from '../../game/content/buddies';
 import { getBossDefinition } from '../../game/content/bosses';
 

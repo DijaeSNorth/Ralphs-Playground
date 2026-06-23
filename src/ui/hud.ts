@@ -22,6 +22,7 @@ import {
   FRAME_OPTIONS,
   HAIR_OPTIONS,
   MUSCLE_BUILD_OPTIONS,
+  normalizeBodyFrame,
   SKIN_TONE_OPTIONS
 } from '../game/content/playerAppearance';
 import { WORKOUT_STATIONS } from '../game/content/equipment';
@@ -4135,12 +4136,16 @@ export class GameHud {
     const normalizedSex = appearance.sex
       ? normalizeManifestSex(appearance.sex)
       : undefined;
+    const normalizedFrame = appearance.frame
+      ? normalizeBodyFrame(appearance.frame)
+      : undefined;
 
     this.appearance = {
       ...this.appearance,
       ...appearance,
       sex: normalizedSex ?? this.appearance.sex,
       hair: normalizedHair ?? this.appearance.hair,
+      frame: normalizedFrame ?? this.appearance.frame,
       body: {
         ...this.appearance.body,
         ...(appearance.body ?? {})
@@ -4234,6 +4239,10 @@ export class GameHud {
       tapered: 'wider shoulders and smaller waist',
       compact: 'shorter powerful stance',
       curved: 'stronger lower-body shape',
+      power: 'thicker heroic torso and stable stance',
+      athletic: 'sporty agile proportions',
+      heavyweight: 'large grounded powerhouse frame',
+      lean: 'tall crisp runner-like silhouette',
       voluptuous: 'fuller lower-body emphasis',
       pear: 'fuller hips and thighs'
     };

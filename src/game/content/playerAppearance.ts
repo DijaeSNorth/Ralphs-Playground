@@ -87,10 +87,12 @@ export const MUSCLE_BUILD_OPTIONS: Array<{ id: MuscleBuild; label: string; descr
 export const FRAME_OPTIONS: Array<{ id: BodyFrame; label: string; description: string }> = [
   { id: 'balanced', label: 'Balanced', description: 'Even proportions from top to bottom.' },
   { id: 'tapered', label: 'Tapered', description: 'Wider shoulders with a narrower waist.' },
-  { id: 'curved', label: 'Curved', description: 'More hip and lower-body shape.' },
   { id: 'compact', label: 'Compact', description: 'Shorter, powerful build.' },
-  { id: 'voluptuous', label: 'Voluptuous', description: 'Fuller chest, hips, and lower body.' },
-  { id: 'pear', label: 'Pear Heavy', description: 'Fuller lower-body emphasis.' }
+  { id: 'curved', label: 'Curved', description: 'More hip and lower-body shape.' },
+  { id: 'power', label: 'Power', description: 'Thicker heroic torso and stronger stance.' },
+  { id: 'athletic', label: 'Athletic', description: 'Sporty, agile proportions.' },
+  { id: 'heavyweight', label: 'Heavyweight', description: 'Large grounded powerhouse frame.' },
+  { id: 'lean', label: 'Lean', description: 'Tall, crisp, runner-like silhouette.' }
 ];
 
 export const BODY_SIZE_CONTROLS: Array<{
@@ -141,6 +143,14 @@ export function normalizeMuscleBuild(build: MuscleBuild): MuscleBuild {
   return MUSCLE_BUILD_ALIAS[build] ?? build;
 }
 
+export function normalizeBodyFrame(frame: BodyFrame): BodyFrame {
+  if (frame === 'voluptuous' || frame === 'pear') {
+    return 'curved';
+  }
+
+  return frame;
+}
+
 function getOptionById<T extends { id: string }>(
   options: readonly T[],
   id: string
@@ -159,7 +169,7 @@ export function getSkinToneOption(id: SkinTone): (typeof SKIN_TONE_OPTIONS)[numb
 }
 
 export function getFrameOption(id: BodyFrame): (typeof FRAME_OPTIONS)[number] {
-  return getOptionById(FRAME_OPTIONS, id) ?? FRAME_OPTIONS[0];
+  return getOptionById(FRAME_OPTIONS, normalizeBodyFrame(id)) ?? FRAME_OPTIONS[0];
 }
 
 export function getSexOption(id: CharacterSex): (typeof SEX_OPTIONS)[number] {

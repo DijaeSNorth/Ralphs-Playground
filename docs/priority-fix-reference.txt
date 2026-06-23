@@ -74,3 +74,11 @@ Art body construction plan:
 - Direction: Move player art toward layered 2D illustrated body construction rather than low-poly mesh deformation.
 - Plan covers visual art direction, body anatomy map, muscle groups, frames, build presets, customization categories, front/back/gameplay views, technical module path, and quality rules.
 - Recommended path: generated SVG/canvas placeholder rig first, future hand-drawn asset replacement later.
+
+2D illustrated body construction foundation:
+- Scope: Player rendering architecture and visual replacement only; no gameplay system changes.
+- New files: src/game/content/bodyConstruction.ts, src/game/content/characterPresets.ts, src/render/objects/characterRig2d.ts, src/render/objects/illustratedCharacterFactory.ts
+- createGymBuddyGame now imports createPlayerMesh from the illustrated factory, so preview, gameplay, workout animations, and arm-wrestle capture share the same layered 2D rig.
+- Character body construction resolves identity, frame, build preset, detailed muscle values, and safe clamped body metrics from the existing PlayerAppearance save shape.
+- The rig uses generated canvas textures on layered 2D planes with separate front/back part stacks for head, hair, torso, shoulders, arms, forearms, hands, hips/glutes, thighs, calves, shoes, and accessories.
+- Newly supported frame ids: power, athletic, heavyweight, lean. Legacy voluptuous/pear frames normalize to curved.
