@@ -54,6 +54,8 @@ type ActiveWorkout = {
   message: string;
 };
 
+type RepDexFilter = 'all' | 'captured' | 'uncaptured' | 'normal' | 'exotic';
+
 const WORKOUT_GOAL = WORKOUT_BALANCE.goalScore;
 const ROSTER_SPOT_RANGE = ROSTER_TRAINING_BALANCE.spotRange;
 const PREVIEW_ROTATE_STEP = Math.PI / 12;
@@ -205,6 +207,8 @@ export class GameHud {
   private readonly questsPanelToggle: HTMLButtonElement;
   private readonly questsPanelBody: HTMLDivElement;
   private readonly crewSortSelect: HTMLSelectElement;
+  private readonly repDexSummary: HTMLDivElement;
+  private readonly repDexFilters: NodeListOf<HTMLButtonElement>;
   private readonly dexList: HTMLDivElement;
   private readonly repdexPanel: HTMLElement;
   private readonly repdexPanelToggle: HTMLButtonElement;
@@ -408,6 +412,7 @@ export class GameHud {
   private renderedWorkoutMeterWidth = '';
   private renderedWorkoutCursorLeft = '';
   private renderedSpotMeterWidth = '';
+  private renderedRepDexSummary = '';
   private readonly repDexEntriesById = new Map<string, RepDexEntry>();
   private readonly rosterEntriesById = new Map<number, BuddyRosterEntry>();
   private readonly storageEntriesById = new Map<number, BuddyRosterEntry>();
@@ -415,6 +420,7 @@ export class GameHud {
   private activeCrewDetailId?: number;
   private lastCreatureDetailTrigger?: HTMLElement;
   private crewSort: CrewSortMode = 'recent';
+  private repDexFilter: RepDexFilter = 'all';
   private spotTargetRosterId?: number;
   private spotHoldProgress = 0;
   private spotHoldActive = false;
@@ -526,18 +532,26 @@ export class GameHud {
             <button type="button" class="panel-close" data-panel-close="repdex" aria-label="Close RepDex">Close</button>
           </div>
           <div class="panel-body" id="repdex-body">
+            <div class="repdex-summary" data-repdex-summary></div>
+            <div class="repdex-filters" data-repdex-filters aria-label="RepDex filters">
+              <button type="button" data-repdex-filter="all" class="repdex-filter repdex-filter--active">All</button>
+              <button type="button" data-repdex-filter="captured" class="repdex-filter">Caught</button>
+              <button type="button" data-repdex-filter="uncaptured" class="repdex-filter">Mystery</button>
+              <button type="button" data-repdex-filter="normal" class="repdex-filter">Normal</button>
+              <button type="button" data-repdex-filter="exotic" class="repdex-filter">Exotic</button>
+            </div>
             <div class="dex-list" data-dex-list></div>
           </div>
         </section>
         <section class="repdex-detail" data-repdex-detail hidden aria-label="RepDex creature detail">
-          <button type="button" class="repdex-detail-close" data-repdex-detail-close aria-label="Close creature card">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½</button>
+          <button type="button" class="repdex-detail-close" data-repdex-detail-close aria-label="Close creature card">X</button>
           <h2 class="repdex-detail-title" data-repdex-detail-title>Creature</h2>
           <div class="repdex-detail-grid">
             <div class="repdex-detail-field"><span>Species</span><strong data-repdex-detail-species>Unknown</strong></div>
             <div class="repdex-detail-field"><span>Type</span><strong data-repdex-detail-type>Normal</strong></div>
             <div class="repdex-detail-field"><span>Rarity</span><strong data-repdex-detail-rarity>Normal</strong></div>
-            <div class="repdex-detail-field repdex-detail-full"><span>Personality</span><strong data-repdex-detail-personality>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½</strong></div>
-            <div class="repdex-detail-field repdex-detail-full"><span>Favorite Workout</span><strong data-repdex-detail-fav-workout>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½</strong></div>
+            <div class="repdex-detail-field repdex-detail-full"><span>Personality</span><strong data-repdex-detail-personality>???</strong></div>
+            <div class="repdex-detail-field repdex-detail-full"><span>Favorite Workout</span><strong data-repdex-detail-fav-workout>???</strong></div>
             <div class="repdex-detail-field repdex-detail-full"><span>Caught</span><strong data-repdex-detail-count>0</strong></div>
           </div>
           <p class="repdex-detail-description" data-repdex-detail-description>Capture a creature to add details.</p>
@@ -567,7 +581,7 @@ export class GameHud {
           </div>
         </section>
         <section class="crew-detail" data-crew-detail hidden aria-label="Crew creature detail">
-          <button type="button" class="crew-detail-close" data-crew-detail-close aria-label="Close crew detail">ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½</button>
+          <button type="button" class="crew-detail-close" data-crew-detail-close aria-label="Close crew detail">X</button>
           <h2 class="crew-detail-title" data-crew-detail-title>Creature</h2>
           <div class="crew-detail-grid">
             <div class="crew-detail-field"><span>Species</span><strong data-crew-detail-species>Unknown</strong></div>
@@ -578,7 +592,7 @@ export class GameHud {
             <div class="crew-detail-field"><span>Endurance</span><strong data-crew-detail-endurance>0</strong></div>
             <div class="crew-detail-field"><span>Focus</span><strong data-crew-detail-focus>0</strong></div>
             <div class="crew-detail-field"><span>Energy</span><strong data-crew-detail-energy>100</strong></div>
-            <div class="crew-detail-field"><span>Caught</span><strong data-crew-detail-caught>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½</strong></div>
+            <div class="crew-detail-field"><span>Caught</span><strong data-crew-detail-caught>Unknown</strong></div>
             <div class="crew-detail-field crew-detail-field--wide">
               <span>Rename this buddy</span>
               <div class="crew-detail-rename">
@@ -896,6 +910,8 @@ export class GameHud {
     const questsPanelToggle = root.querySelector<HTMLButtonElement>('[data-panel-toggle="quests"]');
     const questsPanelBody = root.querySelector<HTMLDivElement>('[id="quests-body"]');
     const crewSortSelect = root.querySelector<HTMLSelectElement>('[data-crew-sort]');
+    const repDexSummary = root.querySelector<HTMLDivElement>('[data-repdex-summary]');
+    const repDexFilters = root.querySelectorAll<HTMLButtonElement>('[data-repdex-filter]');
     const dexList = root.querySelector<HTMLDivElement>('[data-dex-list]');
     const repdexPanel = root.querySelector<HTMLElement>('.repdex-panel[data-panel="repdex"]');
     const repdexPanelToggle = root.querySelector<HTMLButtonElement>('[data-panel-toggle="repdex"]');
@@ -1050,6 +1066,8 @@ export class GameHud {
       !questsPanelToggle ||
       !questsPanelBody ||
       !crewSortSelect ||
+      !repDexSummary ||
+      repDexFilters.length === 0 ||
       !repDexDetail ||
       !repDexDetailClose ||
       !repDexDetailTitle ||
@@ -1220,6 +1238,8 @@ export class GameHud {
     this.questsPanelToggle = questsPanelToggle;
     this.questsPanelBody = questsPanelBody;
     this.crewSortSelect = crewSortSelect;
+    this.repDexSummary = repDexSummary;
+    this.repDexFilters = repDexFilters;
     this.dexList = dexList;
     this.repdexPanel = repdexPanel;
     this.repdexPanelToggle = repdexPanelToggle;
@@ -1508,27 +1528,21 @@ export class GameHud {
     this.updateGoals(snapshot.goals);
     this.updateQuests(snapshot.activeQuests);
 
+    const repDexSummaryMarkup = this.getRepDexSummaryMarkup(snapshot.repDex);
+    if (repDexSummaryMarkup !== this.renderedRepDexSummary) {
+      this.repDexSummary.innerHTML = repDexSummaryMarkup;
+      this.renderedRepDexSummary = repDexSummaryMarkup;
+    }
+    this.repDexFilters.forEach((button) => {
+      const active = button.dataset.repdexFilter === this.repDexFilter;
+      button.classList.toggle('repdex-filter--active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+
     const dexMarkup = snapshot.repDex
-      .map(
-        (entry) => `
-          <div
-            class="dex-row dex-row--${entry.definition.rarity} ${entry.count > 0 ? 'dex-row--caught' : ''}${this.isExoticBuddyDefinition(entry.definition) ? ' dex-row--exotic' : ''}"
-            data-repdex-id="${entry.definition.id}"
-            role="button"
-            tabindex="0"
-          >
-            <div class="dex-row-main">
-              <span class="dex-row-name">${this.getBuddyDisplayName(entry.definition)}</span>
-              <span class="dex-row-meta">Species ${entry.definition.species}</span>
-              ${this.renderRarityBadge(entry.definition.rarity)}
-              <span class="dex-row-meta">Role ${formatHudLabel(entry.definition.role)}</span>
-              <span class="dex-row-meta">Personality ${entry.definition.personalityTag}</span>
-              <span class="dex-row-meta">${entry.count} caught ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ Best Lv ${entry.highestLevel}</span>
-            </div>
-          </div>
-        `
-      )
-      .join('');
+      .filter((entry) => this.shouldShowRepDexEntry(entry))
+      .map((entry) => this.renderRepDexRow(entry))
+      .join('') || '<div class="dex-empty">No creatures match this filter yet.</div>';
     if (dexMarkup !== this.renderedDexMarkup) {
       this.dexList.innerHTML = dexMarkup;
       this.renderedDexMarkup = dexMarkup;
@@ -1885,6 +1899,175 @@ export class GameHud {
     return `${catchLabel}: ${chancePercent}%`;
   }
 
+  private getRepDexSummaryMarkup(entries: RepDexEntry[]): string {
+    const total = entries.length;
+    const discovered = entries.filter((entry) => entry.count > 0).length;
+    const capturedSpecimens = entries.reduce((sum, entry) => sum + entry.count, 0);
+    const normalEntries = entries.filter((entry) => !this.isExoticBuddyDefinition(entry.definition));
+    const exoticEntries = entries.filter((entry) => this.isExoticBuddyDefinition(entry.definition));
+    const normalDiscovered = normalEntries.filter((entry) => entry.count > 0).length;
+    const exoticDiscovered = exoticEntries.filter((entry) => entry.count > 0).length;
+
+    return `
+      <div class="repdex-summary-card">
+        <span>Discovered</span>
+        <strong>${discovered}/${total}</strong>
+        <div class="repdex-progress"><div style="width: ${this.getRepDexProgressPercent(discovered, total)}%"></div></div>
+      </div>
+      <div class="repdex-summary-card">
+        <span>Captured</span>
+        <strong>${capturedSpecimens} total</strong>
+        <div class="repdex-progress"><div style="width: ${this.getRepDexProgressPercent(discovered, total)}%"></div></div>
+      </div>
+      <div class="repdex-summary-card">
+        <span>Normal</span>
+        <strong>${normalDiscovered}/${normalEntries.length}</strong>
+        <div class="repdex-progress"><div style="width: ${this.getRepDexProgressPercent(normalDiscovered, normalEntries.length)}%"></div></div>
+      </div>
+      <div class="repdex-summary-card repdex-summary-card--exotic">
+        <span>Exotic</span>
+        <strong>${exoticDiscovered}/${exoticEntries.length}</strong>
+        <div class="repdex-progress"><div style="width: ${this.getRepDexProgressPercent(exoticDiscovered, exoticEntries.length)}%"></div></div>
+      </div>
+    `;
+  }
+
+  private getRepDexProgressPercent(value: number, total: number): number {
+    return total > 0 ? Math.round((value / total) * 100) : 0;
+  }
+
+  private resolveRepDexFilter(value: string | undefined): RepDexFilter {
+    return value === 'captured' || value === 'uncaptured' || value === 'normal' || value === 'exotic'
+      ? value
+      : 'all';
+  }
+
+  private shouldShowRepDexEntry(entry: RepDexEntry): boolean {
+    if (this.repDexFilter === 'captured') {
+      return entry.count > 0;
+    }
+
+    if (this.repDexFilter === 'uncaptured') {
+      return entry.count <= 0;
+    }
+
+    if (this.repDexFilter === 'normal') {
+      return !this.isExoticBuddyDefinition(entry.definition);
+    }
+
+    if (this.repDexFilter === 'exotic') {
+      return this.isExoticBuddyDefinition(entry.definition);
+    }
+
+    return true;
+  }
+
+  private renderRepDexRow(entry: RepDexEntry): string {
+    const definition = entry.definition;
+    const discovered = entry.count > 0;
+    const isExotic = this.isExoticBuddyDefinition(definition);
+    const rowClasses = [
+      'dex-row',
+      `dex-row--${definition.rarity}`,
+      discovered ? 'dex-row--caught' : 'dex-row--locked',
+      isExotic ? 'dex-row--exotic' : ''
+    ]
+      .filter(Boolean)
+      .join(' ');
+    const title = discovered ? this.escapeHtml(this.getBuddyDisplayName(definition)) : 'Unknown Creature';
+    const species = discovered
+      ? this.escapeHtml(definition.species)
+      : `${this.getRarityDisplayName(definition.rarity)} clue`;
+    const zoneClue = this.escapeHtml(this.getRepDexZoneClue(definition));
+    const silhouette = this.escapeHtml(this.getRepDexSilhouetteLabel(definition, discovered));
+    const countLine = discovered
+      ? `${entry.count} caught - Best Lv ${entry.highestLevel}`
+      : `Not discovered yet - seen around ${zoneClue}`;
+    const detailLine = discovered
+      ? `Role ${formatHudLabel(definition.role)} - ${definition.passive.name}`
+      : `Zone clue: ${zoneClue}`;
+    const workoutLine = discovered
+      ? `Workout ${definition.favoriteWorkout}`
+      : isExotic
+        ? 'Mythic silhouette with a dramatic glow.'
+        : 'A buff animal silhouette is waiting to be catalogued.';
+
+    return `
+      <div
+        class="${rowClasses}"
+        data-repdex-id="${this.escapeHtml(definition.id)}"
+        role="button"
+        tabindex="0"
+      >
+        <div class="dex-row-silhouette" aria-hidden="true">${silhouette}</div>
+        <div class="dex-row-main">
+          <span class="dex-row-name">${title}</span>
+          <span class="dex-row-meta">Species ${species}</span>
+          <span class="dex-row-meta">${this.escapeHtml(countLine)}</span>
+          <span class="dex-row-meta">${this.escapeHtml(detailLine)}</span>
+          <span class="dex-row-meta">${this.escapeHtml(workoutLine)}</span>
+        </div>
+        <div class="dex-row-badges">
+          ${this.renderRarityBadge(definition.rarity)}
+          ${isExotic ? '<span class="dex-row-exotic-tag">Exotic</span>' : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  private getRepDexZoneClue(definition: BuddyDefinition): string {
+    if (this.isExoticBuddyDefinition(definition)) {
+      return 'Mythic Platform';
+    }
+
+    const key = `${definition.name} ${definition.species} ${definition.role}`.toLowerCase();
+
+    if (
+      key.includes('bear') ||
+      key.includes('rhino') ||
+      key.includes('gorilla') ||
+      key.includes('buffalo') ||
+      key.includes('deer')
+    ) {
+      return 'Heavy Lift Hall';
+    }
+
+    if (
+      key.includes('fox') ||
+      key.includes('panther') ||
+      key.includes('jaguar') ||
+      key.includes('tiger') ||
+      key.includes('bunny') ||
+      key.includes('corgi')
+    ) {
+      return 'Flex Trail';
+    }
+
+    if (
+      key.includes('raccoon') ||
+      key.includes('penguin') ||
+      key.includes('squirrel') ||
+      key.includes('technician')
+    ) {
+      return 'Core Court';
+    }
+
+    return 'Starter Stretch';
+  }
+
+  private getRepDexSilhouetteLabel(definition: BuddyDefinition, discovered: boolean): string {
+    if (!discovered) {
+      return '???';
+    }
+
+    return definition.name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join('');
+  }
+
   private getRepDexCaptureOdds(definition: BuddyDefinition): string {
     const levels = [1, 16, 26, 36];
     const labels = ['1-15', '16-25', '26-35', '36+'];
@@ -1949,26 +2132,53 @@ export class GameHud {
 
   private openRepDexDetail(entry: RepDexEntry): void {
     const definition = entry.definition;
+    const discovered = entry.count > 0;
+    const isExotic = this.isExoticBuddyDefinition(definition);
+    const zoneClue = this.getRepDexZoneClue(definition);
     this.closeCrewDetail(false);
     this.lastCreatureDetailTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
-    this.repDexDetailTitle.textContent = this.getBuddyDisplayName(definition);
-    this.repDexDetailSpecies.textContent = definition.species;
-    this.repDexDetailType.textContent = `${this.isExoticBuddyDefinition(definition) ? 'Exotic' : 'Normal'} / ${formatHudLabel(definition.role)}`;
+    this.repDexDetailTitle.textContent = discovered
+      ? this.getBuddyDisplayName(definition)
+      : `Unknown ${this.getRarityDisplayName(definition.rarity)} Creature`;
+    this.repDexDetailSpecies.textContent = discovered ? definition.species : 'Mystery silhouette';
+    this.repDexDetailType.textContent = discovered
+      ? `${isExotic ? 'Exotic' : 'Normal'} / ${formatHudLabel(definition.role)}`
+      : `${isExotic ? 'Exotic' : 'Normal'} clue`;
     this.repDexDetailRarity.textContent = this.getRarityDisplayName(definition.rarity);
     this.setRarityBadgeClasses(this.repDexDetailRarity, definition.rarity, 'detail-rarity-badge');
-    this.repDexDetailPersonality.textContent = definition.personalityTag;
-    this.repDexDetailFavoriteWorkout.textContent = definition.favoriteWorkout;
-    this.repDexDetailCount.textContent = `${entry.count} caught ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ Best Lv ${entry.highestLevel}`;
-    this.repDexDetailDescription.textContent = this.getRepDexDescription(definition);
+    this.repDexDetailPersonality.textContent = discovered ? definition.personalityTag : 'Not discovered yet';
+    this.repDexDetailFavoriteWorkout.textContent = discovered ? definition.favoriteWorkout : `Search ${zoneClue}`;
+    this.repDexDetailCount.textContent = discovered
+      ? `${entry.count} caught - Best Lv ${entry.highestLevel}`
+      : '0 caught - Best Lv --';
+
+    if (!discovered) {
+      this.repDexDetailDescription.textContent = `Zone clue: ${zoneClue}. Capture one to unlock its personality, workout, passive, and field notes.`;
+      this.repDexDetailOdds.innerHTML = `
+        <div class="repdex-detail-odds-title">Catch odds clue</div>
+        <div>${isExotic ? 'Exotic creatures always use 40% arm-wrestle odds.' : 'Normal creatures use the approved level-tier arm-wrestle odds.'}</div>
+        <div class="repdex-detail-odds-title">Silhouette</div>
+        <div>${this.escapeHtml(this.getRepDexSilhouetteLabel(definition, false))}</div>
+      `;
+      this.repDexDetailFlavor.textContent = 'Data locked. Get close, read the target panel, and win an arm wrestle to file this entry.';
+      this.repDexDetail.hidden = false;
+      this.root.classList.add('game-root--repdex-detail-open');
+      return;
+    }
+
+    this.repDexDetailDescription.textContent = `${this.getRepDexDescription(definition)} Found around ${zoneClue}.`;
     this.repDexDetailOdds.innerHTML = `
       <div class="repdex-detail-odds-title">Catch odds by level</div>
       ${this.getRepDexCaptureOdds(definition)}
       <div class="repdex-detail-odds-title">Role</div>
-      <div>${formatHudLabel(definition.role)}: ${formatHudLabel(definition.growthTendency)} growth tendency</div>
+      <div>${this.escapeHtml(formatHudLabel(definition.role))}: ${this.escapeHtml(formatHudLabel(definition.growthTendency))} growth tendency</div>
       <div class="repdex-detail-odds-title">Passive</div>
-      <div>${definition.passive.name}: ${definition.passive.description}</div>
+      <div>${this.escapeHtml(definition.passive.name)}: ${this.escapeHtml(definition.passive.description)}</div>
+      <div class="repdex-detail-odds-title">Reaction</div>
+      <div>Victory: ${this.escapeHtml(definition.reactionLines.victory)}</div>
+      <div>Cry: ${this.escapeHtml(definition.reactionLines.cry)}</div>
     `;
-    this.repDexDetailFlavor.textContent = this.getRepDexFlavor(definition);
+    this.repDexDetailFlavor.textContent = `${this.getRepDexFlavor(definition)} Zone: ${zoneClue}.`;
     this.repDexDetail.hidden = false;
     this.root.classList.add('game-root--repdex-detail-open');
   }
@@ -3413,6 +3623,18 @@ export class GameHud {
   }
 
   private bindRepDexUi(): void {
+    this.repDexFilters.forEach((button) => {
+      button.addEventListener('click', () => {
+        const nextFilter = this.resolveRepDexFilter(button.dataset.repdexFilter);
+        if (nextFilter === this.repDexFilter) {
+          return;
+        }
+
+        this.repDexFilter = nextFilter;
+        this.renderedDexMarkup = '';
+      });
+    });
+
     this.dexList.addEventListener('click', (event) => {
       const target = event.target;
 

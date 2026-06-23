@@ -635,6 +635,78 @@ button {
   pointer-events: none;
 }
 
+.repdex-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.repdex-summary-card {
+  display: grid;
+  gap: 3px;
+  padding: 6px;
+  border: 1px solid rgba(23, 36, 54, 0.18);
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 1px 1px 0 rgba(23, 36, 54, 0.12);
+}
+
+.repdex-summary-card span {
+  color: var(--muted);
+  font-size: 0.56rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.repdex-summary-card strong {
+  color: var(--ink);
+  font-size: 0.68rem;
+  font-weight: 940;
+}
+
+.repdex-summary-card--exotic {
+  border-color: rgba(237, 145, 199, 0.48);
+  background: rgba(237, 145, 199, 0.22);
+}
+
+.repdex-progress {
+  height: 5px;
+  overflow: hidden;
+  border: 1px solid rgba(23, 36, 54, 0.2);
+  background: #fff5c4;
+}
+
+.repdex-progress div {
+  height: 100%;
+  background: linear-gradient(90deg, var(--teal), var(--gold));
+  transition: width 180ms ease;
+}
+
+.repdex-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.repdex-filter {
+  min-height: 25px;
+  padding: 4px 6px;
+  border: 2px solid rgba(23, 36, 54, 0.24);
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.78);
+  font-size: 0.56rem;
+  font-weight: 900;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.repdex-filter--active {
+  border-color: var(--line);
+  color: #ffffff;
+  background: var(--accent-blue);
+  box-shadow: 1px 1px 0 var(--pixel-edge);
+}
+
 .dex-list {
   display: grid;
   gap: 5px;
@@ -700,12 +772,22 @@ button {
   font-weight: 760;
 }
 
+.dex-empty {
+  padding: 9px;
+  border: 1px dashed rgba(23, 36, 54, 0.22);
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.62);
+  font-size: 0.66rem;
+  font-weight: 820;
+}
+
 .dex-row {
   cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  min-height: 46px;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  min-height: 58px;
   padding: 6px 8px;
   border: 1px solid rgba(23, 36, 54, 0.08);
   border-radius: 0;
@@ -713,6 +795,7 @@ button {
   background: rgba(255, 255, 255, 0.72);
   font-size: 0.76rem;
   font-weight: 720;
+  animation: dex-card-pop 180ms steps(2, end);
 }
 
 .dex-row span {
@@ -725,6 +808,34 @@ button {
 .dex-row-main {
   display: grid;
   gap: 2px;
+}
+
+.dex-row-silhouette {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 2px solid rgba(23, 36, 54, 0.26);
+  color: #ffffff;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.16) 0 20%, transparent 21%),
+    linear-gradient(135deg, #24324a, #172436);
+  font-size: 0.58rem;
+  font-weight: 940;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.32);
+}
+
+.dex-row--locked .dex-row-silhouette {
+  color: rgba(255, 255, 255, 0.72);
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.08) 0 3px, transparent 3px 6px),
+    linear-gradient(135deg, #1a2332, #3c4860);
+}
+
+.dex-row-badges {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
 }
 
 .dex-row-name {
@@ -748,6 +859,12 @@ button {
   background: rgba(67, 230, 168, 0.22);
 }
 
+.dex-row--locked {
+  color: rgba(23, 36, 54, 0.56);
+  background: rgba(255, 255, 255, 0.52);
+  border-style: dashed;
+}
+
 .dex-row--exotic {
   color: #5c1f3f;
   background: rgba(237, 145, 199, 0.28);
@@ -767,6 +884,31 @@ button {
 
 .dex-row--exotic strong {
   color: #7b0e4f;
+}
+
+.dex-row-exotic-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 16px;
+  padding: 2px 5px;
+  color: #7b0e4f;
+  background: rgba(255, 240, 168, 0.74);
+  border: 1px solid rgba(123, 14, 79, 0.24);
+  font-size: 0.5rem;
+  font-weight: 940;
+  text-transform: uppercase;
+}
+
+@keyframes dex-card-pop {
+  from {
+    opacity: 0.65;
+    transform: translateY(2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .repdex-detail {
@@ -1218,6 +1360,7 @@ button {
   pointer-events: auto;
   transform: translateX(-50%);
   box-shadow: var(--shadow);
+  animation: boss-panel-intro 220ms steps(3, end);
 }
 
 .boss-panel[hidden] {
@@ -1265,6 +1408,7 @@ button {
   background: #fff0b8;
   pointer-events: none;
   transform: translate(-50%, -50%);
+  animation: boss-battle-clash 520ms steps(4, end) infinite;
 }
 
 .boss-battle-panel[hidden] {
@@ -1331,6 +1475,31 @@ button {
   background: rgba(255, 206, 88, 0.32);
 }
 
+@keyframes boss-panel-intro {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes boss-battle-clash {
+  0%,
+  100% {
+    box-shadow: var(--shadow);
+  }
+
+  50% {
+    box-shadow:
+      var(--shadow),
+      0 0 0 3px rgba(255, 206, 88, 0.42);
+  }
+}
+
 .toast {
   position: absolute;
   left: 50%;
@@ -1366,6 +1535,19 @@ button {
   background: #fff7cf;
   pointer-events: auto;
   transform: translate(-50%, -50%);
+  animation: capture-result-pop 180ms steps(3, end);
+}
+
+@keyframes capture-result-pop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -45%) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 .capture-result-card[hidden] {
@@ -1744,8 +1926,16 @@ button {
 .game-root--reduced-motion .stamina-fill,
 .game-root--reduced-motion .toast,
 .game-root--reduced-motion .workout-meter-fill,
-.game-root--reduced-motion .capture-struggle-overlay__fill {
+.game-root--reduced-motion .capture-struggle-overlay__fill,
+.game-root--reduced-motion .repdex-progress div {
   transition: none;
+}
+
+.game-root--reduced-motion .dex-row,
+.game-root--reduced-motion .boss-panel,
+.game-root--reduced-motion .boss-battle-panel,
+.game-root--reduced-motion .capture-result-card {
+  animation: none;
 }
 
 .game-root--reduced-motion .rarity-badge--exotic {
@@ -3158,7 +3348,11 @@ button {
   .stamina-fill,
   .toast,
   .workout-meter-fill,
-  .rarity-badge--exotic {
+  .rarity-badge--exotic,
+  .dex-row,
+  .boss-panel,
+  .boss-battle-panel,
+  .capture-result-card {
     animation: none;
     transition: none;
   }

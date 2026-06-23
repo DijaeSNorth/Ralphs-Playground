@@ -125,3 +125,16 @@ Balance pass:
 - Base workout XP increased to 42, capture active crew XP to 32, and new-capture XP to 50.
 - Random workout Steroid chance reduced to 18% so XP remains the primary leveling path.
 - Boss base win chance increased to 48%, minimum to 24%, power bonus reduced to 14, and first boss win goal reward reduced to 1 Steroid.
+
+Animation and RepDex polish stage:
+- Scope: presentation polish only; no gameplay rule or capture-odds changes.
+- Renderer polish lives in src/render/app/createGymBuddyGame.ts.
+- Player now has idle breathing, walk/start-stop bob, occasional flex, and low-stamina tired pose using lightweight transforms.
+- Wild creatures use species-biased idle/reaction motion: hoppers, heavy stompers, prowlers, and dramatic exotic pulse/pose.
+- Workout animation props now move per station family: press, squat/leg press, cable/row, and free weights.
+- Arm-wrestle capture keeps approved odds and adds clearer success victory/pin and failure slump/escape posing.
+- Boss meshes and boss battle panel now pulse/clash during active boss moments, with reduced-motion fallbacks.
+- RepDex polish lives in src/ui/hud.ts and src/style.css.
+- RepDex now has collection summary, All/Caught/Mystery/Normal/Exotic filters, mystery locked cards, rarity badges, zone clues, and richer detail cards.
+- Locked RepDex entries do not auto-open; they only open from intentional RepDex row activation and show limited clue data.
+- Build command used: npm.cmd run build, passed.

@@ -342,6 +342,8 @@ class GymBuddyRenderer {
   private readonly clockShadowTarget = new Object3D();
   private activeWorkout?: WorkoutAnimation;
   private lastCullPosition?: Vec2;
+  private lastPlayerPosition?: Vec2;
+  private playerMotionBlend = 0;
   private captureBeatText = '';
   private captureBeatOpacity = 0;
   private captureBeatTimer = 0;
@@ -507,8 +509,36 @@ class GymBuddyRenderer {
     this.player.position.set(snapshot.player.position.x, 0, snapshot.player.position.z);
     this.player.rotation.y = snapshot.player.heading;
 
-    const bob = this.settings.reducedMotion ? 0 : Math.sin(performance.now() * 0.008) * 0.035;
-    this.player.position.y = 0.02 + bob;
+    const previousPosition = this.lastPlayerPosition;
+    const frameMove = previousPosition
+      ? Math.hypot(
+          snapshot.player.position.x - previousPosition.x,
+          snapshot.player.position.z - previousPosition.z
+        )
+      : 0;
+    this.lastPlayerPosition = { ...snapshot.player.position };
+
+    const motionScale = this.settings.reducedMotion ? 0.18 : 1;
+    const targetMotion = frameMove > 0.002 ? 1 : 0;
+    this.playerMotionBlend = lerp(this.playerMotionBlend, targetMotion, this.settings.reducedMotion ? 0.16 : 0.34);
+
+    const now = performance.now() * 0.001;
+    const breath = Math.sin(now * 2.8) * 0.018 * motionScale;
+    const walk = Math.abs(Math.sin(now * 11.5)) * 0.056 * this.playerMotionBlend * motionScale;
+    const startStop = Math.sin(now * 16) * 0.025 * this.playerMotionBlend * (1 - this.playerMotionBlend * 0.35) * motionScale;
+    const tired = clamp((24 - snapshot.player.stamina) / 24, 0, 1);
+    const idleFlex = this.playerMotionBlend < 0.12 && snapshot.player.capturedTotal > 0
+      ? Math.pow(Math.max(0, Math.sin(now * 0.78)), 10) * motionScale
+      : 0;
+
+    this.player.position.y = 0.02 + breath + walk + tired * Math.abs(Math.sin(now * 5.2)) * 0.022 * motionScale;
+    this.player.rotation.x = tired * 0.11 * motionScale;
+    this.player.rotation.z = startStop + idleFlex * 0.075 - tired * 0.055 * motionScale;
+    this.player.scale.set(
+      1 + idleFlex * 0.055 + this.playerMotionBlend * 0.012,
+      1 + breath * 0.35 + idleFlex * 0.025 - tired * 0.035,
+      1 + idleFlex * 0.035
+    );
   }
 
   private syncBuddies(snapshot: WorldSnapshot): void {
@@ -558,6 +588,7 @@ class GymBuddyRenderer {
     const now = performance.now() * 0.001;
     const isExotic = definition.rarity === 'exotic' || definition.isExotic === true;
     const motionScale = this.settings.reducedMotion ? 0.25 : 1;
+    const creatureKey = `${definition.name} ${definition.species}`.toLowerCase();
 
     if (ragdolled) {
       mesh.position.y = 0.18;
@@ -580,6 +611,58 @@ class GymBuddyRenderer {
     let rotationX = 0;
     let rotationY = buddy.heading;
     let rotationZ = isExotic ? Math.sin(now * 0.9 + buddy.id) * 0.045 * motionScale : 0;
+
+    const hopCreature =
+      creatureKey.includes('bunny') ||
+      creatureKey.includes('corgi') ||
+      creatureKey.includes('squirrel') ||
+      creatureKey.includes('pegasus');
+    const heavyCreature =
+      creatureKey.includes('bear') ||
+      creatureKey.includes('rhino') ||
+      creatureKey.includes('gorilla') ||
+      creatureKey.includes('buffalo') ||
+      creatureKey.includes('minotaur') ||
+      creatureKey.includes('cyclops');
+    const prowlerCreature =
+      creatureKey.includes('fox') ||
+      creatureKey.includes('panther') ||
+      creatureKey.includes('jaguar') ||
+      creatureKey.includes('tiger') ||
+      creatureKey.includes('werewolf');
+    const dramaticCreature =
+      isExotic ||
+      creatureKey.includes('dragon') ||
+      creatureKey.includes('griffin') ||
+      creatureKey.includes('phoenix') ||
+      creatureKey.includes('hydra') ||
+      creatureKey.includes('kraken') ||
+      creatureKey.includes('sphinx');
+
+    if (hopCreature) {
+      const hop = Math.max(0, Math.sin(now * 5.8 + buddy.id));
+      positionY += hop * 0.075 * motionScale;
+      rotationZ += Math.sin(now * 8.5 + buddy.id) * 0.055 * motionScale;
+      scaleY += hop * 0.045 * motionScale;
+    } else if (heavyCreature) {
+      const stomp = Math.max(0, Math.sin(now * 3.2 + buddy.id));
+      positionY += stomp * 0.035 * motionScale;
+      rotationX += Math.sin(now * 2.3 + buddy.id) * 0.045 * motionScale;
+      scaleX += stomp * 0.045 * motionScale;
+      scaleZ += stomp * 0.026 * motionScale;
+    } else if (prowlerCreature) {
+      const prowl = Math.sin(now * 4.6 + buddy.id);
+      positionY += Math.abs(prowl) * 0.028 * motionScale;
+      rotationZ += prowl * 0.07 * motionScale;
+      scaleX += Math.abs(prowl) * 0.018 * motionScale;
+    }
+
+    if (dramaticCreature) {
+      const pose = Math.pow(Math.max(0, Math.sin(now * 1.35 + buddy.id)), 4);
+      scaleX += pose * 0.07 * motionScale;
+      scaleY += pose * 0.045 * motionScale;
+      rotationY += Math.sin(now * 0.72 + buddy.id) * 0.05 * motionScale;
+    }
 
     if (isExotic) {
       positionY += (0.02 + Math.abs(exoticPulse) * 0.9) * motionScale;
@@ -607,6 +690,14 @@ class GymBuddyRenderer {
       scaleY += alert * 0.08 * motionScale;
       positionY += alert * 0.06 * motionScale;
       rotationZ += Math.sin(now * 18 + buddy.id) * (0.13 + facePlayerBoost) * motionScale;
+    }
+
+    if (playerDistance < 2.7) {
+      const nearby = (2.7 - playerDistance) / 2.7;
+      const reaction = Math.sin(now * 13 + buddy.id) * nearby * motionScale;
+      positionY += Math.abs(reaction) * 0.04;
+      rotationZ += reaction * 0.08;
+      scaleY += nearby * 0.025 * motionScale;
     }
 
     mesh.position.y = positionY;
@@ -712,15 +803,25 @@ class GymBuddyRenderer {
       this.scene.add(this.bossMesh);
     }
 
-    this.bossMesh.position.set(boss.position.x, 0, boss.position.z);
+    const now = performance.now() * 0.001;
+    const motionScale = this.settings.reducedMotion ? 0.28 : 1;
+    const battle = snapshot.activeBossBattle;
+    const battlePulse = battle
+      ? Math.max(0, Math.sin(now * (battle.phase === 'result' ? 7 : 10))) * 0.08 * motionScale
+      : 0;
+    const introPose = Math.pow(Math.max(0, Math.sin(now * 1.2)), 4) * 0.05 * motionScale;
+
+    this.bossMesh.position.set(boss.position.x, introPose + battlePulse * 0.55, boss.position.z);
     if (boss.ragdollTimer > 0) {
       this.bossMesh.position.y = 0.22;
       this.bossMesh.rotation.x = -1.05;
       this.bossMesh.rotation.z = 0.32 + Math.sin(performance.now() * 0.014) * 0.12;
+      this.bossMesh.scale.setScalar(0.9);
     } else {
-      this.bossMesh.rotation.x = 0;
-      this.bossMesh.rotation.z = 0;
-      this.bossMesh.rotation.y += 0.01;
+      this.bossMesh.rotation.x = battle ? Math.sin(now * 8) * 0.055 * motionScale : 0;
+      this.bossMesh.rotation.z = battle ? Math.sin(now * 11) * 0.085 * motionScale : introPose;
+      this.bossMesh.rotation.y += battle ? 0.018 : 0.01;
+      this.bossMesh.scale.setScalar(1 + introPose + battlePulse);
     }
   }
 
@@ -866,6 +967,7 @@ class GymBuddyRenderer {
     if (animation.kind === 'press') {
       animation.actor.rotation.set(-1.02, Math.PI / 2, Math.sin(phase * 0.5) * 0.04 * motionScale);
       animation.actor.position.set(-0.32, 0.22 + snap * 0.02 * motionScale, 0);
+      animation.props.scale.set(1, 1 + snap * 0.035 * motionScale, 1);
       if (animation.liftA) {
         animation.liftA.position.y = 0.9 + snap * 0.52 * motionScale;
         animation.liftA.rotation.x = Math.PI / 2;
@@ -887,6 +989,7 @@ class GymBuddyRenderer {
       animation.actor.rotation.set(0.12 + squat * 0.24 * motionScale, 0, Math.sin(phase * 0.7) * 0.035 * motionScale);
       animation.actor.position.set(-0.08, 0.03 + snap * 0.12 * motionScale, 0);
       animation.actor.scale.set(baseScale, baseScale * (0.84 + snap * 0.2 * motionScale), baseScale);
+      animation.props.position.y = squat * 0.025 * motionScale;
       if (animation.liftA) {
         animation.liftA.position.y = 1.02 + snap * 0.34 * motionScale;
         animation.liftA.rotation.x = Math.PI / 2;
@@ -898,6 +1001,7 @@ class GymBuddyRenderer {
       const pull = snap;
       animation.actor.rotation.set(-0.04 - pull * 0.12 * motionScale, -Math.PI / 2, Math.sin(phase) * 0.035 * motionScale);
       animation.actor.position.set(-0.46 + pull * 0.08 * motionScale, 0.04, 0);
+      animation.props.rotation.z = Math.sin(phase * 1.3) * 0.018 * motionScale;
       if (animation.liftA) {
         animation.liftA.position.x = 0.2 - pull * 0.62 * motionScale;
         animation.liftA.position.y = 1.36 - pull * 0.3 * motionScale;
@@ -914,6 +1018,7 @@ class GymBuddyRenderer {
     const curlB = (Math.sin(phase + Math.PI) + 1) / 2;
     animation.actor.rotation.set(0, 0, Math.sin(phase * 0.5) * 0.05 * motionScale);
     animation.actor.position.set(-0.08, 0.04 + Math.max(curlA, curlB) * 0.04 * motionScale, 0);
+    animation.props.rotation.y = Math.sin(phase * 0.35) * 0.04 * motionScale;
     if (animation.liftA) {
       animation.liftA.position.y = 0.44 + curlA * 0.72 * motionScale;
       animation.liftA.rotation.z = Math.PI / 2 + curlA * 0.8 * motionScale;
@@ -1429,10 +1534,24 @@ class GymBuddyRenderer {
 
         if (effect.success) {
           const pin = clamp((progress - 0.66) / 0.28, 0, 1);
+          const victory = clamp((progress - 0.76) / 0.16, 0, 1);
           const pinBoost = WRESTLE_PIN_STRENGTH * 1.75 * pin * (0.56 + struggle * 0.44) * (this.settings.reducedMotion ? 0.65 : 1);
           effect.playerMesh.position.x -= direction.x * pinBoost;
           effect.playerMesh.position.z -= direction.z * pinBoost;
+          effect.playerMesh.position.y += victory * 0.06 * motionScale;
           effect.playerMesh.rotation.x = WRESTLE_PRONE_ROT_X + pin * 0.08 * (1 + struggle) * motionScale;
+          effect.playerMesh.rotation.z += victory * 0.09 * motionScale;
+          const playerScale = effect.playerBaseScale ?? 1;
+          effect.playerMesh.scale.set(
+            playerScale * (1 + victory * 0.055),
+            playerScale * (1 + victory * 0.035),
+            playerScale
+          );
+        } else {
+          const slump = clamp((progress - 0.62) / 0.28, 0, 1);
+          effect.playerMesh.rotation.x = WRESTLE_PRONE_ROT_X - slump * 0.18 * motionScale;
+          effect.playerMesh.rotation.z += Math.sin(progress * 20) * slump * 0.12 * motionScale;
+          effect.playerMesh.position.y = Math.max(0.08, effect.playerMesh.position.y - slump * 0.035 * motionScale);
         }
 
         if (effect.impactBurst) {
