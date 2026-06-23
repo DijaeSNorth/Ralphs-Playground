@@ -435,7 +435,7 @@ export class GymBuddyWorld {
 
       if (index === 0) {
         buddy.definitionId = 'flex-fox';
-        buddy.level = Math.min(buddy.level, 8);
+        buddy.level = Math.min(buddy.level, 5);
         buddy.position = { x: 0, z: 2.45 };
         buddy.wanderHeading = Math.PI;
         buddy.holdTimer = 4.5;
@@ -1501,7 +1501,7 @@ export class GymBuddyWorld {
 
       if (index === 0) {
         buddy.definitionId = 'flex-fox';
-        buddy.level = Math.min(buddy.level, 8);
+        buddy.level = Math.min(buddy.level, 5);
         buddy.position = { x: 0, z: 2.45 };
         buddy.wanderHeading = Math.PI;
         buddy.holdTimer = 4.5;
@@ -2837,19 +2837,19 @@ export class GymBuddyWorld {
 
   private adjustWildLevelForZone(level: number, zone: GymZoneDefinition): number {
     if (zone.id === 'starter-stretch') {
-      return clamp(level, 1, 8);
+      return clamp(level, 1, 5);
     }
 
     if (zone.id === 'flex-trail') {
-      return clamp(Math.max(3, level), 1, 18);
+      return clamp(Math.max(3, level), 1, 16);
     }
 
     if (zone.id === 'heavy-lift-hall') {
-      return clamp(level + 3, 6, 32);
+      return clamp(level + 2, 6, 30);
     }
 
     if (zone.id === 'core-court') {
-      return clamp(level + 2, 5, 28);
+      return clamp(level + 2, 5, 26);
     }
 
     if (zone.id === 'mythic-platform') {

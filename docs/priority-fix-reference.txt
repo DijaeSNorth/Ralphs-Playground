@@ -115,3 +115,13 @@ Expanded gameplay loop:
 - Bosses are milestone-gated: Plate Titan after 3 captures or level 5 crew, Rep Reaper after 8 captures or 25% RepDex, Bulk Baron after exotic encounter/capture or level 15 crew.
 - Exotic respawns announce through the spawn event and advance exotic encounter goals.
 - Added goals for 3 workouts, level 5 crew, first boss win, exotic encounter, and 25% RepDex.
+
+Balance pass:
+- Scope: Numeric/system tuning only; approved catch odds unchanged.
+- New file: docs/balance-report.md
+- Starter creature and Starter Stretch are capped to level 5.
+- Capture cutscene duration is 1.45s and failed capture retry pacing is 0.7s.
+- Active wild creatures increased to 8.
+- Base workout XP increased to 42, capture active crew XP to 32, and new-capture XP to 50.
+- Random workout Steroid chance reduced to 18% so XP remains the primary leveling path.
+- Boss base win chance increased to 48%, minimum to 24%, power bonus reduced to 14, and first boss win goal reward reduced to 1 Steroid.

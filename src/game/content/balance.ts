@@ -41,10 +41,10 @@ export const WORLD_BALANCE = {
 
 export const CAPTURE_BALANCE = {
   range: 2.85,
-  // Shortened from 1.8s so repeated captures stay snappy without losing the mini-cutscene beat.
-  armWrestleDurationSeconds: 1.6,
-  // Faster retry pacing keeps failed arm-wrestles funny instead of making players wait.
-  missRespawnSeconds: 0.9
+  // Keep the close-up beat readable, but make repeated early captures feel snappy.
+  armWrestleDurationSeconds: 1.45,
+  // Failed arm-wrestles should be funny and immediately retryable.
+  missRespawnSeconds: 0.7
 } as const;
 
 // Player inventory and stamina economy.
@@ -56,7 +56,7 @@ export const STAMINA_BALANCE = {
   sprintDrainPerSecond: 24,
   recoveryPerSecond: 18,
   spotAssistCost: 5,
-  failedCaptureCost: 8,
+  failedCaptureCost: 6,
   bossWinReward: 14,
   bossFailureCost: 18
 } as const;
@@ -70,7 +70,8 @@ export const STEROID_BALANCE = {
   max: 12,
   starting: 0,
   levelCap: 60,
-  workoutRewardChance: 0.42,
+  // Workouts can surprise the player, but Steroids should not replace XP leveling.
+  workoutRewardChance: 0.18,
   vendingEnergyDrinkReward: 1
 } as const;
 
@@ -85,8 +86,8 @@ export type WeightedBuddyOption = {
 };
 
 export const WILD_SPAWN_BALANCE = {
-  // One extra active wild creature makes early routing quicker while staying mobile-safe.
-  activeBuddyCount: 7,
+  // Keeps the gym populated while staying mobile-safe.
+  activeBuddyCount: 8,
   progress: {
     capturedTotalForMax: 45,
     crewAverageLevelForMax: 40,
@@ -100,11 +101,11 @@ export const WILD_SPAWN_BALANCE = {
     midToLate: 0.67
   },
   exoticChance: {
-    // Still rare at the start, but no longer so rare that playtesters may never see one.
-    base: 0.002,
-    progressScale: 0.012,
-    min: 0.002,
-    max: 0.055
+    // Rare early, discoverable by mid-game, and still special at Mythic Platform.
+    base: 0.003,
+    progressScale: 0.014,
+    min: 0.003,
+    max: 0.06
   },
   levelSkew: {
     base: 1,
@@ -118,9 +119,9 @@ export const WILD_SPAWN_BALANCE = {
     late: { min: 36, max: 50 }
   },
   levelTierWeights: {
-    lowBase: 14,
+    lowBase: 16,
     lowProgressPenalty: 12,
-    midLocked: 0.15,
+    midLocked: 0.08,
     // Mid-tier levels enter a bit sooner after goals unlock, but low levels still dominate early game.
     midBase: 1.1,
     midProgressScale: 5.2,
@@ -231,9 +232,9 @@ export const XP_LEVEL_CURVE = {
 } as const;
 
 export const XP_REWARDS = {
-  captureActiveCrew: 24,
-  captureNewBuddy: 36,
-  workoutBase: 30
+  captureActiveCrew: 32,
+  captureNewBuddy: 50,
+  workoutBase: 42
 } as const;
 
 export function getBuddyXpForNextLevel(level: number): number {
@@ -291,21 +292,21 @@ export const GOAL_STEROID_REWARDS: Record<ProgressGoalId, number> = {
   capture_first_exotic: 3,
   roster_level_5_any: 1,
   roster_level_10_any: 0,
-  boss_first_win: 2,
+  boss_first_win: 1,
   repdex_quarter: 2,
   repdex_half: 5
 };
 
 export const GOAL_CREW_XP_REWARDS: Record<ProgressGoalId, number> = {
-  capture_first: 35,
-  workout_first: 45,
-  workout_3: 75,
-  capture_3: 50,
+  capture_first: 45,
+  workout_first: 60,
+  workout_3: 90,
+  capture_3: 70,
   capture_6: 60,
   capture_10: 80,
   encounter_exotic: 80,
   capture_first_exotic: 120,
-  roster_level_5_any: 70,
+  roster_level_5_any: 100,
   roster_level_10_any: 90,
   boss_first_win: 120,
   repdex_quarter: 100,
@@ -569,7 +570,7 @@ export const LEVEL_UP_BALANCE = {
 
 // Roster workout timing and crew energy costs.
 export const ROSTER_TRAINING_BALANCE = {
-  durationSeconds: 12,
+  durationSeconds: 10,
   spotWindowSeconds: 7,
   spotRange: 1.95,
   energyCost: 15,
@@ -578,7 +579,7 @@ export const ROSTER_TRAINING_BALANCE = {
 } as const;
 
 export const WORKOUT_BALANCE = {
-  goalScore: 5
+  goalScore: 4
 } as const;
 
 // Vending rewards used by content and HUD display.
@@ -619,25 +620,25 @@ export const FREE_WEIGHT_BALANCE = {
 
 // Boss battle power, rewards, and respawn pacing.
 export const BOSS_BALANCE = {
-  initialSpawnDelaySeconds: 18,
+  initialSpawnDelaySeconds: 20,
   activeDurationSeconds: 26,
   battleDurationSeconds: 2.45,
   exoticBoostReward: 0.006,
   exoticBoostMax: 0.035,
-  powerBonus: 18,
-  winChanceBase: 0.42,
-  winChancePowerDivisor: 120,
-  winChanceMin: 0.18,
-  winChanceMax: 0.94,
-  rewardXpBase: 28,
-  rewardXpPowerScale: 0.25,
-  rewardSteroidUpgradeChance: 0.35,
+  powerBonus: 14,
+  winChanceBase: 0.48,
+  winChancePowerDivisor: 135,
+  winChanceMin: 0.24,
+  winChanceMax: 0.92,
+  rewardXpBase: 36,
+  rewardXpPowerScale: 0.28,
+  rewardSteroidUpgradeChance: 0.25,
   rewardSteroidsBase: 1,
   rewardSteroidsLuckyOrExotic: 2,
   respawnAfterWinBaseSeconds: 42,
   respawnAfterWinRandomSeconds: 24,
-  respawnAfterLossBaseSeconds: 62,
-  respawnAfterLossRandomSeconds: 30,
+  respawnAfterLossBaseSeconds: 54,
+  respawnAfterLossRandomSeconds: 22,
   respawnAfterTimeoutBaseSeconds: 38,
   respawnAfterTimeoutRandomSeconds: 26,
   roundWeights: {
