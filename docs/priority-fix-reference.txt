@@ -52,3 +52,11 @@ Customization polish:
 - Build styles are tuned from Beginner through Elite with intentional mass, arm, chest, and leg scaling.
 - Frame styles now add tasteful shoulder/waist/hip/height/lower-body differences without extreme distortion.
 - Live creator summary now reports Build, Frame, Base, and a readable visual Focus such as boosted shoulders or heroic silhouette.
+
+Workout animation pass:
+- Scope: Presentation-only workout animations.
+- Files changed: src/render/app/createGymBuddyGame.ts, src/ui/hud.ts, docs/priority-fix-reference.txt
+- HUD exposes the active workout station to the renderer without changing workout rewards or progression.
+- Renderer creates one temporary workout animation group while the workout panel is active, then disposes it when the panel closes/completes.
+- Supported animation families: press/bench, squat/leg press, free weights/dumbbells, cable/pulldown/row.
+- Reduced motion keeps the same readable poses with smaller, slower movement.

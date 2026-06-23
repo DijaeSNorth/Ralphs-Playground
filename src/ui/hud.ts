@@ -2244,6 +2244,10 @@ export class GameHud {
     return Boolean(this.activeWorkout);
   }
 
+  getActiveWorkoutStation(): WorkoutStation | undefined {
+    return this.activeWorkout?.station;
+  }
+
   isInteractionActive(): boolean {
     return Boolean(
       this.activeWorkout ||

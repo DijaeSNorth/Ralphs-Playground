@@ -1,6 +1,8 @@
 import {
   AmbientLight,
+  BoxGeometry,
   Color,
+  CylinderGeometry,
   DirectionalLight,
   Group,
   Mesh,
@@ -23,6 +25,8 @@ import type {
   BuddyState,
   PlayerAppearance,
   Vec2,
+  WorkoutStation,
+  WorkoutType,
   WorldEvent,
   WorldSnapshot
 } from '../../game/types';
@@ -82,6 +86,22 @@ type CaptureEffect = {
   captureBeatIndex?: number;
   struggleMeter?: number;
   struggleMomentum?: number;
+};
+
+type WorkoutAnimationKind = 'press' | 'squat' | 'free-weights' | 'cable';
+
+type WorkoutAnimation = {
+  stationId: string;
+  type: WorkoutType;
+  kind: WorkoutAnimationKind;
+  group: Group;
+  actor: Group;
+  props: Group;
+  liftA?: Object3D;
+  liftB?: Object3D;
+  cable?: Object3D;
+  age: number;
+  beatIndex: number;
 };
 
 type RenderCullable = {
@@ -240,6 +260,13 @@ class CharacterPreviewRenderer {
     object.traverse((child) => {
       if (child instanceof Mesh) {
         child.geometry.dispose();
+        const material = child.material;
+
+        if (Array.isArray(material)) {
+          material.forEach((entry) => entry.dispose());
+        } else {
+          material.dispose();
+        }
       }
     });
   }
@@ -290,6 +317,7 @@ const WRESTLE_ARM_WOBBLE_SPEED = 24;
 const WRESTLE_PRONE_ROT_X = 1.34;
 const WRESTLE_FIGHT_PHASE = 0.58;
 const WRESTLE_ARM_BASE_TWITCH = 0.1;
+const WORKOUT_BEAT_INTERVAL_SECONDS = 0.72;
 
 class GymBuddyRenderer {
   private readonly scene = new Scene();
@@ -305,6 +333,7 @@ class GymBuddyRenderer {
   private readonly freeWeightMeshes = new Map<number, Group>();
   private readonly effects: CaptureEffect[] = [];
   private readonly clockShadowTarget = new Object3D();
+  private activeWorkout?: WorkoutAnimation;
   private lastCullPosition?: Vec2;
   private captureBeatText = '';
   private captureBeatOpacity = 0;
@@ -315,6 +344,7 @@ class GymBuddyRenderer {
   private readonly struggleLabel: HTMLDivElement;
   private readonly struggleTrack: HTMLDivElement;
   private readonly struggleFill: HTMLDivElement;
+  private playerAppearance?: PlayerAppearance;
   private width = 1;
   private height = 1;
 
@@ -404,12 +434,20 @@ class GymBuddyRenderer {
     this.resize();
   }
 
-  update(snapshot: WorldSnapshot, events: WorldEvent[], deltaSeconds: number, inputActions: ActionState): void {
+  update(
+    snapshot: WorldSnapshot,
+    events: WorldEvent[],
+    deltaSeconds: number,
+    inputActions: ActionState,
+    activeWorkoutStation?: WorkoutStation
+  ): void {
     this.syncPlayer(snapshot);
     this.syncBuddies(snapshot);
     this.syncRosterBuddies(snapshot);
     this.syncBoss(snapshot);
     this.syncFreeWeights(snapshot);
+    this.syncWorkoutAnimation(activeWorkoutStation, deltaSeconds);
+    this.player.visible = !activeWorkoutStation;
     this.handleEvents(events);
     const activeCaptureEffect = this.findActiveArmWrestleEffect();
     this.updateCamera(snapshot, deltaSeconds, activeCaptureEffect);
@@ -421,6 +459,7 @@ class GymBuddyRenderer {
   }
 
   updatePlayerAppearance(appearance: PlayerAppearance): void {
+    this.playerAppearance = appearance;
     const position = this.player.position.clone();
     const rotationY = this.player.rotation.y;
     this.scene.remove(this.player);
@@ -605,23 +644,26 @@ class GymBuddyRenderer {
       const wobble = Math.sin(now * 2 + rosterEntry.rosterId) * 0.06 * motionScale;
       const personalityPulse = Math.sin(now * 5 + rosterEntry.level + rosterEntry.rosterId) * 0.018 * motionScale;
       const baseScale = rosterEntry.status === 'needs-spot' ? 0.78 : 0.84 + (isExotic ? 0.06 : 0);
+      const stationPulse = this.getWorkoutPulse(station.type, now + rosterEntry.rosterId * 0.17);
       mesh.visible = playerDistance <= renderDistance;
       mesh.scale.set(
-        baseScale + personalityPulse,
-        baseScale + Math.abs(personalityPulse) * 1.6,
-        baseScale + personalityPulse * 0.6
+        baseScale + personalityPulse + stationPulse.scaleX * 0.16 * motionScale,
+        baseScale + Math.abs(personalityPulse) * 1.6 + stationPulse.scaleY * 0.18 * motionScale,
+        baseScale + personalityPulse * 0.6 + stationPulse.scaleZ * 0.12 * motionScale
       );
       mesh.position.set(
         station.position.x,
-        rosterEntry.status === 'needs-spot' ? 0.03 : 0.02 + Math.max(0, wobble),
+        rosterEntry.status === 'needs-spot'
+          ? 0.03
+          : 0.02 + Math.max(0, wobble) + stationPulse.lift * 0.06 * motionScale,
         station.position.z
       );
       mesh.rotation.set(
-        rosterEntry.status === 'needs-spot' ? -0.24 : 0,
+        rosterEntry.status === 'needs-spot' ? -0.24 : stationPulse.rotationX * 0.32 * motionScale,
         (station.rotation ?? 0) + (isExotic ? Math.sin(now * 0.8 + rosterEntry.rosterId) * 0.04 * motionScale : 0),
         rosterEntry.status === 'needs-spot'
           ? Math.sin(now * 18 + rosterEntry.rosterId) * 0.35 * motionScale
-          : Math.sin(now * 4 + rosterEntry.rosterId) * 0.045 * motionScale
+          : Math.sin(now * 4 + rosterEntry.rosterId) * 0.045 * motionScale + stationPulse.rotationZ * 0.24 * motionScale
       );
     }
 
@@ -713,8 +755,315 @@ class GymBuddyRenderer {
     }
   }
 
+  private syncWorkoutAnimation(station: WorkoutStation | undefined, deltaSeconds: number): void {
+    if (!station) {
+      this.clearWorkoutAnimation();
+      return;
+    }
+
+    if (!this.activeWorkout || this.activeWorkout.stationId !== station.id) {
+      this.clearWorkoutAnimation();
+      this.activeWorkout = this.createWorkoutAnimation(station);
+      this.scene.add(this.activeWorkout.group);
+      this.showRetroBeatText(this.getWorkoutStartBeat(station.type), 0.52);
+    }
+
+    this.updateWorkoutAnimation(this.activeWorkout, deltaSeconds);
+  }
+
+  private createWorkoutAnimation(station: WorkoutStation): WorkoutAnimation {
+    const group = new Group();
+    const actor = createPlayerMesh(this.playerAppearance);
+    const props = new Group();
+    const kind = this.getWorkoutAnimationKind(station.type);
+
+    group.position.set(station.position.x, 0, station.position.z);
+    group.rotation.y = station.rotation ?? 0;
+    actor.scale.setScalar(this.touchOptimized ? 0.54 : 0.58);
+    actor.position.set(-0.18, 0.04, 0.08);
+    group.add(actor, props);
+
+    let liftA: Object3D | undefined;
+    let liftB: Object3D | undefined;
+    let cable: Object3D | undefined;
+
+    if (kind === 'press') {
+      const bench = this.createWorkoutBox(1.42, 0.14, 0.56, 0x1b2f43);
+      bench.position.set(-0.2, 0.34, 0);
+      const bar = this.createWorkoutBar(1.52, 0xeff6ff, 0x24324a);
+      bar.position.set(0.18, 1.18, 0);
+      const armA = this.createWorkoutBox(0.12, 0.5, 0.1, 0xffc58f);
+      const armB = armA.clone();
+      armA.position.set(0.0, 0.88, -0.25);
+      armB.position.set(0.0, 0.88, 0.25);
+      props.add(bench, bar, armA, armB);
+      liftA = bar;
+      liftB = armA;
+      cable = armB;
+    } else if (kind === 'squat') {
+      const bar = this.createWorkoutBar(1.42, 0xeff6ff, 0x24324a);
+      bar.position.set(0, 1.33, 0);
+      const pad = this.createWorkoutBox(0.88, 0.1, 0.34, 0xf6c85f);
+      pad.position.set(0.1, 0.12, 0);
+      props.add(pad, bar);
+      liftA = bar;
+    } else if (kind === 'cable') {
+      const tower = this.createWorkoutBox(0.18, 2.1, 0.18, 0x24324a);
+      tower.position.set(0.82, 1.08, 0);
+      const handle = this.createWorkoutBar(0.78, 0xf9f7ef, 0xff705c);
+      handle.position.set(-0.18, 1.2, 0);
+      const line = this.createWorkoutBox(0.04, 1.1, 0.04, 0x141d33);
+      line.position.set(0.4, 1.48, 0);
+      props.add(tower, line, handle);
+      liftA = handle;
+      cable = line;
+    } else {
+      const dumbbellA = this.createWorkoutDumbbell();
+      const dumbbellB = this.createWorkoutDumbbell();
+      dumbbellA.position.set(-0.34, 0.62, -0.18);
+      dumbbellB.position.set(-0.34, 0.62, 0.18);
+      props.add(dumbbellA, dumbbellB);
+      liftA = dumbbellA;
+      liftB = dumbbellB;
+    }
+
+    return {
+      stationId: station.id,
+      type: station.type,
+      kind,
+      group,
+      actor,
+      props,
+      liftA,
+      liftB,
+      cable,
+      age: 0,
+      beatIndex: 0
+    };
+  }
+
+  private updateWorkoutAnimation(animation: WorkoutAnimation, deltaSeconds: number): void {
+    animation.age += deltaSeconds;
+    const motionScale = this.settings.reducedMotion ? 0.32 : 1;
+    const beatPhase = Math.floor(animation.age / WORKOUT_BEAT_INTERVAL_SECONDS);
+    const phase = animation.age * (this.settings.reducedMotion ? 2.1 : 4.2);
+    const rep = (Math.sin(phase) + 1) / 2;
+    const snap = easeOutCubic(rep);
+
+    if (beatPhase !== animation.beatIndex) {
+      animation.beatIndex = beatPhase;
+      const beats = ['Rep!', 'Good form!', this.getWorkoutStartBeat(animation.type)];
+      this.showRetroBeatText(beats[beatPhase % beats.length], 0.38);
+    }
+
+    if (animation.kind === 'press') {
+      animation.actor.rotation.set(-1.02, Math.PI / 2, Math.sin(phase * 0.5) * 0.04 * motionScale);
+      animation.actor.position.set(-0.32, 0.22 + snap * 0.02 * motionScale, 0);
+      if (animation.liftA) {
+        animation.liftA.position.y = 0.9 + snap * 0.52 * motionScale;
+        animation.liftA.rotation.x = Math.PI / 2;
+      }
+      if (animation.liftB) {
+        animation.liftB.position.y = 0.72 + snap * 0.38 * motionScale;
+        animation.liftB.rotation.z = -0.28 + snap * 0.62 * motionScale;
+      }
+      if (animation.cable) {
+        animation.cable.position.y = 0.72 + snap * 0.38 * motionScale;
+        animation.cable.rotation.z = 0.28 - snap * 0.62 * motionScale;
+      }
+      return;
+    }
+
+    if (animation.kind === 'squat') {
+      const squat = 1 - snap;
+      const baseScale = this.touchOptimized ? 0.54 : 0.58;
+      animation.actor.rotation.set(0.12 + squat * 0.24 * motionScale, 0, Math.sin(phase * 0.7) * 0.035 * motionScale);
+      animation.actor.position.set(-0.08, 0.03 + snap * 0.12 * motionScale, 0);
+      animation.actor.scale.set(baseScale, baseScale * (0.84 + snap * 0.2 * motionScale), baseScale);
+      if (animation.liftA) {
+        animation.liftA.position.y = 1.02 + snap * 0.34 * motionScale;
+        animation.liftA.rotation.x = Math.PI / 2;
+      }
+      return;
+    }
+
+    if (animation.kind === 'cable') {
+      const pull = snap;
+      animation.actor.rotation.set(-0.04 - pull * 0.12 * motionScale, -Math.PI / 2, Math.sin(phase) * 0.035 * motionScale);
+      animation.actor.position.set(-0.46 + pull * 0.08 * motionScale, 0.04, 0);
+      if (animation.liftA) {
+        animation.liftA.position.x = 0.2 - pull * 0.62 * motionScale;
+        animation.liftA.position.y = 1.36 - pull * 0.3 * motionScale;
+        animation.liftA.rotation.x = Math.PI / 2;
+      }
+      if (animation.cable) {
+        animation.cable.scale.y = 1 - pull * 0.36 * motionScale;
+        animation.cable.rotation.z = Math.PI / 2 - pull * 0.28 * motionScale;
+      }
+      return;
+    }
+
+    const curlA = (Math.sin(phase) + 1) / 2;
+    const curlB = (Math.sin(phase + Math.PI) + 1) / 2;
+    animation.actor.rotation.set(0, 0, Math.sin(phase * 0.5) * 0.05 * motionScale);
+    animation.actor.position.set(-0.08, 0.04 + Math.max(curlA, curlB) * 0.04 * motionScale, 0);
+    if (animation.liftA) {
+      animation.liftA.position.y = 0.44 + curlA * 0.72 * motionScale;
+      animation.liftA.rotation.z = Math.PI / 2 + curlA * 0.8 * motionScale;
+    }
+    if (animation.liftB) {
+      animation.liftB.position.y = 0.44 + curlB * 0.72 * motionScale;
+      animation.liftB.rotation.z = Math.PI / 2 + curlB * 0.8 * motionScale;
+    }
+  }
+
+  private clearWorkoutAnimation(): void {
+    if (!this.activeWorkout) {
+      return;
+    }
+
+    this.scene.remove(this.activeWorkout.group);
+    this.disposeObject(this.activeWorkout.group);
+    this.activeWorkout = undefined;
+    this.player.visible = true;
+  }
+
+  private getWorkoutAnimationKind(type: WorkoutType): WorkoutAnimationKind {
+    if (type === 'bench' || type === 'incline-bench' || type === 'machine-press') {
+      return 'press';
+    }
+
+    if (type === 'squat-rack' || type === 'hack-squat' || type === 'leg-press') {
+      return 'squat';
+    }
+
+    if (type === 'cable' || type === 'lat-pulldown') {
+      return 'cable';
+    }
+
+    return 'free-weights';
+  }
+
+  private getWorkoutPulse(
+    type: WorkoutType,
+    age: number
+  ): { lift: number; rotationX: number; rotationZ: number; scaleX: number; scaleY: number; scaleZ: number } {
+    const kind = this.getWorkoutAnimationKind(type);
+    const rep = (Math.sin(age * 4) + 1) / 2;
+    const snap = easeOutCubic(rep);
+
+    if (kind === 'press') {
+      return {
+        lift: snap * 0.45,
+        rotationX: -0.2 + snap * 0.16,
+        rotationZ: Math.sin(age * 5) * 0.12,
+        scaleX: 0.08,
+        scaleY: snap * 0.2,
+        scaleZ: -0.04
+      };
+    }
+
+    if (kind === 'squat') {
+      return {
+        lift: snap * 0.55,
+        rotationX: (1 - snap) * 0.42,
+        rotationZ: 0,
+        scaleX: 0.02,
+        scaleY: snap * 0.22 - 0.08,
+        scaleZ: 0.02
+      };
+    }
+
+    if (kind === 'cable') {
+      return {
+        lift: snap * 0.28,
+        rotationX: -snap * 0.24,
+        rotationZ: Math.sin(age * 4.8) * 0.1,
+        scaleX: 0.03,
+        scaleY: snap * 0.08,
+        scaleZ: 0.03
+      };
+    }
+
+    return {
+      lift: Math.max(0, Math.sin(age * 6)) * 0.35,
+      rotationX: 0,
+      rotationZ: Math.sin(age * 6) * 0.25,
+      scaleX: 0.06,
+      scaleY: snap * 0.12,
+      scaleZ: 0.02
+    };
+  }
+
+  private getWorkoutStartBeat(type: WorkoutType): string {
+    const kind = this.getWorkoutAnimationKind(type);
+
+    if (kind === 'press') {
+      return 'Press!';
+    }
+
+    if (kind === 'squat') {
+      return 'Drive!';
+    }
+
+    if (kind === 'cable') {
+      return 'Pull!';
+    }
+
+    return 'Curl!';
+  }
+
+  private showRetroBeatText(text: string, duration = CAPTURE_BEAT_TEXT_HOLD_SECONDS): void {
+    this.captureBeatText = text;
+    this.captureBeatTextElement.textContent = text;
+    this.captureBeatOpacity = 1;
+    this.captureBeatTimer = duration;
+    this.captureBeatTextElement.style.opacity = '1';
+  }
+
+  private createWorkoutBox(width: number, height: number, depth: number, color: number): Mesh {
+    return new Mesh(new BoxGeometry(width, height, depth), new MeshBasicMaterial({ color }));
+  }
+
+  private createWorkoutCylinder(radius: number, depth: number, color: number, radialSegments = 8): Mesh {
+    return new Mesh(new CylinderGeometry(radius, radius, depth, radialSegments), new MeshBasicMaterial({ color }));
+  }
+
+  private createWorkoutBar(length: number, barColor: number, plateColor: number): Group {
+    const group = new Group();
+    const bar = this.createWorkoutCylinder(0.035, length, barColor);
+    bar.rotation.x = Math.PI / 2;
+    const plateA = this.createWorkoutCylinder(0.15, 0.1, plateColor);
+    const plateB = this.createWorkoutCylinder(0.15, 0.1, plateColor);
+    plateA.rotation.x = Math.PI / 2;
+    plateB.rotation.x = Math.PI / 2;
+    plateA.position.z = -length / 2 - 0.08;
+    plateB.position.z = length / 2 + 0.08;
+    group.add(bar, plateA, plateB);
+    return group;
+  }
+
+  private createWorkoutDumbbell(): Group {
+    const group = new Group();
+    const grip = this.createWorkoutCylinder(0.03, 0.36, 0xf9f7ef);
+    const headA = this.createWorkoutCylinder(0.11, 0.08, 0x24324a, 6);
+    const headB = this.createWorkoutCylinder(0.11, 0.08, 0x24324a, 6);
+    grip.rotation.z = Math.PI / 2;
+    headA.rotation.z = Math.PI / 2;
+    headB.rotation.z = Math.PI / 2;
+    headA.position.x = -0.24;
+    headB.position.x = 0.24;
+    group.add(grip, headA, headB);
+    return group;
+  }
+
   private handleEvents(events: WorldEvent[]): void {
     for (const event of events) {
+      if (event.type === 'workout') {
+        this.showRetroBeatText('Workout complete!', 0.62);
+        continue;
+      }
+
       if (event.type !== 'capture' || !event.target || event.result === 'empty') {
         continue;
       }
@@ -1115,11 +1464,7 @@ class GymBuddyRenderer {
     let index = effect.captureBeatIndex ?? 0;
 
     while (index < sequence.length && progress >= sequence[index].at) {
-      this.captureBeatText = sequence[index].text;
-      this.captureBeatTextElement.textContent = this.captureBeatText;
-      this.captureBeatOpacity = 1;
-      this.captureBeatTimer = CAPTURE_BEAT_TEXT_HOLD_SECONDS;
-      this.captureBeatTextElement.style.opacity = '1';
+      this.showRetroBeatText(sequence[index].text, CAPTURE_BEAT_TEXT_HOLD_SECONDS);
       index += 1;
     }
 
@@ -1831,7 +2176,7 @@ export function createGymBuddyGame(root: HTMLElement): void {
     }
 
     showTutorialPopup();
-    renderer.update(snapshot, events, deltaSeconds, inputActions);
+    renderer.update(snapshot, events, deltaSeconds, inputActions, hud.getActiveWorkoutStation());
     previewRenderer.update(deltaSeconds, !gameStarted);
     hud.update(snapshot, inputActions, deltaSeconds);
     if (debugPanel?.isSummaryVisible()) {
