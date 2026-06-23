@@ -69,6 +69,13 @@ const SWITCH_MODE_BUTTON_LABELS: Record<InputMode, string> = {
   touch: 'Switch to Keyboard + Mouse'
 };
 const GOAL_TARGETS = getGoalTargets(BUDDY_DEFINITIONS.length);
+
+function formatHudLabel(value: string): string {
+  return value
+    .replace(/[-_]/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 type BodyConstructionPreset = {
   id: string;
   label: string;
@@ -1459,8 +1466,8 @@ export class GameHud {
       previewChance = chance;
       const flavorDescription = definition.description ?? 'Ready to test your arm.';
       previewFlavor = definition.personalityTag
-        ? `${definition.personalityTag}: ${flavorDescription}`
-        : flavorDescription;
+        ? `${formatHudLabel(definition.role)} - ${definition.personalityTag}: ${flavorDescription}`
+        : `${formatHudLabel(definition.role)}: ${flavorDescription}`;
     }
 
     this.renderedTarget = this.setText(this.target, this.renderedTarget, targetText);
@@ -1514,6 +1521,7 @@ export class GameHud {
               <span class="dex-row-name">${this.getBuddyDisplayName(entry.definition)}</span>
               <span class="dex-row-meta">Species ${entry.definition.species}</span>
               ${this.renderRarityBadge(entry.definition.rarity)}
+              <span class="dex-row-meta">Role ${formatHudLabel(entry.definition.role)}</span>
               <span class="dex-row-meta">Personality ${entry.definition.personalityTag}</span>
               <span class="dex-row-meta">${entry.count} caught ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¿ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â½ Best Lv ${entry.highestLevel}</span>
             </div>
@@ -1776,7 +1784,7 @@ export class GameHud {
     this.activeCrewDetailId = entry.rosterId;
     this.crewDetailTitle.textContent = `${name}`;
     this.crewDetailSpecies.textContent = definition.species;
-    this.crewDetailType.textContent = isExotic ? 'Exotic' : 'Normal';
+    this.crewDetailType.textContent = `${isExotic ? 'Exotic' : 'Normal'} / ${formatHudLabel(definition.role)}`;
     this.crewDetailRarity.textContent = this.getRarityDisplayName(definition.rarity);
     this.setRarityBadgeClasses(this.crewDetailRarity, definition.rarity, 'detail-rarity-badge');
     this.crewDetailLevel.textContent = `${entry.level}`;
@@ -1945,7 +1953,7 @@ export class GameHud {
     this.lastCreatureDetailTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
     this.repDexDetailTitle.textContent = this.getBuddyDisplayName(definition);
     this.repDexDetailSpecies.textContent = definition.species;
-    this.repDexDetailType.textContent = this.isExoticBuddyDefinition(definition) ? 'Exotic' : 'Normal';
+    this.repDexDetailType.textContent = `${this.isExoticBuddyDefinition(definition) ? 'Exotic' : 'Normal'} / ${formatHudLabel(definition.role)}`;
     this.repDexDetailRarity.textContent = this.getRarityDisplayName(definition.rarity);
     this.setRarityBadgeClasses(this.repDexDetailRarity, definition.rarity, 'detail-rarity-badge');
     this.repDexDetailPersonality.textContent = definition.personalityTag;
@@ -1955,6 +1963,8 @@ export class GameHud {
     this.repDexDetailOdds.innerHTML = `
       <div class="repdex-detail-odds-title">Catch odds by level</div>
       ${this.getRepDexCaptureOdds(definition)}
+      <div class="repdex-detail-odds-title">Role</div>
+      <div>${formatHudLabel(definition.role)}: ${formatHudLabel(definition.growthTendency)} growth tendency</div>
       <div class="repdex-detail-odds-title">Passive</div>
       <div>${definition.passive.name}: ${definition.passive.description}</div>
     `;
@@ -3557,7 +3567,7 @@ export class GameHud {
               <span>E${entry.endurance}</span>
               <span>F${entry.focus}</span>
             </div>
-            <div class="crew-passive">Passive: ${definition.passive.name}</div>
+            <div class="crew-passive">${formatHudLabel(definition.role)} / ${formatHudLabel(definition.growthTendency)} growth. Passive: ${definition.passive.name}</div>
             <div class="crew-meter" aria-hidden="true">
               <div style="width: ${progress}%"></div>
             </div>
@@ -3618,7 +3628,7 @@ export class GameHud {
               <span>E${entry.endurance}</span>
               <span>F${entry.focus}</span>
             </div>
-            <div class="crew-passive">Stored: passive inactive</div>
+            <div class="crew-passive">Stored ${formatHudLabel(definition.role)}: passive inactive</div>
             <div class="crew-meter" aria-hidden="true">
               <div style="width: ${progress}%"></div>
             </div>

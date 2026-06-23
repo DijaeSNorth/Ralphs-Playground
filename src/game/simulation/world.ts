@@ -58,6 +58,7 @@ import type {
   RepDexEntry,
   Vec2,
   WorkoutStation,
+  WorkoutType,
   WorldEvent,
   WorldSnapshot
 } from '../types';
@@ -198,11 +199,16 @@ function createDefaultGoalState(): ProgressGoals {
   return {
     capture_first: { completed: false, progress: 0 },
     workout_first: { completed: false, progress: 0 },
+    workout_3: { completed: false, progress: 0 },
     capture_3: { completed: false, progress: 0 },
     capture_6: { completed: false, progress: 0 },
     capture_10: { completed: false, progress: 0 },
+    encounter_exotic: { completed: false, progress: 0 },
     capture_first_exotic: { completed: false, progress: 0 },
+    roster_level_5_any: { completed: false, progress: 0 },
     roster_level_10_any: { completed: false, progress: 0 },
+    boss_first_win: { completed: false, progress: 0 },
+    repdex_quarter: { completed: false, progress: 0 },
     repdex_half: { completed: false, progress: 0 }
   };
 }
@@ -233,8 +239,56 @@ function generateBuddyBodyTraits(archetype: BuddyArchetype): BuddyBodyTraits {
   };
 }
 
-function randomBossDefinitionId(): string {
-  return BOSS_DEFINITIONS[Math.floor(Math.random() * BOSS_DEFINITIONS.length)].id;
+function randomBossDefinitionId(candidates = BOSS_DEFINITIONS.map((definition) => definition.id)): string {
+  return candidates[Math.floor(Math.random() * candidates.length)] ?? BOSS_DEFINITIONS[0]!.id;
+}
+
+type WorkoutProgressProfile = {
+  strength: number;
+  endurance: number;
+  focus: number;
+  xpMultiplier: number;
+  tokenBonus: number;
+};
+
+function getWorkoutProgressProfile(type: WorkoutType, zoneId: GymZoneDefinition['id']): WorkoutProgressProfile {
+  const profile: WorkoutProgressProfile = {
+    strength: 1,
+    endurance: 1,
+    focus: 1,
+    xpMultiplier: 1,
+    tokenBonus: 0
+  };
+
+  if (type === 'bench' || type === 'incline-bench' || type === 'machine-press' || type === 'free-weight-bench') {
+    profile.strength += 2;
+  } else if (type === 'squat-rack' || type === 'leg-press' || type === 'hack-squat') {
+    profile.strength += 2;
+    profile.endurance += 1;
+  } else if (type === 'cable' || type === 'lat-pulldown') {
+    profile.focus += 2;
+    profile.strength += 1;
+  } else if (type === 'free-weights') {
+    profile.strength += 1;
+    profile.focus += 1;
+  }
+
+  if (zoneId === 'flex-trail') {
+    profile.endurance += 1;
+    profile.xpMultiplier += 0.08;
+  } else if (zoneId === 'heavy-lift-hall') {
+    profile.strength += 1;
+    profile.tokenBonus += 1;
+  } else if (zoneId === 'core-court') {
+    profile.focus += 1;
+    profile.xpMultiplier += 0.1;
+  } else if (zoneId === 'mythic-platform') {
+    profile.focus += 1;
+    profile.xpMultiplier += 0.16;
+    profile.tokenBonus += 1;
+  }
+
+  return profile;
 }
 
 type ActivePassiveTotals = {
@@ -481,14 +535,33 @@ export class GymBuddyWorld {
   }
 
   completeWorkout(station: WorkoutStation): void {
+    const zone = getGymZoneAt(this.player.position);
+    const profile = getWorkoutProgressProfile(station.type, zone.id);
     const steroidGain = this.grantSteroids(
       Math.random() < STEROID_BALANCE.workoutRewardChance ? 1 : 0
     );
-    const xpGain = Math.round(XP_REWARDS.workoutBase);
-    const xpRecipients = this.awardActiveCrewXp(xpGain, 'workout');
+    const xpGain = Math.round(XP_REWARDS.workoutBase * profile.xpMultiplier);
+    let xpRecipients = 0;
+    for (const buddy of this.roster) {
+      buddy.strength += profile.strength;
+      buddy.endurance += profile.endurance;
+      buddy.focus += profile.focus;
+      buddy.energy = clamp(buddy.energy + 4, 0, ROSTER_TRAINING_BALANCE.maxEnergy);
+      const levelsGained = this.addRosterXp(buddy, xpGain);
+      xpRecipients += 1;
+      if (levelsGained > 0) {
+        this.events.push({
+          type: 'roster',
+          rosterId: buddy.rosterId,
+          levelUp: true,
+          message: `${this.getRosterDisplayName(buddy)} turned workout XP into Lv ${buddy.level}!`
+        });
+      }
+    }
+    const tokenReward = station.shakerReward + profile.tokenBonus + (Math.random() < 0.35 ? 1 : 0);
     this.player.stamina = clamp(this.player.stamina + station.staminaReward, 0, MAX_STAMINA);
     this.player.proteinShakers = clamp(
-      this.player.proteinShakers + station.shakerReward,
+      this.player.proteinShakers + tokenReward,
       0,
       MAX_PROTEIN_SHAKERS
     );
@@ -498,9 +571,10 @@ export class GymBuddyWorld {
       : ' Catch a creature to turn workouts into crew XP.';
     this.events.push({
       type: 'workout',
-      message: `${station.name} complete.${xpText} +${station.staminaReward} stamina, +${station.shakerReward} gym token.${steroidText}`
+      message: `${station.name} complete in ${zone.name}.${xpText} +${station.staminaReward} stamina, +${tokenReward} gym token.${steroidText}`
     });
     this.updateGoalProgress('workout_first', 1);
+    this.updateGoalProgress('workout_3', this.goalState.workout_3.progress + 1);
   }
 
   buyEnergyDrink(): void {
@@ -900,11 +974,16 @@ export class GymBuddyWorld {
     return {
       capture_first: { ...this.goalState.capture_first },
       workout_first: { ...this.goalState.workout_first },
+      workout_3: { ...this.goalState.workout_3 },
       capture_3: { ...this.goalState.capture_3 },
       capture_6: { ...this.goalState.capture_6 },
       capture_10: { ...this.goalState.capture_10 },
+      encounter_exotic: { ...this.goalState.encounter_exotic },
       capture_first_exotic: { ...this.goalState.capture_first_exotic },
+      roster_level_5_any: { ...this.goalState.roster_level_5_any },
       roster_level_10_any: { ...this.goalState.roster_level_10_any },
+      boss_first_win: { ...this.goalState.boss_first_win },
+      repdex_quarter: { ...this.goalState.repdex_quarter },
       repdex_half: { ...this.goalState.repdex_half }
     };
   }
@@ -969,6 +1048,7 @@ export class GymBuddyWorld {
     this.updateGoalProgress('capture_3', this.player.capturedTotal);
     this.updateGoalProgress('capture_6', this.player.capturedTotal);
     this.updateGoalProgress('capture_10', this.player.capturedTotal);
+    this.updateGoalProgress('encounter_exotic', definition.rarity === 'exotic' || definition.isExotic ? 1 : 0);
     this.updateGoalProgress('capture_first_exotic', definition.rarity === 'exotic' || definition.isExotic ? 1 : 0);
     this.evaluateRepDexGoal();
   }
@@ -1058,11 +1138,14 @@ export class GymBuddyWorld {
 
   private evaluateRepDexGoal(): void {
     const caughtCount = this.captured.size;
+    this.updateGoalProgress('repdex_quarter', caughtCount);
     this.updateGoalProgress('repdex_half', caughtCount);
   }
 
   private evaluateCrewLevelGoal(grantReward = true): void {
+    const hasLevelFiveCrew = [...this.roster, ...this.storage].some((buddy) => buddy.level >= 5);
     const hasEliteCrew = [...this.roster, ...this.storage].some((buddy) => buddy.level >= 10);
+    this.updateGoalProgress('roster_level_5_any', hasLevelFiveCrew ? 1 : 0, grantReward);
     this.updateGoalProgress('roster_level_10_any', hasEliteCrew ? 1 : 0, grantReward);
     this.updateQuestProgress('level_10', hasEliteCrew ? 1 : 0, grantReward);
   }
@@ -1582,11 +1665,7 @@ export class GymBuddyWorld {
 
         if (buddy.respawnTimer <= 0) {
           this.buddies[index] = this.createBuddy();
-          this.events.push({
-            type: 'spawn',
-            buddy: { ...this.buddies[index], position: copyVec2(this.buddies[index].position) },
-            message: `${getBuddyDefinition(this.buddies[index].definitionId).name} entered Mega Gym.`
-          });
+          this.announceBuddySpawn(this.buddies[index]);
         }
 
         continue;
@@ -1752,6 +1831,7 @@ export class GymBuddyWorld {
         boss: this.copyBoss(battle.boss),
         message: `${battle.boss.name} got outlifted. +${grantedSteroids} Steroid, +${battle.rewardXp} crew XP, exotic spawns boosted.`
       });
+      this.updateGoalProgress('boss_first_win', 1);
       this.updateQuestProgress('win_boss_1', 1);
       this.bossSpawnTimer =
         BOSS_BALANCE.respawnAfterWinBaseSeconds +
@@ -1861,6 +1941,11 @@ export class GymBuddyWorld {
           Math.random() * BOSS_BALANCE.respawnAfterTimeoutRandomSeconds;
       }
 
+      return;
+    }
+
+    if (this.getUnlockedBossDefinitionIds().length === 0) {
+      this.bossSpawnTimer = BOSS_BALANCE.initialSpawnDelaySeconds;
       return;
     }
 
@@ -2510,7 +2595,11 @@ export class GymBuddyWorld {
   }
 
   private spawnBoss(): void {
-    const definition = getBossDefinition(randomBossDefinitionId());
+    const unlockedBossIds = this.getUnlockedBossDefinitionIds();
+    if (unlockedBossIds.length === 0) {
+      return;
+    }
+    const definition = getBossDefinition(randomBossDefinitionId(unlockedBossIds));
     const angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.75;
     this.activeBoss = {
       id: nextBossId++,
@@ -2531,6 +2620,34 @@ export class GymBuddyWorld {
       boss: this.copyBoss(this.activeBoss),
       message: `${definition.name} entered Mega Gym and wants a challenge.`
     });
+  }
+
+  private getUnlockedBossDefinitionIds(): string[] {
+    const caughtSpeciesCount = this.captured.size;
+    const hasLevelFive = [...this.roster, ...this.storage].some((buddy) => buddy.level >= 5);
+    const hasLevelFifteen = [...this.roster, ...this.storage].some((buddy) => buddy.level >= 15);
+    const exoticKnown =
+      this.goalState.encounter_exotic.completed ||
+      this.goalState.capture_first_exotic.completed ||
+      Array.from(this.captured).some(([definitionId, count]) => {
+        const definition = getBuddyDefinition(definitionId);
+        return count > 0 && (definition.rarity === 'exotic' || definition.isExotic);
+      });
+    const ids: string[] = [];
+
+    if (this.player.capturedTotal >= 3 || hasLevelFive) {
+      ids.push('plate-titan');
+    }
+
+    if (this.player.capturedTotal >= 8 || caughtSpeciesCount >= GOAL_TARGETS.repdex_quarter) {
+      ids.push('rep-reaper');
+    }
+
+    if (exoticKnown || hasLevelFifteen) {
+      ids.push('bulk-baron');
+    }
+
+    return ids;
   }
 
   private copyBoss(boss: BossState): BossState {
@@ -2566,6 +2683,24 @@ export class GymBuddyWorld {
     return nearest;
   }
 
+  private announceBuddySpawn(buddy: BuddyState): void {
+    const definition = getBuddyDefinition(buddy.definitionId);
+    const exotic = definition.rarity === 'exotic' || definition.isExotic === true;
+
+    if (exotic) {
+      this.updateGoalProgress('encounter_exotic', 1);
+      this.updateQuestProgress('find_exotic_1', 1);
+    }
+
+    this.events.push({
+      type: 'spawn',
+      buddy: { ...buddy, position: copyVec2(buddy.position), bodyTraits: { ...buddy.bodyTraits } },
+      message: exotic
+        ? `Exotic alert: ${definition.name} is flexing on the Mythic Platform.`
+        : `${definition.name} entered ${getGymZoneAt(buddy.position).name}.`
+    });
+  }
+
   private createBuddy(definitionIdOverride?: string): BuddyState {
     const spawnZone = getRandomGymSpawnZone();
     let position = randomPointForZone(spawnZone);
@@ -2590,7 +2725,7 @@ export class GymBuddyWorld {
       definitionId,
       bodyTraits: generateBuddyBodyTraits(definition.archetype),
       displayName: getRandomBuddyName(definitionId),
-      level: this.getWildBuddyLevel(spawnProgress),
+      level: this.getWildBuddyLevel(spawnProgress, positionZone),
       position,
       heading: randomHeading(),
       wanderHeading: randomHeading(),
@@ -2626,11 +2761,7 @@ export class GymBuddyWorld {
 
     const buddy = this.createBuddy(definition.id);
     this.buddies.push(buddy);
-    this.events.push({
-      type: 'spawn',
-      buddy: { ...buddy, position: copyVec2(buddy.position), bodyTraits: { ...buddy.bodyTraits } },
-      message: `Debug: ${definition.name} spawned.`
-    });
+    this.announceBuddySpawn(buddy);
   }
 
   private getWildSpawnProgress(): number {
@@ -2667,7 +2798,7 @@ export class GymBuddyWorld {
     );
   }
 
-  private getWildBuddyLevel(spawnProgress: number): number {
+  private getWildBuddyLevel(spawnProgress: number, zone: GymZoneDefinition): number {
     const earlyUnlocked = this.isGoalCompleted('capture_6');
     const midUnlocked = this.isGoalCompleted('capture_10');
     const progression = clamp(spawnProgress, 0, 1);
@@ -2690,17 +2821,41 @@ export class GymBuddyWorld {
     const normalizedHigh = normalizedMid + level26to35Weight;
 
     if (roll < normalizedLow) {
-      return pickWildLevelInRange(ranges.low.min, ranges.low.max, progression);
+      return this.adjustWildLevelForZone(pickWildLevelInRange(ranges.low.min, ranges.low.max, progression), zone);
     }
 
     if (roll < normalizedMid) {
-      return pickWildLevelInRange(ranges.mid.min, ranges.mid.max, progression);
+      return this.adjustWildLevelForZone(pickWildLevelInRange(ranges.mid.min, ranges.mid.max, progression), zone);
     }
 
     if (roll < normalizedHigh) {
-      return pickWildLevelInRange(ranges.high.min, ranges.high.max, progression);
+      return this.adjustWildLevelForZone(pickWildLevelInRange(ranges.high.min, ranges.high.max, progression), zone);
     }
 
-    return pickWildLevelInRange(ranges.late.min, ranges.late.max, progression);
+    return this.adjustWildLevelForZone(pickWildLevelInRange(ranges.late.min, ranges.late.max, progression), zone);
+  }
+
+  private adjustWildLevelForZone(level: number, zone: GymZoneDefinition): number {
+    if (zone.id === 'starter-stretch') {
+      return clamp(level, 1, 8);
+    }
+
+    if (zone.id === 'flex-trail') {
+      return clamp(Math.max(3, level), 1, 18);
+    }
+
+    if (zone.id === 'heavy-lift-hall') {
+      return clamp(level + 3, 6, 32);
+    }
+
+    if (zone.id === 'core-court') {
+      return clamp(level + 2, 5, 28);
+    }
+
+    if (zone.id === 'mythic-platform') {
+      return clamp(level + 5, 10, 50);
+    }
+
+    return level;
   }
 }

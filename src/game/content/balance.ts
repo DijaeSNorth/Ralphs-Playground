@@ -249,11 +249,16 @@ export function getBuddyXpForNextLevel(level: number): number {
 export const PROGRESS_GOAL_TARGETS = {
   capture_first: 1,
   workout_first: 1,
+  workout_3: 3,
   capture_3: 3,
   capture_6: 6,
   capture_10: 10,
+  encounter_exotic: 1,
   capture_first_exotic: 1,
+  roster_level_5_any: 1,
   roster_level_10_any: 1,
+  boss_first_win: 1,
+  repdexQuarterRatio: 0.25,
   repdexHalfRatio: 0.5
 } as const;
 
@@ -261,11 +266,16 @@ export function getGoalTargets(repdexSize: number): Record<ProgressGoalId, numbe
   return {
     capture_first: PROGRESS_GOAL_TARGETS.capture_first,
     workout_first: PROGRESS_GOAL_TARGETS.workout_first,
+    workout_3: PROGRESS_GOAL_TARGETS.workout_3,
     capture_3: PROGRESS_GOAL_TARGETS.capture_3,
     capture_6: PROGRESS_GOAL_TARGETS.capture_6,
     capture_10: PROGRESS_GOAL_TARGETS.capture_10,
+    encounter_exotic: PROGRESS_GOAL_TARGETS.encounter_exotic,
     capture_first_exotic: PROGRESS_GOAL_TARGETS.capture_first_exotic,
+    roster_level_5_any: PROGRESS_GOAL_TARGETS.roster_level_5_any,
     roster_level_10_any: PROGRESS_GOAL_TARGETS.roster_level_10_any,
+    boss_first_win: PROGRESS_GOAL_TARGETS.boss_first_win,
+    repdex_quarter: Math.ceil(repdexSize * PROGRESS_GOAL_TARGETS.repdexQuarterRatio),
     repdex_half: Math.ceil(repdexSize * PROGRESS_GOAL_TARGETS.repdexHalfRatio)
   };
 }
@@ -273,44 +283,64 @@ export function getGoalTargets(repdexSize: number): Record<ProgressGoalId, numbe
 export const GOAL_STEROID_REWARDS: Record<ProgressGoalId, number> = {
   capture_first: 1,
   workout_first: 0,
+  workout_3: 1,
   capture_3: 1,
   capture_6: 0,
   capture_10: 2,
+  encounter_exotic: 1,
   capture_first_exotic: 3,
+  roster_level_5_any: 1,
   roster_level_10_any: 0,
+  boss_first_win: 2,
+  repdex_quarter: 2,
   repdex_half: 5
 };
 
 export const GOAL_CREW_XP_REWARDS: Record<ProgressGoalId, number> = {
   capture_first: 35,
   workout_first: 45,
+  workout_3: 75,
   capture_3: 50,
   capture_6: 60,
   capture_10: 80,
+  encounter_exotic: 80,
   capture_first_exotic: 120,
+  roster_level_5_any: 70,
   roster_level_10_any: 90,
+  boss_first_win: 120,
+  repdex_quarter: 100,
   repdex_half: 140
 };
 
 export const GOAL_MESSAGES: Record<ProgressGoalId, string> = {
   capture_first: 'Goal complete: first creature captured. Train your new crew member.',
   workout_first: 'Goal complete: first workout done. Crew XP gained.',
+  workout_3: 'Goal complete: 3 workouts finished. The crew is learning the gym.',
   capture_3: 'Goal complete: 3 captures reward unlocked.',
   capture_6: 'Goal complete: mid-tier gym beasts are now common.',
   capture_10: 'Goal complete: 10 captures reward unlocked.',
+  encounter_exotic: 'Goal complete: exotic creature encountered.',
   capture_first_exotic: 'Goal complete: rare exotic caught reward unlocked.',
+  roster_level_5_any: 'Goal complete: first level 5 crew member.',
   roster_level_10_any: 'Goal complete: your crew can level up hard and loud.',
+  boss_first_win: 'Goal complete: first boss outlifted.',
+  repdex_quarter: 'Goal complete: your RepDex is 25 percent full.',
   repdex_half: 'Goal complete: your RepDex is half full.'
 };
 
 export const GOAL_LABELS: Record<ProgressGoalId, string> = {
   capture_first: 'Capture your first creature',
   workout_first: 'Complete your first workout',
+  workout_3: 'Complete 3 workouts',
   capture_3: 'Capture 3 creatures',
   capture_6: 'Capture 6 creatures',
   capture_10: 'Capture 10 creatures',
+  encounter_exotic: 'Encounter an exotic',
   capture_first_exotic: 'Find your first exotic',
+  roster_level_5_any: 'Level a crew member to 5',
   roster_level_10_any: 'Level a crew member to 10',
+  boss_first_win: 'Win your first boss battle',
+  repdex_quarter: 'Fill 25% of the RepDex',
   repdex_half: 'Fill half the RepDex'
 };
 

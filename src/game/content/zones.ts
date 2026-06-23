@@ -2,19 +2,37 @@ import type { GymZoneDefinition, Vec2 } from '../types';
 
 export const GYM_ZONES: readonly GymZoneDefinition[] = [
   {
-    id: 'cardio-corner',
-    name: 'Cardio Corner',
-    shortName: 'Cardio',
-    description: 'Fast-footed beasts prefer the machines and open lanes.',
-    position: { x: 13.5, z: 10.5 },
-    radius: 7.1,
-    spawnWeight: 1,
+    id: 'starter-stretch',
+    name: 'Starter Stretch',
+    shortName: 'Starter',
+    description: 'Low-clutter warmup lanes where friendly early creatures practice tiny reps.',
+    position: { x: -9.5, z: 12.2 },
+    radius: 7,
+    spawnWeight: 1.3,
     spawnWeights: [
-      { id: 'flex-fox', weight: 20 },
-      { id: 'pump-panther', weight: 16 },
+      { id: 'buff-bunny', weight: 26 },
+      { id: 'curl-corgi', weight: 20 },
       { id: 'rowing-raccoon', weight: 16 },
-      { id: 'curl-corgi', weight: 12 },
-      { id: 'press-penguin', weight: 10 }
+      { id: 'press-penguin', weight: 14 },
+      { id: 'squat-squirrel', weight: 12 },
+      { id: 'flex-fox', weight: 8 }
+    ]
+  },
+  {
+    id: 'flex-trail',
+    name: 'Flex Trail',
+    shortName: 'Flex',
+    description: 'A colorful agility path for quick beasts, showboats, and endurance weirdos.',
+    position: { x: 12.8, z: 10.2 },
+    radius: 7.4,
+    spawnWeight: 1.05,
+    spawnWeights: [
+      { id: 'flex-fox', weight: 24 },
+      { id: 'buff-bunny', weight: 18 },
+      { id: 'pump-panther', weight: 18 },
+      { id: 'curl-corgi', weight: 14 },
+      { id: 'jacked-jaguar', weight: 10 },
+      { id: 'tricep-tiger', weight: 8 }
     ]
   },
   {
@@ -34,19 +52,20 @@ export const GYM_ZONES: readonly GymZoneDefinition[] = [
     ]
   },
   {
-    id: 'flex-mirror-lane',
-    name: 'Flex Mirror Lane',
-    shortName: 'Flex',
-    description: 'Showboats and stylish beasts drift toward the mirror line.',
+    id: 'core-court',
+    name: 'Core Court',
+    shortName: 'Core',
+    description: 'Balanced creatures train focus, posture, and suspiciously intense plank form.',
     position: { x: 8.5, z: -8.5 },
     radius: 7.2,
     spawnWeight: 1.05,
     spawnWeights: [
-      { id: 'buff-bunny', weight: 20 },
-      { id: 'flex-fox', weight: 18 },
-      { id: 'jacked-jaguar', weight: 16 },
-      { id: 'tricep-tiger', weight: 15 },
-      { id: 'pump-panther', weight: 12 }
+      { id: 'rowing-raccoon', weight: 18 },
+      { id: 'squat-squirrel', weight: 16 },
+      { id: 'press-penguin', weight: 14 },
+      { id: 'deadlift-deer', weight: 13 },
+      { id: 'jacked-jaguar', weight: 12 },
+      { id: 'tricep-tiger', weight: 10 }
     ]
   },
   {
@@ -58,29 +77,13 @@ export const GYM_ZONES: readonly GymZoneDefinition[] = [
     radius: 6.4,
     spawnWeight: 0.78,
     // Mythic Platform should feel special without flooding the gym with exotics.
-    exoticSpawnBonus: 0.018,
+    exoticSpawnBonus: 0.024,
     spawnWeights: [
       { id: 'iron-rhino', weight: 14 },
       { id: 'swole-gorilla', weight: 12 },
       { id: 'bulk-buffalo', weight: 10 },
       { id: 'tricep-tiger', weight: 9 },
       { id: 'jacked-jaguar', weight: 8 }
-    ]
-  },
-  {
-    id: 'recovery-lounge',
-    name: 'Recovery Lounge',
-    shortName: 'Recover',
-    description: 'Lower-pressure creatures hang near snacks, benches, and cooldown space.',
-    position: { x: -9.5, z: 12.2 },
-    radius: 7,
-    spawnWeight: 0.95,
-    spawnWeights: [
-      { id: 'buff-bunny', weight: 18 },
-      { id: 'press-penguin', weight: 16 },
-      { id: 'squat-squirrel', weight: 15 },
-      { id: 'curl-corgi', weight: 14 },
-      { id: 'rowing-raccoon', weight: 12 }
     ]
   }
 ] as const;

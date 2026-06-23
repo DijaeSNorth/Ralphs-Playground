@@ -105,3 +105,13 @@ Core gameplay loop MVP:
 - Workouts now award active crew XP directly when the player has a captured crew member and advance the first workout goal.
 - Trainer appearance is included in localStorage progress and restored on boot.
 - Crew, RepDex, and Goals stay hidden until the player has captured a creature; Settings remains available.
+
+Expanded gameplay loop:
+- Scope: Gameplay structure/progression only; no art overhaul.
+- Zones are now Starter Stretch, Flex Trail, Heavy Lift Hall, Core Court, and Mythic Platform.
+- Zones bias creature types, shape wild levels, and affect workout XP/token/stat rewards.
+- Creatures now expose derived role and growth metadata: Powerhouse, Sprinter, Technician, Tank, Hype Beast, or Exotic.
+- Workouts apply station-specific stat growth to active crew: press/bench favors strength, squat/leg press favors strength/endurance, cable/row favors focus/back, free weights are balanced strength/focus.
+- Bosses are milestone-gated: Plate Titan after 3 captures or level 5 crew, Rep Reaper after 8 captures or 25% RepDex, Bulk Baron after exotic encounter/capture or level 15 crew.
+- Exotic respawns announce through the spawn event and advance exotic encounter goals.
+- Added goals for 3 workouts, level 5 crew, first boss win, exotic encounter, and 25% RepDex.

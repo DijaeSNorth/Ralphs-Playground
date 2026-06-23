@@ -1,7 +1,7 @@
 import { BUDDY_PASSIVE_DEFINITIONS } from './balance';
-import type { BuddyDefinition } from '../types';
+import type { BuddyDefinition, BuddyGrowthTendency, BuddyRole } from '../types';
 
-type BuddyDefinitionDraft = Omit<BuddyDefinition, 'passive'>;
+type BuddyDefinitionDraft = Omit<BuddyDefinition, 'passive' | 'role' | 'growthTendency'>;
 
 const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
   {
@@ -691,6 +691,30 @@ const BUDDY_DEFINITION_DRAFTS: BuddyDefinitionDraft[] = [
   }
 ];
 
+function resolveCreatureRole(draft: BuddyDefinitionDraft): { role: BuddyRole; growthTendency: BuddyGrowthTendency } {
+  if (draft.rarity === 'exotic' || draft.isExotic) {
+    return { role: 'exotic', growthTendency: 'mythic' };
+  }
+
+  if (draft.species === 'bear' || draft.species === 'rhino' || draft.species === 'gorilla' || draft.species === 'buffalo') {
+    return { role: draft.species === 'rhino' || draft.species === 'buffalo' ? 'tank' : 'powerhouse', growthTendency: 'strength' };
+  }
+
+  if (draft.species === 'fox' || draft.species === 'bunny' || draft.species === 'panther' || draft.species === 'corgi') {
+    return { role: 'sprinter', growthTendency: 'endurance' };
+  }
+
+  if (draft.archetype === 'spinner') {
+    return { role: 'hype-beast', growthTendency: 'endurance' };
+  }
+
+  if (draft.archetype === 'climber' || draft.archetype === 'yogi') {
+    return { role: 'technician', growthTendency: 'focus' };
+  }
+
+  return { role: 'powerhouse', growthTendency: 'strength' };
+}
+
 function attachPassive(draft: BuddyDefinitionDraft): BuddyDefinition {
   const passive = BUDDY_PASSIVE_DEFINITIONS[draft.id];
 
@@ -700,6 +724,7 @@ function attachPassive(draft: BuddyDefinitionDraft): BuddyDefinition {
 
   return {
     ...draft,
+    ...resolveCreatureRole(draft),
     passive
   };
 }

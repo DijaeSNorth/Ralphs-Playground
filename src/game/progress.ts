@@ -85,11 +85,16 @@ const DEFINITION_IDS = new Set(BUDDY_DEFINITIONS.map((definition) => definition.
 const DEFAULT_GOALS: ProgressGoals = {
   capture_first: { completed: false, progress: 0 },
   workout_first: { completed: false, progress: 0 },
+  workout_3: { completed: false, progress: 0 },
   capture_3: { completed: false, progress: 0 },
   capture_6: { completed: false, progress: 0 },
   capture_10: { completed: false, progress: 0 },
+  encounter_exotic: { completed: false, progress: 0 },
   capture_first_exotic: { completed: false, progress: 0 },
+  roster_level_5_any: { completed: false, progress: 0 },
   roster_level_10_any: { completed: false, progress: 0 },
+  boss_first_win: { completed: false, progress: 0 },
+  repdex_quarter: { completed: false, progress: 0 },
   repdex_half: { completed: false, progress: 0 }
 };
 
@@ -242,11 +247,16 @@ function parseGoals(raw: unknown): ProgressGoals {
   return {
     capture_first: parsed.capture_first ?? DEFAULT_GOALS.capture_first,
     workout_first: parsed.workout_first ?? DEFAULT_GOALS.workout_first,
+    workout_3: parsed.workout_3 ?? DEFAULT_GOALS.workout_3,
     capture_3: parsed.capture_3 ?? DEFAULT_GOALS.capture_3,
     capture_6: parsed.capture_6 ?? DEFAULT_GOALS.capture_6,
     capture_10: parsed.capture_10 ?? DEFAULT_GOALS.capture_10,
+    encounter_exotic: parsed.encounter_exotic ?? DEFAULT_GOALS.encounter_exotic,
     capture_first_exotic: parsed.capture_first_exotic ?? DEFAULT_GOALS.capture_first_exotic,
+    roster_level_5_any: parsed.roster_level_5_any ?? DEFAULT_GOALS.roster_level_5_any,
     roster_level_10_any: parsed.roster_level_10_any ?? DEFAULT_GOALS.roster_level_10_any,
+    boss_first_win: parsed.boss_first_win ?? DEFAULT_GOALS.boss_first_win,
+    repdex_quarter: parsed.repdex_quarter ?? DEFAULT_GOALS.repdex_quarter,
     repdex_half: parsed.repdex_half ?? DEFAULT_GOALS.repdex_half
   };
 }

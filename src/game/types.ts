@@ -49,6 +49,21 @@ export type BuddyPassiveEffect =
   | 'sprint-recovery'
   | 'boss-power';
 
+export type BuddyRole =
+  | 'powerhouse'
+  | 'sprinter'
+  | 'technician'
+  | 'tank'
+  | 'hype-beast'
+  | 'exotic';
+
+export type BuddyGrowthTendency =
+  | 'strength'
+  | 'endurance'
+  | 'focus'
+  | 'balanced'
+  | 'mythic';
+
 export type BuddyPassive = {
   id: string;
   name: string;
@@ -171,11 +186,16 @@ export type WorkoutType =
 export type ProgressGoalId =
   | 'capture_first'
   | 'workout_first'
+  | 'workout_3'
   | 'capture_3'
   | 'capture_6'
   | 'capture_10'
+  | 'encounter_exotic'
   | 'capture_first_exotic'
+  | 'roster_level_5_any'
   | 'roster_level_10_any'
+  | 'boss_first_win'
+  | 'repdex_quarter'
   | 'repdex_half';
 
 export type ProgressGoalState = {
@@ -255,11 +275,11 @@ export type LocalGymEvent = {
 };
 
 export type GymZoneId =
-  | 'cardio-corner'
+  | 'starter-stretch'
+  | 'flex-trail'
   | 'heavy-lift-hall'
-  | 'flex-mirror-lane'
-  | 'mythic-platform'
-  | 'recovery-lounge';
+  | 'core-court'
+  | 'mythic-platform';
 
 export type GymZoneSpawnWeight = {
   id: string;
@@ -333,6 +353,8 @@ export type BuddyDefinition = {
   gender?: BuddyGender;
   personalityTag: string;
   favoriteWorkout: string;
+  role: BuddyRole;
+  growthTendency: BuddyGrowthTendency;
   reactionLines: {
     victory: string;
     cry: string;
