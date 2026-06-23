@@ -126,13 +126,20 @@ export type BuddyGender = 'man' | 'woman';
 export type BodySizeKey =
   | 'height'
   | 'shoulders'
+  | 'traps'
   | 'torso'
   | 'arms'
+  | 'biceps'
+  | 'triceps'
+  | 'forearms'
   | 'legs'
   | 'chest'
   | 'wings'
+  | 'core'
+  | 'obliques'
   | 'glutes'
   | 'thighs'
+  | 'hamstrings'
   | 'calfs';
 
 export type BuddyBodyTraitKey = 'chest' | 'wings' | 'glutes' | 'thighs' | 'calfs';

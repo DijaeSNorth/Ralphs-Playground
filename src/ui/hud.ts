@@ -69,6 +69,95 @@ const SWITCH_MODE_BUTTON_LABELS: Record<InputMode, string> = {
   touch: 'Switch to Keyboard + Mouse'
 };
 const GOAL_TARGETS = getGoalTargets(BUDDY_DEFINITIONS.length);
+type BodyConstructionPreset = {
+  id: string;
+  label: string;
+  description: string;
+  muscleBuild: PlayerAppearance['muscleBuild'];
+  frame: PlayerAppearance['frame'];
+  body: Partial<Record<BodySizeKey, number>>;
+};
+
+const BODY_SCULPT_GROUPS: Array<{ id: 'upper' | 'core' | 'lower'; label: string }> = [
+  { id: 'upper', label: 'Upper Body' },
+  { id: 'core', label: 'Core' },
+  { id: 'lower', label: 'Lower Body' }
+];
+
+const BODY_CONSTRUCTION_PRESETS: BodyConstructionPreset[] = [
+  {
+    id: 'lean-runner',
+    label: 'Lean Runner',
+    description: 'Fast, light, and springy with crisp legs and core.',
+    muscleBuild: 'toned',
+    frame: 'lean',
+    body: { height: 1.06, shoulders: 0.96, traps: 0.94, chest: 0.94, wings: 0.94, biceps: 0.95, triceps: 0.95, forearms: 0.98, core: 1.1, obliques: 1.08, torso: 0.96, arms: 0.96, legs: 1.1, glutes: 0.98, thighs: 1, hamstrings: 1.02, calfs: 1.12 }
+  },
+  {
+    id: 'balanced-athlete',
+    label: 'Balanced Athlete',
+    description: 'Friendly heroic default with even strength everywhere.',
+    muscleBuild: 'athletic',
+    frame: 'balanced',
+    body: { height: 1.02, shoulders: 1.08, traps: 1.04, chest: 1.08, wings: 1.05, biceps: 1.08, triceps: 1.08, forearms: 1.04, core: 1.04, obliques: 1.02, torso: 1.02, arms: 1.08, legs: 1.04, glutes: 1.02, thighs: 1.03, hamstrings: 1.03, calfs: 1.02 }
+  },
+  {
+    id: 'upper-body-power',
+    label: 'Upper Body Power',
+    description: 'Wider shoulders, bigger arms, and a strong V-taper.',
+    muscleBuild: 'muscular',
+    frame: 'tapered',
+    body: { height: 1, shoulders: 1.22, traps: 1.16, chest: 1.2, wings: 1.22, biceps: 1.24, triceps: 1.22, forearms: 1.14, core: 1.06, obliques: 1.02, torso: 1.08, arms: 1.18, legs: 1.02, glutes: 1, thighs: 1.02, hamstrings: 1, calfs: 1 }
+  },
+  {
+    id: 'lower-body-power',
+    label: 'Lower Body Power',
+    description: 'Grounded stance with powerful glutes, thighs, and calves.',
+    muscleBuild: 'muscular',
+    frame: 'curved',
+    body: { height: 0.98, shoulders: 1.04, traps: 1.02, chest: 1.04, wings: 1, biceps: 1.04, triceps: 1.04, forearms: 1.02, core: 1.06, obliques: 1.06, torso: 1.04, arms: 1.04, legs: 1.08, glutes: 1.24, thighs: 1.24, hamstrings: 1.2, calfs: 1.18 }
+  },
+  {
+    id: 'bodybuilder',
+    label: 'Bodybuilder',
+    description: 'Big, clean, and stylized without breaking proportions.',
+    muscleBuild: 'bodybuilder',
+    frame: 'heavyweight',
+    body: { height: 1.01, shoulders: 1.24, traps: 1.2, chest: 1.24, wings: 1.22, biceps: 1.26, triceps: 1.26, forearms: 1.18, core: 1.14, obliques: 1.12, torso: 1.14, arms: 1.24, legs: 1.08, glutes: 1.14, thighs: 1.18, hamstrings: 1.14, calfs: 1.16 }
+  },
+  {
+    id: 'elite-hero',
+    label: 'Elite Hero',
+    description: 'Arcade champion silhouette: huge but still charming.',
+    muscleBuild: 'elite',
+    frame: 'power',
+    body: { height: 1.04, shoulders: 1.28, traps: 1.24, chest: 1.26, wings: 1.26, biceps: 1.3, triceps: 1.28, forearms: 1.2, core: 1.16, obliques: 1.12, torso: 1.14, arms: 1.26, legs: 1.1, glutes: 1.18, thighs: 1.22, hamstrings: 1.18, calfs: 1.18 }
+  }
+];
+
+function renderCreatorBodySlider(control: (typeof BODY_SIZE_CONTROLS)[number]): string {
+  return `
+    <label class="creator-slider" title="${control.description}">
+      <span>
+        <strong>${control.label}</strong>
+        <em>${control.description}</em>
+      </span>
+      <input type="range" min="${control.min}" max="${control.max}" step="${control.step}" value="${DEFAULT_PLAYER_APPEARANCE.body[control.id]}" data-body-size="${control.id}" />
+      <output data-body-size-value="${control.id}">${DEFAULT_PLAYER_APPEARANCE.body[control.id].toFixed(2)}</output>
+    </label>
+  `;
+}
+
+function renderCreatorSculptRegion(group: (typeof BODY_SCULPT_GROUPS)[number]): string {
+  return `
+    <div class="creator-sculpt-region creator-sculpt-region--${group.id}">
+      <div class="creator-region-title">${group.label}</div>
+      <div class="creator-sliders">
+        ${BODY_SIZE_CONTROLS.filter((control) => control.group === group.id).map(renderCreatorBodySlider).join('')}
+      </div>
+    </div>
+  `;
+}
 const RARITY_SORT_ORDER: Record<string, number> = {
   normal: 0,
   common: 0,
@@ -327,6 +416,7 @@ export class GameHud {
   private readonly creatorSexButtons: NodeListOf<HTMLButtonElement>;
   private readonly creatorMuscleButtons: NodeListOf<HTMLButtonElement>;
   private readonly creatorFrameButtons: NodeListOf<HTMLButtonElement>;
+  private readonly creatorPresetButtons: NodeListOf<HTMLButtonElement>;
   private readonly creatorBodySizeInputs: NodeListOf<HTMLInputElement>;
   private readonly creatorBodySizeValueElements = new Map<BodySizeKey, HTMLElement>();
   private appearanceNotifyHandle: number | null = null;
@@ -660,94 +750,93 @@ export class GameHud {
             </div>
             <p class="creator-short-instruction">Move around. Find a creature. Arm wrestle to capture it.</p>
             <details class="creator-customize">
-              <summary>Customize Character</summary>
-            <div class="creator-group" aria-label="Hair">
-              <div class="creator-label">Hair</div><p class="creator-helper">Changes the head silhouette and is easiest to inspect from Front or Back View.</p>
-              <div class="creator-options">
-                ${HAIR_OPTIONS.map(
-                  (option) => `
-                    <button type="button" class="creator-choice" data-hair="${option.id}" aria-pressed="false">
-                      <span class="choice-swatch" style="--swatch: ${option.swatch}"></span>
-                      <span>${option.label}</span>
-                    </button>
-                  `
-                ).join('')}
+              <summary>Build Your Hero</summary>
+              <div class="creator-grid">
+                <div class="creator-group creator-group--presets" aria-label="Quick presets">
+                  <div class="creator-label">Quick Presets</div>
+                  <p class="creator-helper">Pick a tasteful starting shape, then sculpt details.</p>
+                  <div class="creator-presets">
+                    ${BODY_CONSTRUCTION_PRESETS.map(
+                      (preset) => `
+                        <button type="button" class="creator-choice creator-choice--preset" data-body-preset="${preset.id}" aria-pressed="false">
+                          <span>${preset.label}</span>
+                          <small>${preset.description}</small>
+                        </button>
+                      `
+                    ).join('')}
+                  </div>
+                </div>
+                <div class="creator-group" aria-label="Muscle build">
+                  <div class="creator-label">Build Preset</div><p class="creator-helper">Controls overall muscle mass, definition, and silhouette size.</p>
+                  <div class="creator-options creator-options--muscle">
+                    ${MUSCLE_BUILD_OPTIONS.map(
+                      (option) => `
+                        <button type="button" class="creator-choice creator-choice--muscle" data-muscle="${option.id}" aria-pressed="false" title="${option.description}">
+                          <span>${option.label}</span>
+                          <small>${option.description}</small>
+                        </button>
+                      `
+                    ).join('')}
+                  </div>
+                </div>
+                <div class="creator-group" aria-label="Frame">
+                  <div class="creator-label">Body Frame</div><p class="creator-helper">Changes shoulder, waist, hip, and height proportions.</p>
+                  <div class="creator-options creator-options--frame">
+                    ${FRAME_OPTIONS.map(
+                      (option) => `
+                        <button type="button" class="creator-choice creator-choice--frame" data-frame="${option.id}" aria-pressed="false" title="${option.description}">
+                          <span>${option.label}</span>
+                          <small>${option.description}</small>
+                        </button>
+                      `
+                    ).join('')}
+                  </div>
+                </div>
+                <div class="creator-group creator-group--sculpt" aria-label="Muscle sculpt">
+                  <div class="creator-label">Muscle Sculpt</div>
+                  <p class="creator-helper">Fine-tune specific body regions while keeping proportions clamped and readable.</p>
+                  <div class="creator-sculpt-grid">
+                    ${BODY_SCULPT_GROUPS.map(renderCreatorSculptRegion).join('')}
+                  </div>
+                </div>
+                <div class="creator-group creator-group--style" aria-label="Outfit and style">
+                  <div class="creator-label">Outfit / Style</div>
+                  <p class="creator-helper">Keep the retro trainer readable with clean skin, hair, and base-body choices.</p>
+                  <div class="creator-subhead">Skin Tone</div>
+                  <div class="creator-options">
+                    ${SKIN_TONE_OPTIONS.map(
+                      (option) => `
+                        <button type="button" class="creator-choice" data-skin="${option.id}" aria-pressed="false">
+                          <span class="choice-swatch" style="--swatch: ${option.swatch}"></span>
+                          <span>${option.label}</span>
+                        </button>
+                      `
+                    ).join('')}
+                  </div>
+                  <div class="creator-subhead">Hair</div>
+                  <div class="creator-options">
+                    ${HAIR_OPTIONS.map(
+                      (option) => `
+                        <button type="button" class="creator-choice" data-hair="${option.id}" aria-pressed="false">
+                          <span class="choice-swatch" style="--swatch: ${option.swatch}"></span>
+                          <span>${option.label}</span>
+                        </button>
+                      `
+                    ).join('')}
+                  </div>
+                  <div class="creator-subhead">Body Base</div>
+                  <div class="creator-options creator-options--frame">
+                    ${SEX_OPTIONS.map(
+                      (option) => `
+                        <button type="button" class="creator-choice creator-choice--frame" data-sex="${option.id}" aria-pressed="false" title="${option.description}">
+                          <span>${option.label}</span>
+                          <small>${option.description}</small>
+                        </button>
+                      `
+                    ).join('')}
+                  </div>
+                </div>
               </div>
-            </div>
-            <div class="creator-group" aria-label="Sex">
-              <div class="creator-label">Sex</div><p class="creator-helper">Changes the base body proportions before frame and sliders are applied.</p>
-              <div class="creator-options creator-options--frame">
-                ${SEX_OPTIONS.map(
-                  (option) => `
-                    <button type="button" class="creator-choice creator-choice--frame" data-sex="${option.id}" aria-pressed="false" title="${option.description}">
-                      <span>${option.label}</span>
-                      <small>${option.description}</small>
-                    </button>
-                  `
-                ).join('')}
-              </div>
-            </div>
-            <div class="creator-group" aria-label="Skin tone">
-              <div class="creator-label">Skin Tone</div><p class="creator-helper">Updates face, arms, shoulders, and muscle highlights immediately.</p>
-              <div class="creator-options">
-                ${SKIN_TONE_OPTIONS.map(
-                  (option) => `
-                    <button type="button" class="creator-choice" data-skin="${option.id}" aria-pressed="false">
-                      <span class="choice-swatch" style="--swatch: ${option.swatch}"></span>
-                      <span>${option.label}</span>
-                    </button>
-                  `
-                ).join('')}
-              </div>
-            </div>
-            <div class="creator-group" aria-label="Muscle build">
-              <div class="creator-label">Muscle</div><p class="creator-helper">Controls overall muscle mass, definition, and silhouette size.</p>
-              <div class="creator-options creator-options--muscle">
-                ${MUSCLE_BUILD_OPTIONS.map(
-                  (option) => `
-                    <button type="button" class="creator-choice creator-choice--muscle" data-muscle="${option.id}" aria-pressed="false" title="${option.description}">
-                      <span>${option.label}</span>
-                      <small>${option.description}</small>
-                    </button>
-                  `
-                ).join('')}
-              </div>
-            </div>
-            <div class="creator-group" aria-label="Frame">
-              <div class="creator-label">Frame</div><p class="creator-helper">Changes shoulder, waist, hip, and height proportions.</p>
-              <div class="creator-options creator-options--frame">
-                ${FRAME_OPTIONS.map(
-                  (option) => `
-                    <button type="button" class="creator-choice creator-choice--frame" data-frame="${option.id}" aria-pressed="false" title="${option.description}">
-                      <span>${option.label}</span>
-                      <small>${option.description}</small>
-                    </button>
-                  `
-                ).join('')}
-              </div>
-            </div>
-            <div class="creator-group" aria-label="Body sizing">
-              <div class="creator-label">Body Scale</div><p class="creator-helper">Fine-tunes shoulders, arms, chest, back, legs, glutes, thighs, and calves.</p>
-              <div class="creator-sliders">
-                ${BODY_SIZE_CONTROLS.map(
-                  (control) => `
-                    <label class="creator-slider">
-                      <span>${control.label}</span>
-                      <small>${control.description}</small>
-                      <input
-                        type="range"
-                        min="${control.min}"
-                        max="${control.max}"
-                        step="${control.step}"
-                        value="${DEFAULT_PLAYER_APPEARANCE.body[control.id]}"
-                        data-body-size="${control.id}"
-                      />
-                      <strong data-body-size-value="${control.id}">100%</strong>
-                    </label>
-                  `
-                ).join('')}
-              </div>
-            </div>
             </details>
             <div class="creator-action-row">
               <button type="button" class="creator-customize-toggle" data-toggle-customize>Customize Character</button>
@@ -921,6 +1010,7 @@ export class GameHud {
     const creatorSexButtons = characterCreator?.querySelectorAll<HTMLButtonElement>('[data-sex]');
     const creatorMuscleButtons = characterCreator?.querySelectorAll<HTMLButtonElement>('[data-muscle]');
     const creatorFrameButtons = characterCreator?.querySelectorAll<HTMLButtonElement>('[data-frame]');
+    const creatorPresetButtons = characterCreator?.querySelectorAll<HTMLButtonElement>('[data-body-preset]');
     const creatorBodySizeInputs = characterCreator?.querySelectorAll<HTMLInputElement>('[data-body-size]');
 
     if (
@@ -1072,6 +1162,7 @@ export class GameHud {
       !creatorSexButtons ||
       !creatorMuscleButtons ||
       !creatorFrameButtons ||
+      !creatorPresetButtons ||
       !resetSaveButton ||
       !creatorBodySizeInputs
     ) {
@@ -1241,6 +1332,7 @@ export class GameHud {
     this.creatorSexButtons = creatorSexButtons;
     this.creatorMuscleButtons = creatorMuscleButtons;
     this.creatorFrameButtons = creatorFrameButtons;
+    this.creatorPresetButtons = creatorPresetButtons;
     this.creatorBodySizeInputs = creatorBodySizeInputs;
     creatorBodySizeInputs.forEach((input) => {
       const key = input.dataset.bodySize;
@@ -2393,32 +2485,47 @@ export class GameHud {
   }
 
   private bindCharacterCreator(): void {
+    this.creatorPresetButtons.forEach((button) => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const preset = button.dataset.bodyPreset;
+        if (preset) {
+          this.applyBodyPreset(preset);
+        }
+      });
+    });
+
     this.creatorHairButtons.forEach((button) => {
-      button.addEventListener('click', () => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
         this.setAppearance({ hair: button.dataset.hair as PlayerAppearance['hair'] });
       });
     });
 
     this.creatorSkinButtons.forEach((button) => {
-      button.addEventListener('click', () => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
         this.setAppearance({ skinTone: button.dataset.skin as PlayerAppearance['skinTone'] });
       });
     });
 
     this.creatorSexButtons.forEach((button) => {
-      button.addEventListener('click', () => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
         this.setAppearance({ sex: button.dataset.sex as PlayerAppearance['sex'] });
       });
     });
 
     this.creatorMuscleButtons.forEach((button) => {
-      button.addEventListener('click', () => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
         this.setAppearance({ muscleBuild: button.dataset.muscle as PlayerAppearance['muscleBuild'] });
       });
     });
 
     this.creatorFrameButtons.forEach((button) => {
-      button.addEventListener('click', () => {
+      button.addEventListener('click', (event) => {
+        event.stopPropagation();
         this.setAppearance({ frame: button.dataset.frame as PlayerAppearance['frame'] });
       });
     });
@@ -2454,7 +2561,8 @@ export class GameHud {
     });
 
     this.creatorBodySizeInputs.forEach((input) => {
-      input.addEventListener('input', () => {
+      input.addEventListener('input', (event) => {
+        event.stopPropagation();
         this.setBodySize(input.dataset.bodySize as BodySizeKey, Number(input.value));
       });
     });
@@ -4160,15 +4268,47 @@ export class GameHud {
       return;
     }
 
+    const control = BODY_SIZE_CONTROLS.find((entry) => entry.id === key);
+    const clamped = control ? Math.min(control.max, Math.max(control.min, value)) : value;
+
     this.setAppearance({
       body: {
         ...this.appearance.body,
-        [key]: value
+        [key]: clamped
       }
     });
   }
 
+  private applyBodyPreset(id: string): void {
+    const preset = BODY_CONSTRUCTION_PRESETS.find((entry) => entry.id === id);
+    if (!preset) return;
+
+    this.setAppearance({
+      muscleBuild: preset.muscleBuild,
+      frame: preset.frame,
+      body: {
+        ...this.appearance.body,
+        ...preset.body
+      }
+    });
+  }
+
+  private isBodyPresetActive(preset: BodyConstructionPreset): boolean {
+    if (this.appearance.muscleBuild !== preset.muscleBuild || this.appearance.frame !== preset.frame) {
+      return false;
+    }
+
+    return Object.entries(preset.body).every(([key, value]) => Math.abs((this.appearance.body[key as BodySizeKey] ?? 1) - value) < 0.006);
+  }
+
   private syncCreatorControls(): void {
+    this.creatorPresetButtons.forEach((button) => {
+      const preset = BODY_CONSTRUCTION_PRESETS.find((entry) => entry.id === button.dataset.bodyPreset);
+      const selected = preset ? this.isBodyPresetActive(preset) : false;
+      button.classList.toggle('creator-choice--selected', selected);
+      button.setAttribute('aria-pressed', String(selected));
+    });
+
     this.creatorHairButtons.forEach((button) => {
       const selected = button.dataset.hair === this.appearance.hair;
       button.classList.toggle('creator-choice--selected', selected);
@@ -4222,49 +4362,31 @@ export class GameHud {
     const muscle = MUSCLE_BUILD_OPTIONS.find((option) => option.id === this.appearance.muscleBuild);
     const frame = FRAME_OPTIONS.find((option) => option.id === this.appearance.frame);
     const sex = SEX_OPTIONS.find((option) => option.id === this.appearance.sex);
-    const buildFocus: Record<PlayerAppearance['muscleBuild'], string> = {
-      lean: 'lean casual frame',
-      beginner: 'smaller casual build',
-      average: 'balanced everyday build',
-      power: 'sporty powerful frame',
-      toned: 'lean definition',
-      athletic: 'sporty shoulders and capable legs',
-      sculpted: 'clean sculpted muscle',
-      muscular: 'wider shoulders, stronger arms, athletic torso',
-      bodybuilder: 'big clean upper body, still stylized',
-      elite: 'heroic swole silhouette'
-    };
-    const frameFocus: Record<PlayerAppearance['frame'], string> = {
-      balanced: 'even proportions',
-      tapered: 'wider shoulders and smaller waist',
-      compact: 'shorter powerful stance',
-      curved: 'stronger lower-body shape',
-      power: 'thicker heroic torso and stable stance',
-      athletic: 'sporty agile proportions',
-      heavyweight: 'large grounded powerhouse frame',
-      lean: 'tall crisp runner-like silhouette',
-      voluptuous: 'fuller lower-body emphasis',
-      pear: 'fuller hips and thighs'
-    };
-    const bodyFocus = BODY_SIZE_CONTROLS.filter((control) => {
-      const value = this.appearance.body[control.id] ?? 1;
-      return Math.abs(value - 1) >= 0.08;
-    })
-      .slice(0, 3)
-      .map((control) => {
-        const value = this.appearance.body[control.id] ?? 1;
-        return value > 1 ? `${control.label.toLowerCase()} boosted` : `${control.label.toLowerCase()} leaner`;
-      });
-    const focus =
-      bodyFocus.length > 0
-        ? bodyFocus.join(', ')
-        : `${buildFocus[this.appearance.muscleBuild]}, ${frameFocus[this.appearance.frame]}`;
+    const bodyFocus = BODY_SIZE_CONTROLS.map((control) => ({
+      control,
+      value: this.appearance.body[control.id] ?? 1,
+      delta: Math.abs((this.appearance.body[control.id] ?? 1) - 1)
+    }))
+      .filter((entry) => entry.delta >= 0.07)
+      .sort((a, b) => b.delta - a.delta)
+      .slice(0, 4)
+      .map((entry) => (entry.value > 1 ? `${entry.control.label.toLowerCase()} boosted` : `${entry.control.label.toLowerCase()} leaner`));
+    const upperPower = ['shoulders', 'chest', 'wings', 'biceps', 'triceps'].some((key) => (this.appearance.body[key as BodySizeKey] ?? 1) >= 1.14);
+    const lowerPower = ['glutes', 'thighs', 'hamstrings', 'calfs'].some((key) => (this.appearance.body[key as BodySizeKey] ?? 1) >= 1.14);
+    const corePower = ['core', 'obliques', 'torso'].some((key) => (this.appearance.body[key as BodySizeKey] ?? 1) >= 1.1);
+    const silhouette: string[] = [];
+    if (upperPower) silhouette.push('wide upper body and strong arms');
+    if (lowerPower) silhouette.push('grounded lower-body power');
+    if (corePower) silhouette.push('defined athletic core');
+    if (silhouette.length === 0) silhouette.push('balanced retro trainer proportions');
+    const focus = bodyFocus.length > 0 ? bodyFocus.join(', ') : 'even full-body balance';
 
     this.creatorSummary.innerHTML = `
       <strong>Build: ${muscle?.label ?? this.appearance.muscleBuild}</strong>
       <span>Frame: ${frame?.label ?? this.appearance.frame}</span>
       <span>Base: ${sex?.label ?? this.appearance.sex}</span>
-      <span>Focus: ${focus}</span>
+      <span>Muscle Focus: ${focus}</span>
+      <span>Silhouette: ${silhouette.join(', ')}</span>
     `;
   }
 

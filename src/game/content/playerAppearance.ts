@@ -102,17 +102,22 @@ export const BODY_SIZE_CONTROLS: Array<{
   max: number;
   step: number;
   description: string;
+  group: 'upper' | 'core' | 'lower';
 }> = [
-  { id: 'height', label: 'Height', min: 0.88, max: 1.18, step: 0.02, description: 'Overall size.' },
-  { id: 'shoulders', label: 'Shoulders', min: 0.82, max: 1.28, step: 0.02, description: 'Upper body width.' },
-  { id: 'torso', label: 'Torso', min: 0.86, max: 1.22, step: 0.02, description: 'Core/body thickness.' },
-  { id: 'arms', label: 'Arms', min: 0.82, max: 1.3, step: 0.02, description: 'Biceps and forearms.' },
-  { id: 'legs', label: 'Legs', min: 0.84, max: 1.32, step: 0.02, description: 'Leg length and mass.' },
-  { id: 'chest', label: 'Chest', min: 0.68, max: 1.4, step: 0.02, description: 'Upper torso/chest mass.' },
-  { id: 'wings', label: 'Wings', min: 0.6, max: 1.55, step: 0.02, description: 'Back and lat width.' },
-  { id: 'glutes', label: 'Glutes', min: 0.68, max: 1.42, step: 0.02, description: 'Lower-body shape.' },
-  { id: 'thighs', label: 'Thighs', min: 0.8, max: 1.38, step: 0.02, description: 'Upper-leg size.' },
-  { id: 'calfs', label: 'Calfs', min: 0.8, max: 1.38, step: 0.02, description: 'Lower-leg size.' }
+  { id: 'shoulders', label: 'Shoulders', min: 0.9, max: 1.32, step: 0.01, group: 'upper', description: 'Widens the upper silhouette and heroic stance.' },
+  { id: 'traps', label: 'Traps', min: 0.9, max: 1.28, step: 0.01, group: 'upper', description: 'Raises the neck-to-shoulder shape.' },
+  { id: 'chest', label: 'Chest', min: 0.9, max: 1.36, step: 0.01, group: 'upper', description: 'Adds front torso mass and confidence.' },
+  { id: 'wings', label: 'Lats / Wings', min: 0.88, max: 1.38, step: 0.01, group: 'upper', description: 'Builds a wider back and V-taper.' },
+  { id: 'biceps', label: 'Biceps', min: 0.9, max: 1.36, step: 0.01, group: 'upper', description: 'Thickens the front upper arms.' },
+  { id: 'triceps', label: 'Triceps', min: 0.9, max: 1.36, step: 0.01, group: 'upper', description: 'Thickens the rear upper arms.' },
+  { id: 'forearms', label: 'Forearms', min: 0.9, max: 1.3, step: 0.01, group: 'upper', description: 'Makes the lower arms read stronger.' },
+  { id: 'core', label: 'Abs / Core', min: 0.9, max: 1.3, step: 0.01, group: 'core', description: 'Adds cleaner torso definition.' },
+  { id: 'obliques', label: 'Obliques', min: 0.9, max: 1.28, step: 0.01, group: 'core', description: 'Shapes the side core and waist line.' },
+  { id: 'torso', label: 'Torso Thickness', min: 0.9, max: 1.24, step: 0.01, group: 'core', description: 'Adjusts torso mass without distortion.' },
+  { id: 'glutes', label: 'Glutes', min: 0.9, max: 1.36, step: 0.01, group: 'lower', description: 'Adds rear lower-body power.' },
+  { id: 'thighs', label: 'Thighs / Quads', min: 0.9, max: 1.38, step: 0.01, group: 'lower', description: 'Builds upper-leg strength and stance.' },
+  { id: 'hamstrings', label: 'Hamstrings', min: 0.9, max: 1.32, step: 0.01, group: 'lower', description: 'Shapes the rear legs in back view.' },
+  { id: 'calfs', label: 'Calves', min: 0.9, max: 1.34, step: 0.01, group: 'lower', description: 'Strengthens the lower-leg silhouette.' }
 ];
 
 export const DEFAULT_PLAYER_APPEARANCE: PlayerAppearance = {
@@ -124,13 +129,20 @@ export const DEFAULT_PLAYER_APPEARANCE: PlayerAppearance = {
   body: {
     height: 1.02,
     shoulders: 1.08,
+    traps: 1.04,
     torso: 1.02,
     arms: 1.08,
+    biceps: 1.08,
+    triceps: 1.08,
+    forearms: 1.04,
     legs: 1.04,
     chest: 1.08,
     wings: 1.05,
+    core: 1.04,
+    obliques: 1.02,
     glutes: 1.02,
     thighs: 1.03,
+    hamstrings: 1.03,
     calfs: 1.02
   }
 };

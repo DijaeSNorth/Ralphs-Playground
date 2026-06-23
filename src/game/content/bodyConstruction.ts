@@ -118,20 +118,25 @@ function resolveMuscles(appearance: PlayerAppearance, build: CharacterBuildPrese
   const glutes = sculpt(readBody(appearance.body, 'glutes') * frame.lowerBody, 0.72, 1.34);
   const thighs = sculpt(readBody(appearance.body, 'thighs') * build.legBias * frame.lowerBody, 0.78, 1.38);
   const calves = sculpt(readBody(appearance.body, 'calfs') * build.legBias, 0.78, 1.34);
+  const biceps = sculpt((readBody(appearance.body, 'biceps') * 0.78 + arms * 0.22) * (0.96 + build.definition * 0.08), 0.78, 1.34);
+  const triceps = sculpt((readBody(appearance.body, 'triceps') * 0.78 + arms * 0.16 + shoulders * 0.06) * (0.98 + build.definition * 0.1), 0.78, 1.36);
+  const forearms = sculpt((readBody(appearance.body, 'forearms') * 0.78 + arms * 0.14 + calves * 0.08) * (0.96 + build.definition * 0.08), 0.76, 1.28);
+  const core = sculpt((readBody(appearance.body, 'core') * 0.76 + torso * 0.24) * (0.96 + build.definition * 0.12), 0.8, 1.28);
+  const obliques = sculpt((readBody(appearance.body, 'obliques') * 0.76 + torso * 0.16 + lats * 0.08) * (0.96 + build.definition * 0.08), 0.8, 1.24);
 
   return {
     shoulders,
-    traps: sculpt((shoulders * 0.58 + lats * 0.42) * (0.94 + build.definition * 0.16), 0.78, 1.28),
+    traps: sculpt((readBody(appearance.body, 'traps') * 0.7 + shoulders * 0.18 + lats * 0.12) * (0.94 + build.definition * 0.16), 0.78, 1.28),
     chest,
     lats,
-    biceps: sculpt(arms * (0.96 + build.definition * 0.08), 0.78, 1.34),
-    triceps: sculpt(arms * (0.98 + build.definition * 0.1), 0.78, 1.36),
-    forearms: sculpt(arms * 0.82 + calves * 0.12 + build.definition * 0.08, 0.76, 1.28),
-    core: sculpt(torso * (0.96 + build.definition * 0.12), 0.8, 1.28),
-    obliques: sculpt((torso * 0.68 + lats * 0.32) * (0.96 + build.definition * 0.08), 0.8, 1.24),
+    biceps,
+    triceps,
+    forearms,
+    core,
+    obliques,
     glutes,
     quads: thighs,
-    hamstrings: sculpt(thighs * 0.94 + glutes * 0.12, 0.78, 1.32),
+    hamstrings: sculpt(readBody(appearance.body, 'hamstrings') * 0.74 + thighs * 0.14 + glutes * 0.12, 0.78, 1.32),
     calves
   };
 }

@@ -82,3 +82,10 @@ Art body construction plan:
 - Character body construction resolves identity, frame, build preset, detailed muscle values, and safe clamped body metrics from the existing PlayerAppearance save shape.
 - The rig uses generated canvas textures on layered 2D planes with separate front/back part stacks for head, hair, torso, shoulders, arms, forearms, hands, hips/glutes, thighs, calves, shoes, and accessories.
 - Newly supported frame ids: power, athletic, heavyweight, lean. Legacy voluptuous/pear frames normalize to curved.
+
+Body construction customization UX:
+- Scope: Customization layout and QA polish only; no new gameplay systems.
+- HUD customization is organized as preview controls, quick presets, build/frame choices, grouped muscle sculpt controls, and a live body summary.
+- Quick presets: Lean Runner, Balanced Athlete, Upper Body Power, Lower Body Power, Bodybuilder, Elite Hero.
+- Detailed sculpt controls now target shoulders, traps, chest, lats/wings, biceps, triceps, forearms, abs/core, obliques, torso thickness, glutes, thighs/quads, hamstrings, and calves.
+- Quick presets and sliders reuse the same appearance/body construction update path so preview and gameplay character stay matched.
